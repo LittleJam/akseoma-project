@@ -1,5 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X, ChevronRight, Moon, Sun, Image as ImageIcon, Home, Calendar, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Edit2, Trash2, X, ChevronRight, Moon, Sun, Image as ImageIcon, Home, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
+
+// Сжатие изображения перед сохранением (чтобы не переполнять localStorage)
+function compressImage(file, maxWidth = 900, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = event.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Получить код проекта - только согласные буквы из названия
+function getProjectCode(name) {
+  if (!name) return 'TASK';
+  const vowels = 'AEIOUАЕЁИОУЫЭЮЯ';
+  const lettersOnly = name.toUpperCase().replace(/[^A-ZА-ЯЁ]/g, '');
+  let consonants = '';
+  for (let ch of lettersOnly) {
+    if (!vowels.includes(ch)) {
+      consonants += ch;
+    }
+  }
+  if (!consonants) consonants = lettersOnly || 'TASK';
+  return consonants.substring(0, 5) || 'TASK';
+}
 
 export default function PersonalJira() {
   const [projects, setProjects] = useState([]);
@@ -19,6 +61,7 @@ export default function PersonalJira() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [taskAddedNotification, setTaskAddedNotification] = useState(false);
+  const [storageError, setStorageError] = useState(false);
 
   const columns = [
     { id: 'idea', title: 'IDEA', color: 'bg-purple-100' },
@@ -29,6 +72,28 @@ export default function PersonalJira() {
 
   const weekDays = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
+  // Пересчитать ID задач по новому принципу (сокращение из согласных + порядковый номер)
+  const regenerateTaskIds = (tasksObj, projectsList) => {
+    const newTasksObj = { ...tasksObj };
+
+    projectsList.forEach(project => {
+      const projectCode = getProjectCode(project.name);
+      let counter = 1;
+
+      columns.forEach(col => {
+        const columnTasks = newTasksObj[project.id]?.[col.id];
+        if (columnTasks) {
+          columnTasks.forEach(task => {
+            task.taskId = `${projectCode}-${counter}`;
+            counter++;
+          });
+        }
+      });
+    });
+
+    return newTasksObj;
+  };
+
   // Загрузка данных из localStorage
   useEffect(() => {
     const loadData = () => {
@@ -37,23 +102,42 @@ export default function PersonalJira() {
         const savedTasks = localStorage.getItem('jira-tasks');
         const savedWeeklyTasks = localStorage.getItem('jira-weekly-tasks');
         const savedDarkMode = localStorage.getItem('jira-darkMode');
+        const savedCurrentProject = localStorage.getItem('jira-currentProject');
+        const savedCurrentPage = localStorage.getItem('jira-currentPage');
 
+        let proj = [];
         if (savedProjects) {
-          const proj = JSON.parse(savedProjects);
+          proj = JSON.parse(savedProjects);
           setProjects(proj);
-          setCurrentProject(proj[0]?.id);
         } else {
-          const defaultProject = { id: 'default', name: 'PROJ' };
-          setProjects([defaultProject]);
-          setCurrentProject('default');
-          localStorage.setItem('jira-projects', JSON.stringify([defaultProject]));
+          const defaultProject = { id: 'default', name: 'PROJECT' };
+          proj = [defaultProject];
+          setProjects(proj);
+          localStorage.setItem('jira-projects', JSON.stringify(proj));
         }
 
+        // Восстановить последний открытый проект, если он существует
+        if (savedCurrentProject && proj.find(p => p.id === savedCurrentProject)) {
+          setCurrentProject(savedCurrentProject);
+        } else {
+          setCurrentProject(proj[0]?.id);
+        }
+
+        if (savedCurrentPage) {
+          setCurrentPage(savedCurrentPage);
+        }
+
+        let loadedTasks = {};
         if (savedTasks) {
-          setTasks(JSON.parse(savedTasks));
+          loadedTasks = JSON.parse(savedTasks);
         } else {
           localStorage.setItem('jira-tasks', JSON.stringify({}));
         }
+
+        // Мигрировать/пересчитать ID задач по новому принципу
+        const migratedTasks = regenerateTaskIds(loadedTasks, proj);
+        setTasks(migratedTasks);
+        localStorage.setItem('jira-tasks', JSON.stringify(migratedTasks));
 
         if (savedWeeklyTasks) {
           setWeeklyTasks(JSON.parse(savedWeeklyTasks));
@@ -79,20 +163,33 @@ export default function PersonalJira() {
     loadData();
   }, []);
 
-  // Функция сохранения с немедленным эффектом
+  // Безопасное сохранение в localStorage с обработкой ошибок переполнения
+  const safeSetItem = (key, value) => {
+    try {
+      localStorage.setItem(key, value);
+      setStorageError(false);
+      return true;
+    } catch (error) {
+      console.error('Storage error:', error);
+      setStorageError(true);
+      setTimeout(() => setStorageError(false), 4000);
+      return false;
+    }
+  };
+
   const saveProjects = (newProjects) => {
     setProjects(newProjects);
-    localStorage.setItem('jira-projects', JSON.stringify(newProjects));
+    safeSetItem('jira-projects', JSON.stringify(newProjects));
   };
 
   const saveTasks = (newTasks) => {
     setTasks(newTasks);
-    localStorage.setItem('jira-tasks', JSON.stringify(newTasks));
+    safeSetItem('jira-tasks', JSON.stringify(newTasks));
   };
 
   const saveWeeklyTasks = (newWeeklyTasks) => {
     setWeeklyTasks(newWeeklyTasks);
-    localStorage.setItem('jira-weekly-tasks', JSON.stringify(newWeeklyTasks));
+    safeSetItem('jira-weekly-tasks', JSON.stringify(newWeeklyTasks));
   };
 
   // Сохранение темы
@@ -100,21 +197,19 @@ export default function PersonalJira() {
     localStorage.setItem('jira-darkMode', JSON.stringify(darkMode));
   }, [darkMode]);
 
-  // Функция для генерации ID задачи в формате PROJ-1, PROJ-2
-  const getTaskId = (projectId) => {
-    const project = projects.find(p => p.id === projectId);
-    const projectCode = project?.name.toUpperCase() || 'TASK';
-    
-    let taskCount = 0;
-    for (let col of columns) {
-      const columnTasks = tasks[projectId]?.[col.id] || [];
-      taskCount += columnTasks.length;
+  // Сохранение текущего проекта
+  useEffect(() => {
+    if (currentProject) {
+      localStorage.setItem('jira-currentProject', currentProject);
     }
-    
-    return `${projectCode}-${taskCount + 1}`;
-  };
+  }, [currentProject]);
 
-  // Функция для получения номера задачи
+  // Сохранение текущей страницы
+  useEffect(() => {
+    localStorage.setItem('jira-currentPage', currentPage);
+  }, [currentPage]);
+
+  // Функция для получения номера задачи (для отображения если нет taskId)
   const getTaskNumber = (taskId) => {
     let taskNumber = 1;
     for (let col of columns) {
@@ -143,8 +238,7 @@ export default function PersonalJira() {
   // Подтверждение сохранения перед переключением
   const handleConfirmSwitchProject = (save) => {
     if (save && editingTask) {
-      // updateTask уже сохранит
-      handleTaskSave(editingTask);
+      handleTaskSave(editingTask, true);
     }
     setShowConfirmDialog(false);
     if (pendingProject) {
@@ -162,7 +256,7 @@ export default function PersonalJira() {
 
     const newProject = {
       id: Date.now().toString(),
-      name: newProjectName.toUpperCase()
+      name: newProjectName
     };
 
     const updatedProjects = [...projects, newProject];
@@ -176,12 +270,16 @@ export default function PersonalJira() {
     if (!editingProjectName.trim()) return;
 
     const updatedProjects = projects.map(p =>
-      p.id === projectId ? { ...p, name: editingProjectName.toUpperCase() } : p
+      p.id === projectId ? { ...p, name: editingProjectName } : p
     );
 
     saveProjects(updatedProjects);
     setEditingProjectId(null);
     setEditingProjectName('');
+
+    // Пересчитать ID задач с новым названием проекта
+    const migratedTasks = regenerateTaskIds(tasks, updatedProjects);
+    saveTasks(migratedTasks);
   };
 
   // Удалить проект
@@ -204,15 +302,14 @@ export default function PersonalJira() {
 
     const now = new Date();
     const project = projects.find(p => p.id === currentProject);
-    const projectCode = project?.name.toUpperCase() || 'TASK';
-    
+    const projectCode = getProjectCode(project?.name);
+
     let taskCount = 0;
     for (let col of columns) {
       const columnTasks = tasks[currentProject]?.[col.id] || [];
       taskCount += columnTasks.length;
     }
-    const taskNumber = taskCount + 1;
-    const taskId = `${projectCode}-${taskNumber}`;
+    const taskId = `${projectCode}-${taskCount + 1}`;
 
     const newTask = {
       id: Date.now().toString(),
@@ -246,7 +343,7 @@ export default function PersonalJira() {
     setTimeout(() => setTaskAddedNotification(false), 2000);
   };
 
-  // Удалить задачу
+  // Удалить задачу (из редактора или прямо с борда)
   const deleteTask = (taskId) => {
     const newTasks = { ...tasks };
 
@@ -258,33 +355,18 @@ export default function PersonalJira() {
       }
     }
 
-    saveTasks(newTasks);
-    setEditingTask(null);
-    setHasUnsavedChanges(false);
-  };
+    // Пересчитать ID оставшихся задач
+    const migratedTasks = regenerateTaskIds(newTasks, projects);
+    saveTasks(migratedTasks);
 
-  // Обновить задачу
-  const handleTaskSave = (updatedTask) => {
-    const newTasks = { ...tasks };
-
-    for (let column of columns) {
-      if (newTasks[currentProject]?.[column.id]) {
-        const index = newTasks[currentProject][column.id].findIndex(
-          t => t.id === updatedTask.id
-        );
-        if (index !== -1) {
-          newTasks[currentProject][column.id][index] = updatedTask;
-          saveTasks(newTasks);
-          setEditingTask(null);
-          setHasUnsavedChanges(false);
-          return;
-        }
-      }
+    if (editingTask?.id === taskId) {
+      setEditingTask(null);
+      setHasUnsavedChanges(false);
     }
   };
 
-  // Обновить задачу (для редактора)
-  const updateTask = (updatedTask, oldTask) => {
+  // Сохранить и закрыть редактор
+  const handleTaskSave = (updatedTask, skipClose) => {
     const newTasks = { ...tasks };
 
     for (let column of columns) {
@@ -293,23 +375,12 @@ export default function PersonalJira() {
           t => t.id === updatedTask.id
         );
         if (index !== -1) {
-          const changes = {};
-          if (oldTask.title !== updatedTask.title) changes.title = updatedTask.title;
-          if (oldTask.priority !== updatedTask.priority) changes.priority = updatedTask.priority;
-
-          if (Object.keys(changes).length > 0) {
-            const historyEntry = {
-              timestamp: new Date().toLocaleString('ru-RU'),
-              action: 'Отредактирована задача',
-              changes: changes
-            };
-
-            updatedTask.history = [...(updatedTask.history || []), historyEntry];
-          }
-
           newTasks[currentProject][column.id][index] = updatedTask;
-          setEditingTask(updatedTask);
           saveTasks(newTasks);
+          if (!skipClose) {
+            setEditingTask(null);
+            setHasUnsavedChanges(false);
+          }
           return;
         }
       }
@@ -338,7 +409,7 @@ export default function PersonalJira() {
   const reorderTasksInColumn = (fromIndex, toIndex, columnId) => {
     const newTasks = { ...tasks };
     const columnTasks = newTasks[currentProject]?.[columnId];
-    
+
     if (!columnTasks) return;
 
     const [movedTask] = columnTasks.splice(fromIndex, 1);
@@ -378,12 +449,31 @@ export default function PersonalJira() {
     }
   };
 
+  // Редактировать текст недельной задачи
+  const editWeeklyTask = (day, taskId, newTitle) => {
+    if (!newTitle.trim()) return;
+    const newWeeklyTasks = { ...weeklyTasks };
+    const task = newWeeklyTasks[day].find(t => t.id === taskId);
+    if (task) {
+      task.title = newTitle;
+      saveWeeklyTasks(newWeeklyTasks);
+    }
+  };
+
   if (loading) {
     return <div className={`flex items-center justify-center h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-800'}`}>Загрузка...</div>;
   }
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* Уведомление об ошибке хранилища */}
+      {storageError && (
+        <div className="fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50 max-w-md">
+          <AlertCircle size={20} />
+          <span className="text-sm">Не удалось сохранить: недостаточно места. Попробуйте удалить старые изображения.</span>
+        </div>
+      )}
+
       {/* Модальное окно подтверждения */}
       {showConfirmDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -529,7 +619,6 @@ export default function PersonalJira() {
       {editingTask && currentPage === 'kanban' ? (
         <TaskEditor
           task={editingTask}
-          onUpdate={updateTask}
           onSave={handleTaskSave}
           onClose={() => {
             setEditingTask(null);
@@ -562,6 +651,7 @@ export default function PersonalJira() {
             reorderTasksInColumn={reorderTasksInColumn}
             darkMode={darkMode}
             getTaskNumber={getTaskNumber}
+            deleteTask={deleteTask}
           />
         </>
       ) : (
@@ -570,6 +660,7 @@ export default function PersonalJira() {
           addWeeklyTask={addWeeklyTask}
           deleteWeeklyTask={deleteWeeklyTask}
           toggleWeeklyTask={toggleWeeklyTask}
+          editWeeklyTask={editWeeklyTask}
           darkMode={darkMode}
           weekDays={weekDays}
         />
@@ -592,7 +683,8 @@ function KanbanBoard({
   moveTask,
   reorderTasksInColumn,
   darkMode,
-  getTaskNumber
+  getTaskNumber,
+  deleteTask
 }) {
   return (
     <div className={`flex-1 overflow-auto ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -650,6 +742,7 @@ function KanbanBoard({
                   moveTask={moveTask}
                   reorderTasksInColumn={reorderTasksInColumn}
                   getTaskNumber={getTaskNumber}
+                  deleteTask={deleteTask}
                 />
               ))}
             </div>
@@ -669,7 +762,8 @@ function DropZone({
   setEditingTask,
   moveTask,
   reorderTasksInColumn,
-  getTaskNumber
+  getTaskNumber,
+  deleteTask
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -721,6 +815,7 @@ function DropZone({
             reorderTasksInColumn={reorderTasksInColumn}
             darkMode={darkMode}
             taskNumber={getTaskNumber(task.id)}
+            deleteTask={deleteTask}
           />
         ))}
       </div>
@@ -728,7 +823,7 @@ function DropZone({
   );
 }
 
-function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, darkMode, taskNumber }) {
+function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, darkMode, taskNumber, deleteTask }) {
   const [isDragging, setIsDragging] = useState(false);
 
   const cardBg = darkMode ? 'bg-gray-700 hover:shadow-lg' : 'bg-white hover:shadow-md';
@@ -754,9 +849,16 @@ function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, d
     e.preventDefault();
     const fromColumn = e.dataTransfer.getData('fromColumn');
     const fromIndex = parseInt(e.dataTransfer.getData('fromIndex'));
-    
+
     if (fromColumn === column.id) {
       reorderTasksInColumn(fromIndex, index, column.id);
+    }
+  };
+
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    if (confirm('Удалить эту задачу?')) {
+      deleteTask(task.id);
     }
   };
 
@@ -770,7 +872,14 @@ function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, d
       className={`${cardBg} p-4 rounded shadow cursor-grab active:cursor-grabbing group relative transition ${isDragging ? 'opacity-50' : 'opacity-100'}`}
       onClick={() => setEditingTask(task)}
     >
-      <div className="flex items-start gap-2 mb-2">
+      <button
+        onClick={handleDeleteClick}
+        className="absolute top-2 right-2 p-1 rounded opacity-0 group-hover:opacity-100 transition bg-red-100 hover:bg-red-200 z-10"
+        title="Удалить задачу"
+      >
+        <Trash2 size={14} className="text-red-600" />
+      </button>
+      <div className="flex items-start gap-2 mb-2 pr-6">
         <span className={`font-bold text-xs px-2 py-1 rounded bg-blue-500 text-white whitespace-nowrap`}>{task.taskId || `#${taskNumber}`}</span>
         <h4 className={`font-bold text-sm ${textColor} flex-1 break-words`}>{task.title}</h4>
       </div>
@@ -799,13 +908,14 @@ function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, d
   );
 }
 
-function TaskEditor({ task, onUpdate, onSave, onClose, onDelete, darkMode, onUnsavedChange }) {
+function TaskEditor({ task, onSave, onClose, onDelete, darkMode, onUnsavedChange }) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description?.content || '');
   const [priority, setPriority] = useState(task.priority);
   const [images, setImages] = useState(task.images || []);
   const [showHistory, setShowHistory] = useState(false);
-  const [textFormat, setTextFormat] = useState({
+  const [isUploading, setIsUploading] = useState(false);
+  const [textFormat, setTextFormat] = useState(task.description?.editorState || {
     fontSize: '16px',
     fontWeight: 'normal',
     fontStyle: 'normal',
@@ -814,12 +924,12 @@ function TaskEditor({ task, onUpdate, onSave, onClose, onDelete, darkMode, onUns
 
   // Отслеживание изменений
   useEffect(() => {
-    const hasChanges = 
+    const hasChanges =
       title !== task.title ||
       description !== (task.description?.content || '') ||
       priority !== task.priority ||
       JSON.stringify(images) !== JSON.stringify(task.images || []);
-    
+
     onUnsavedChange(hasChanges);
   }, [title, description, priority, images, task, onUnsavedChange]);
 
@@ -830,15 +940,19 @@ function TaskEditor({ task, onUpdate, onSave, onClose, onDelete, darkMode, onUns
   const borderClass = darkMode ? 'border-gray-700' : 'border-gray-300';
   const inputBgClass = darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900';
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files || []);
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setImages(prev => [...prev, event.target?.result]);
-      };
-      reader.readAsDataURL(file);
-    });
+    if (files.length === 0) return;
+    setIsUploading(true);
+    try {
+      const compressed = await Promise.all(files.map(file => compressImage(file)));
+      setImages(prev => [...prev, ...compressed]);
+    } catch (err) {
+      console.error('Image compression error:', err);
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleDragOver = (e) => {
@@ -846,19 +960,20 @@ function TaskEditor({ task, onUpdate, onSave, onClose, onDelete, darkMode, onUns
     e.stopPropagation();
   };
 
-  const handleImageDrop = (e) => {
+  const handleImageDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const files = Array.from(e.dataTransfer.files);
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          setImages(prev => [...prev, event.target?.result]);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    setIsUploading(true);
+    try {
+      const compressed = await Promise.all(files.map(file => compressImage(file)));
+      setImages(prev => [...prev, ...compressed]);
+    } catch (err) {
+      console.error('Image compression error:', err);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const removeImage = (index) => {
@@ -866,12 +981,29 @@ function TaskEditor({ task, onUpdate, onSave, onClose, onDelete, darkMode, onUns
   };
 
   const handleSave = () => {
+    const now = new Date();
+    const changes = {};
+    if (title !== task.title) changes.title = title;
+    if (priority !== task.priority) changes.priority = priority;
+    if (description !== (task.description?.content || '')) changes.description = 'Описание изменено';
+    if (JSON.stringify(images) !== JSON.stringify(task.images || [])) changes.images = `Изображений: ${images.length}`;
+
+    let newHistory = task.history || [];
+    if (Object.keys(changes).length > 0) {
+      newHistory = [...newHistory, {
+        timestamp: now.toLocaleString('ru-RU'),
+        action: 'Отредактирована задача',
+        changes
+      }];
+    }
+
     onSave({
       ...task,
       title,
       description: { content: description, editorState: textFormat },
       priority,
-      images
+      images,
+      history: newHistory
     });
   };
 
@@ -994,7 +1126,9 @@ function TaskEditor({ task, onUpdate, onSave, onClose, onDelete, darkMode, onUns
                   />
                   <div className={`text-center ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} p-4 rounded`}>
                     <ImageIcon size={32} className={`mx-auto mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-400'}`} />
-                    <p className={`font-medium ${labelClass}`}>Загрузить или перетащить изображения</p>
+                    <p className={`font-medium ${labelClass}`}>
+                      {isUploading ? 'Обработка изображений...' : 'Загрузить или перетащить изображения'}
+                    </p>
                     <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>Поддерживается несколько файлов</p>
                   </div>
                 </label>
@@ -1043,9 +1177,10 @@ function TaskEditor({ task, onUpdate, onSave, onClose, onDelete, darkMode, onUns
             <div className="flex gap-3 pt-4 border-t border-gray-400">
               <button
                 onClick={handleSave}
-                className="flex-1 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
+                disabled={isUploading}
+                className="flex-1 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Сохранить
+                {isUploading ? 'Подождите...' : 'Сохранить'}
               </button>
               <button
                 onClick={onClose}
@@ -1071,14 +1206,29 @@ function TaskEditor({ task, onUpdate, onSave, onClose, onDelete, darkMode, onUns
   );
 }
 
-function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, darkMode, weekDays }) {
+function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, darkMode, weekDays }) {
   const [newTasks, setNewTasks] = useState({});
+  const [editingItem, setEditingItem] = useState(null); // { day, taskId }
+  const [editingText, setEditingText] = useState('');
 
   const handleAddTask = (day) => {
     if (newTasks[day]?.trim()) {
       addWeeklyTask(day, newTasks[day]);
       setNewTasks({ ...newTasks, [day]: '' });
     }
+  };
+
+  const startEditing = (day, task) => {
+    setEditingItem({ day, taskId: task.id });
+    setEditingText(task.title);
+  };
+
+  const saveEditing = () => {
+    if (editingItem && editingText.trim()) {
+      editWeeklyTask(editingItem.day, editingItem.taskId, editingText);
+    }
+    setEditingItem(null);
+    setEditingText('');
   };
 
   return (
@@ -1092,7 +1242,7 @@ function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeekly
           {weekDays.map(day => (
             <div
               key={day}
-              className={`rounded-lg p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg`}
+              className={`rounded-lg p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg flex flex-col`}
             >
               <h3 className={`text-xl font-bold mb-4 px-4 py-2 rounded text-white ${
                 day === 'Понедельник' ? 'bg-red-500' :
@@ -1106,7 +1256,7 @@ function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeekly
                 {day}
               </h3>
 
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2 mb-4 flex-1">
                 {weeklyTasks[day]?.map(task => (
                   <div
                     key={task.id}
@@ -1120,20 +1270,39 @@ function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeekly
                       type="checkbox"
                       checked={task.completed}
                       onChange={() => toggleWeeklyTask(day, task.id)}
-                      className="w-5 h-5 cursor-pointer"
+                      className="w-5 h-5 cursor-pointer flex-shrink-0"
                     />
-                    <span
-                      className={`flex-1 ${
-                        task.completed
-                          ? darkMode ? 'line-through text-gray-500' : 'line-through text-gray-400'
-                          : darkMode ? 'text-gray-100' : 'text-gray-800'
-                      }`}
+                    {editingItem?.day === day && editingItem?.taskId === task.id ? (
+                      <input
+                        type="text"
+                        value={editingText}
+                        onChange={e => setEditingText(e.target.value)}
+                        onBlur={saveEditing}
+                        onKeyPress={e => e.key === 'Enter' && saveEditing()}
+                        autoFocus
+                        className={`flex-1 px-2 py-1 rounded text-sm ${darkMode ? 'bg-gray-600 text-white' : 'bg-white text-gray-900'}`}
+                      />
+                    ) : (
+                      <span
+                        onClick={() => startEditing(day, task)}
+                        className={`flex-1 cursor-text ${
+                          task.completed
+                            ? darkMode ? 'line-through text-gray-500' : 'line-through text-gray-400'
+                            : darkMode ? 'text-gray-100' : 'text-gray-800'
+                        }`}
+                      >
+                        {task.title}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => startEditing(day, task)}
+                      className={`p-1 rounded flex-shrink-0 ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-blue-100'}`}
                     >
-                      {task.title}
-                    </span>
+                      <Edit2 size={14} className={darkMode ? 'text-blue-400' : 'text-blue-600'} />
+                    </button>
                     <button
                       onClick={() => deleteWeeklyTask(day, task.id)}
-                      className={`p-1 rounded ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-red-100'}`}
+                      className={`p-1 rounded flex-shrink-0 ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-red-100'}`}
                     >
                       <X size={16} className={darkMode ? 'text-red-400' : 'text-red-600'} />
                     </button>
