@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowDownWideNarrow } from 'lucide-react';
 import TaskCard from './TaskCard';
+import SubtaskCard from './SubtaskCard';
 import { COLUMN_COLORS } from '../constants';
 
 export default function DropZone({
@@ -11,10 +12,24 @@ export default function DropZone({
   moveTask,
   reorderTasksInColumn,
   sortColumnByPriority,
+  toggleTaskSubtask,
   getTaskNumber,
   deleteTask
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [collapsedSubtasks, setCollapsedSubtasks] = useState(() => new Set());
+
+  const toggleSubtasksCollapsed = (taskId) => {
+    setCollapsedSubtasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  };
 
   const palette = COLUMN_COLORS[column.color] || COLUMN_COLORS.gray;
   const headerBg = darkMode ? 'bg-gray-800' : 'bg-white';
@@ -58,27 +73,46 @@ export default function DropZone({
         {tasks.length > 1 && (
           <button
             onClick={() => sortColumnByPriority(column.id)}
-            title="Сортировать по приоритету"
+            title="Sort by priority"
             className={`p-1 rounded flex-shrink-0 ${darkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
           >
             <ArrowDownWideNarrow size={14} />
           </button>
         )}
       </div>
-      <div className={`${tintBg} space-y-3 min-h-[100px] px-4 pb-4 pt-1 flex-1 rounded-b-lg`}>
-        {tasks.map((task, index) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            index={index}
-            column={column}
-            setEditingTask={setEditingTask}
-            reorderTasksInColumn={reorderTasksInColumn}
-            darkMode={darkMode}
-            taskNumber={getTaskNumber(task.id)}
-            deleteTask={deleteTask}
-          />
-        ))}
+      <div className={`${tintBg} space-y-3 min-h-[100px] px-4 pb-4 pt-3 flex-1 rounded-b-lg`}>
+        {tasks.map((task, index) => {
+          const parentDisplayId = task.taskId || `#${getTaskNumber(task.id)}`;
+          const hasSubtasks = (task.subtasks || []).length > 0;
+          const isCollapsed = collapsedSubtasks.has(task.id);
+          return (
+            <div key={task.id} className="space-y-1.5">
+              <TaskCard
+                task={task}
+                index={index}
+                column={column}
+                setEditingTask={setEditingTask}
+                reorderTasksInColumn={reorderTasksInColumn}
+                darkMode={darkMode}
+                taskNumber={getTaskNumber(task.id)}
+                deleteTask={deleteTask}
+                hasSubtasks={hasSubtasks}
+                subtasksCollapsed={isCollapsed}
+                onToggleSubtasks={() => toggleSubtasksCollapsed(task.id)}
+              />
+              {hasSubtasks && !isCollapsed && task.subtasks.map((subtask, subIndex) => (
+                <SubtaskCard
+                  key={subtask.id}
+                  subtask={subtask}
+                  index={subIndex}
+                  parentDisplayId={parentDisplayId}
+                  onToggle={() => toggleTaskSubtask(task.id, column.id, subtask.id)}
+                  darkMode={darkMode}
+                />
+              ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ export default function FileSyncStatus({
     <div className={`p-4 border-b text-xs ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
       {!fileSupported ? (
         <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
-          Автосохранение в файл не поддерживается в этом браузере (нужен Chrome/Edge)
+          File autosave is not supported in this browser (Chrome/Edge required)
         </p>
       ) : fileConnected ? (
         <div className="flex items-center justify-between gap-2">
@@ -25,16 +25,16 @@ export default function FileSyncStatus({
             onClick={disconnectFile}
             className={darkMode ? 'text-red-400 hover:underline flex-shrink-0' : 'text-red-600 hover:underline flex-shrink-0'}
           >
-            Отключить
+            Disconnect
           </button>
         </div>
       ) : fileHandle ? (
         <button onClick={reconnectFile} className="text-green-500 hover:underline">
-          Разрешить доступ к {fileName}
+          Allow access to {fileName}
         </button>
       ) : (
         <button onClick={connectFile} className="text-green-500 hover:underline">
-          📁 Подключить файл для автосохранения
+          📁 Connect a file for autosave
         </button>
       )}
     </div>

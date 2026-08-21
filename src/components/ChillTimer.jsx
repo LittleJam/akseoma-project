@@ -35,15 +35,15 @@ export default function ChillTimer({ darkMode }) {
 
   return (
     <div className={`flex-1 flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="flex flex-col items-center gap-8">
+      <div className="flex flex-col items-center gap-6 sm:gap-8 px-4">
         <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>🌿 Chill</h2>
-        <div className={`text-[9rem] leading-none font-mono font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+        <div className={`text-5xl sm:text-7xl md:text-[9rem] leading-none font-mono font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           {minutes}:{seconds}
         </div>
         <button
           onClick={toggleTimer}
           className="p-5 bg-green-800 text-white rounded-full hover:bg-green-900 flex items-center justify-center"
-          aria-label={running ? 'Стоп' : 'Старт'}
+          aria-label={running ? 'Stop' : 'Start'}
         >
           {running ? <Pause size={24} /> : <Play size={24} />}
         </button>

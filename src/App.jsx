@@ -12,6 +12,7 @@ import KanbanBoard from './components/KanbanBoard';
 import TaskEditor from './components/TaskEditor';
 import WeeklyTodo from './components/WeeklyTodo';
 import Wishlist from './components/Wishlist';
+import Notes from './components/Notes';
 import ChillTimer from './components/ChillTimer';
 import SettingsPage from './components/SettingsPage';
 
@@ -22,6 +23,7 @@ export default function PersonalJira() {
   const [projectColumns, setProjectColumns] = useState({});
   const [weeklyTasks, setWeeklyTasks] = useState({});
   const [wishlist, setWishlist] = useState([]);
+  const [notes, setNotes] = useState([]);
   const [editingTask, setEditingTask] = useState(null);
   const [newProjectName, setNewProjectName] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -71,26 +73,50 @@ export default function PersonalJira() {
   // Получить колонки конкретного проекта (или дефолтный набор, если не настроены)
   const getProjectColumns = (projectId) => projectColumns[projectId] || DEFAULT_COLUMNS;
 
-  // Пересчитать ID задач по новому принципу (сокращение из согласных + порядковый номер)
-  const regenerateTaskIds = (tasksObj, projectsList) => {
+  // Пересчитать ID задач по порядку создания (id — таймстемп создания) — используется для миграции
+  const renumberTasksByCreationOrder = (tasksObj, projectsList) => {
     const newTasksObj = { ...tasksObj };
 
     projectsList.forEach(project => {
       const projectCode = getProjectCode(project.name);
-      let counter = 1;
-
-      getProjectColumns(project.id).forEach(col => {
-        const columnTasks = newTasksObj[project.id]?.[col.id];
-        if (columnTasks) {
-          columnTasks.forEach(task => {
-            task.taskId = `${projectCode}-${counter}`;
-            counter++;
-          });
-        }
+      const allTasks = [];
+      Object.values(newTasksObj[project.id] || {}).forEach(columnTasks => {
+        (columnTasks || []).forEach(task => allTasks.push(task));
+      });
+      allTasks.sort((a, b) => Number(a.id) - Number(b.id));
+      allTasks.forEach((task, index) => {
+        task.taskId = `${projectCode}-${index + 1}`;
       });
     });
 
     return newTasksObj;
+  };
+
+  // Обновить префикс ID задач при переименовании проекта, номера задач не меняются
+  const updateTaskIdPrefixes = (tasksObj, project) => {
+    const newTasksObj = { ...tasksObj };
+    const projectCode = getProjectCode(project.name);
+
+    Object.values(newTasksObj[project.id] || {}).forEach(columnTasks => {
+      (columnTasks || []).forEach(task => {
+        const match = task.taskId?.match(/-(\d+)$/);
+        if (match) task.taskId = `${projectCode}-${match[1]}`;
+      });
+    });
+
+    return newTasksObj;
+  };
+
+  // Следующий свободный номер задачи в проекте (номера не переиспользуются после удаления)
+  const getNextTaskNumber = (tasksObj, projectId) => {
+    let max = 0;
+    Object.values(tasksObj[projectId] || {}).forEach(columnTasks => {
+      (columnTasks || []).forEach(task => {
+        const match = task.taskId?.match(/-(\d+)$/);
+        if (match) max = Math.max(max, parseInt(match[1], 10));
+      });
+    });
+    return max + 1;
   };
 
   // Загрузка данных из localStorage
@@ -102,6 +128,7 @@ export default function PersonalJira() {
         const savedColumns = localStorage.getItem('jira-columns');
         const savedWeeklyTasks = localStorage.getItem('jira-weekly-tasks');
         const savedWishlist = localStorage.getItem('jira-wishlist');
+        const savedNotes = localStorage.getItem('jira-notes');
         const savedDarkMode = localStorage.getItem('jira-darkMode');
         const savedCurrentProject = localStorage.getItem('jira-currentProject');
         const savedCurrentPage = localStorage.getItem('jira-currentPage');
@@ -135,8 +162,8 @@ export default function PersonalJira() {
           localStorage.setItem('jira-tasks', JSON.stringify({}));
         }
 
-        // Мигрировать/пересчитать ID задач по новому принципу
-        const migratedTasks = regenerateTaskIds(loadedTasks, proj);
+        // Мигрировать/пересчитать ID задач по порядку создания
+        const migratedTasks = renumberTasksByCreationOrder(loadedTasks, proj);
         setTasks(migratedTasks);
         localStorage.setItem('jira-tasks', JSON.stringify(migratedTasks));
 
@@ -159,6 +186,12 @@ export default function PersonalJira() {
           setWishlist(JSON.parse(savedWishlist));
         } else {
           localStorage.setItem('jira-wishlist', JSON.stringify([]));
+        }
+
+        if (savedNotes) {
+          setNotes(JSON.parse(savedNotes));
+        } else {
+          localStorage.setItem('jira-notes', JSON.stringify([]));
         }
 
         if (savedDarkMode) {
@@ -206,6 +239,11 @@ export default function PersonalJira() {
   const saveWishlist = (newWishlist) => {
     setWishlist(newWishlist);
     safeSetItem('jira-wishlist', JSON.stringify(newWishlist));
+  };
+
+  const saveNotes = (newNotes) => {
+    setNotes(newNotes);
+    safeSetItem('jira-notes', JSON.stringify(newNotes));
   };
 
   const saveProjectColumns = (newProjectColumns) => {
@@ -257,10 +295,10 @@ export default function PersonalJira() {
     if (loading || !fileHandle || !fileConnected) return;
     clearTimeout(fileSaveTimeout.current);
     fileSaveTimeout.current = setTimeout(() => {
-      writeStateToFile(fileHandle, { projects, tasks, projectColumns, weeklyTasks, wishlist });
+      writeStateToFile(fileHandle, { projects, tasks, projectColumns, weeklyTasks, wishlist, notes });
     }, 300);
     return () => clearTimeout(fileSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, wishlist, fileHandle, fileConnected, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, wishlist, notes, fileHandle, fileConnected, loading]);
 
   // Первичная загрузка данных из Supabase (перекрывает localStorage, если на сервере уже что-то есть)
   useEffect(() => {
@@ -272,10 +310,13 @@ export default function PersonalJira() {
         const remote = await loadRemoteState();
         if (remote) {
           if (remote.projects) saveProjects(remote.projects);
-          if (remote.tasks) saveTasks(remote.tasks);
+          if (remote.tasks) {
+            saveTasks(renumberTasksByCreationOrder(remote.tasks, remote.projects || projects));
+          }
           if (remote.columns) saveProjectColumns(remote.columns);
           if (remote.weeklyTasks) saveWeeklyTasks(migrateWeeklyTasks(remote.weeklyTasks));
           if (remote.wishlist) saveWishlist(remote.wishlist);
+          if (remote.notes) saveNotes(remote.notes);
           if (remote.settings?.darkMode !== undefined) setDarkMode(remote.settings.darkMode);
           if (remote.settings?.currentProject) setCurrentProject(remote.settings.currentProject);
           if (remote.settings?.currentPage) setCurrentPage(remote.settings.currentPage);
@@ -305,6 +346,7 @@ export default function PersonalJira() {
           columns: projectColumns,
           weeklyTasks,
           wishlist,
+          notes,
           settings: { darkMode, currentProject, currentPage }
         });
         setSupabaseStatus('synced');
@@ -316,7 +358,7 @@ export default function PersonalJira() {
       }
     }, 500);
     return () => clearTimeout(supabaseSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, wishlist, darkMode, currentProject, currentPage, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, wishlist, notes, darkMode, currentProject, currentPage, loading]);
 
   // Подключить (создать или выбрать существующий) JSON-файл для автосохранения
   const connectFile = async () => {
@@ -331,13 +373,16 @@ export default function PersonalJira() {
       if (text.trim()) {
         try {
           const parsed = JSON.parse(text);
-          if (parsed.projects || parsed.tasks || parsed.projectColumns || parsed.weeklyTasks || parsed.wishlist) {
-            if (confirm('Файл уже содержит данные. Загрузить их (заменив текущие)?')) {
+          if (parsed.projects || parsed.tasks || parsed.projectColumns || parsed.weeklyTasks || parsed.wishlist || parsed.notes) {
+            if (confirm('This file already contains data. Load it (replacing the current data)?')) {
               if (parsed.projects) saveProjects(parsed.projects);
-              if (parsed.tasks) saveTasks(parsed.tasks);
+              if (parsed.tasks) {
+                saveTasks(renumberTasksByCreationOrder(parsed.tasks, parsed.projects || projects));
+              }
               if (parsed.projectColumns) saveProjectColumns(parsed.projectColumns);
               if (parsed.weeklyTasks) saveWeeklyTasks(migrateWeeklyTasks(parsed.weeklyTasks));
               if (parsed.wishlist) saveWishlist(parsed.wishlist);
+              if (parsed.notes) saveNotes(parsed.notes);
             }
           }
         } catch (err) {
@@ -449,8 +494,8 @@ export default function PersonalJira() {
     setEditingProjectId(null);
     setEditingProjectName('');
 
-    // Пересчитать ID задач с новым названием проекта
-    const migratedTasks = regenerateTaskIds(tasks, updatedProjects);
+    // Обновить префикс ID задач под новое название проекта (номера задач сохраняются)
+    const migratedTasks = updateTaskIdPrefixes(tasks, { id: projectId, name: editingProjectName });
     saveTasks(migratedTasks);
   };
 
@@ -479,13 +524,7 @@ export default function PersonalJira() {
     const now = new Date();
     const project = projects.find(p => p.id === currentProject);
     const projectCode = getProjectCode(project?.name);
-
-    let taskCount = 0;
-    for (let col of getProjectColumns(currentProject)) {
-      const columnTasks = tasks[currentProject]?.[col.id] || [];
-      taskCount += columnTasks.length;
-    }
-    const taskId = `${projectCode}-${taskCount + 1}`;
+    const taskId = `${projectCode}-${getNextTaskNumber(tasks, currentProject)}`;
 
     const newTask = {
       id: Date.now().toString(),
@@ -494,11 +533,11 @@ export default function PersonalJira() {
       description: { content: '', editorState: null },
       priority: 'medium',
       images: [],
-      createdAt: now.toLocaleDateString('ru-RU'),
+      createdAt: now.toLocaleDateString('en-US'),
       history: [
         {
-          timestamp: now.toLocaleString('ru-RU'),
-          action: 'Создана задача',
+          timestamp: now.toLocaleString('en-US'),
+          action: 'Task created',
           changes: { title: newTaskTitle }
         }
       ]
@@ -531,9 +570,7 @@ export default function PersonalJira() {
       }
     }
 
-    // Пересчитать ID оставшихся задач
-    const migratedTasks = regenerateTaskIds(newTasks, projects);
-    saveTasks(migratedTasks);
+    saveTasks(newTasks);
 
     if (editingTask?.id === taskId) {
       setEditingTask(null);
@@ -581,6 +618,47 @@ export default function PersonalJira() {
     saveTasks(newTasks);
   };
 
+  // Переместить задачу в другой проект
+  const moveTaskToProject = (taskId, targetProjectId, targetColumnId) => {
+    if (!targetProjectId || targetProjectId === currentProject) return;
+
+    const newTasks = { ...tasks };
+    let movedTask = null;
+
+    for (const column of getProjectColumns(currentProject)) {
+      const columnTasks = newTasks[currentProject]?.[column.id];
+      if (!columnTasks) continue;
+      const index = columnTasks.findIndex(t => t.id === taskId);
+      if (index !== -1) {
+        [movedTask] = columnTasks.splice(index, 1);
+        break;
+      }
+    }
+    if (!movedTask) return;
+
+    const targetProject = projects.find(p => p.id === targetProjectId);
+    movedTask.taskId = `${getProjectCode(targetProject?.name)}-${getNextTaskNumber(newTasks, targetProjectId)}`;
+
+    if (!newTasks[targetProjectId]) newTasks[targetProjectId] = {};
+    if (!newTasks[targetProjectId][targetColumnId]) newTasks[targetProjectId][targetColumnId] = [];
+    newTasks[targetProjectId][targetColumnId].push(movedTask);
+
+    saveTasks(newTasks);
+    setEditingTask(null);
+    setHasUnsavedChanges(false);
+  };
+
+  // Переключить подзадачу прямо на борде
+  const toggleTaskSubtask = (taskId, columnId, subtaskId) => {
+    const newTasks = { ...tasks };
+    const columnTasks = newTasks[currentProject]?.[columnId];
+    if (!columnTasks) return;
+    const task = columnTasks.find(t => t.id === taskId);
+    if (!task?.subtasks) return;
+    task.subtasks = task.subtasks.map(s => (s.id === subtaskId ? { ...s, completed: !s.completed } : s));
+    saveTasks(newTasks);
+  };
+
   // Переупорядочить задачи внутри столбика
   const reorderTasksInColumn = (fromIndex, toIndex, columnId) => {
     const newTasks = { ...tasks };
@@ -612,14 +690,15 @@ export default function PersonalJira() {
   };
 
   // Добавить задачу в недельный список
-  const addWeeklyTask = (day, title) => {
+  const addWeeklyTask = (day, title, time) => {
     if (!title.trim()) return;
 
     const newWeeklyTasks = { ...weeklyTasks };
     newWeeklyTasks[day].push({
       id: Date.now().toString(),
       title,
-      completed: false
+      completed: false,
+      time: time || ''
     });
 
     saveWeeklyTasks(newWeeklyTasks);
@@ -642,13 +721,14 @@ export default function PersonalJira() {
     }
   };
 
-  // Редактировать текст недельной задачи
-  const editWeeklyTask = (day, taskId, newTitle) => {
+  // Редактировать текст и время недельной задачи
+  const editWeeklyTask = (day, taskId, newTitle, newTime) => {
     if (!newTitle.trim()) return;
     const newWeeklyTasks = { ...weeklyTasks };
     const task = newWeeklyTasks[day].find(t => t.id === taskId);
     if (task) {
       task.title = newTitle;
+      task.time = newTime || '';
       saveWeeklyTasks(newWeeklyTasks);
     }
   };
@@ -675,8 +755,23 @@ export default function PersonalJira() {
     saveWishlist(wishlist.map(item => (item.id === itemId ? { ...item, title: newTitle } : item)));
   };
 
+  // Создать новую заметку
+  const addNote = () => {
+    saveNotes([...notes, { id: Date.now().toString(), content: '', updatedAt: new Date().toLocaleString('en-US') }]);
+  };
+
+  // Отредактировать содержимое заметки
+  const updateNote = (noteId, content) => {
+    saveNotes(notes.map(n => (n.id === noteId ? { ...n, content, updatedAt: new Date().toLocaleString('en-US') } : n)));
+  };
+
+  // Удалить заметку
+  const deleteNote = (noteId) => {
+    saveNotes(notes.filter(n => n.id !== noteId));
+  };
+
   if (loading) {
-    return <div className={`flex items-center justify-center h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-800'}`}>Загрузка...</div>;
+    return <div className={`flex items-center justify-center h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-800'}`}>Loading...</div>;
   }
 
   return (
@@ -727,6 +822,10 @@ export default function PersonalJira() {
           onDelete={deleteTask}
           darkMode={darkMode}
           onUnsavedChange={(changed) => setHasUnsavedChanges(changed)}
+          projects={projects}
+          currentProjectId={currentProject}
+          getProjectColumns={getProjectColumns}
+          onMoveToProject={moveTaskToProject}
         />
       ) : currentPage === 'kanban' ? (
         <>
@@ -745,6 +844,7 @@ export default function PersonalJira() {
             moveTask={moveTask}
             reorderTasksInColumn={reorderTasksInColumn}
             sortColumnByPriority={sortColumnByPriority}
+            toggleTaskSubtask={toggleTaskSubtask}
             darkMode={darkMode}
             getTaskNumber={getTaskNumber}
             deleteTask={deleteTask}
@@ -767,6 +867,14 @@ export default function PersonalJira() {
           deleteWishlistItem={deleteWishlistItem}
           toggleWishlistItem={toggleWishlistItem}
           editWishlistItem={editWishlistItem}
+          darkMode={darkMode}
+        />
+      ) : currentPage === 'notes' ? (
+        <Notes
+          notes={notes}
+          addNote={addNote}
+          updateNote={updateNote}
+          deleteNote={deleteNote}
           darkMode={darkMode}
         />
       ) : currentPage === 'chill' ? (

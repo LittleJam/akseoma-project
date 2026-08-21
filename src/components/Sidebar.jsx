@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, X, Home, Calendar, Settings, ChevronDown, ChevronRight, Heart, Coffee } from 'lucide-react';
+import { Plus, Edit2, X, Home, Calendar, Settings, ChevronDown, ChevronRight, Heart, Coffee, StickyNote } from 'lucide-react';
 import FileSyncStatus from './FileSyncStatus';
 import CloudSyncStatus from './CloudSyncStatus';
 
@@ -33,9 +33,9 @@ export default function Sidebar({
   const [projectsCollapsed, setProjectsCollapsed] = useState(false);
 
   return (
-    <div className={`w-64 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col`}>
-      <div className={`p-6 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between`}>
-        <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Surf the Task</h1>
+    <div className={`w-48 sm:w-64 flex-shrink-0 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col overflow-y-auto`}>
+      <div className={`p-4 sm:p-6 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between gap-2`}>
+        <h1 className={`text-lg sm:text-2xl font-bold truncate ${darkMode ? 'text-white' : 'text-gray-800'}`}>Surf the Task</h1>
         <button
           onClick={() => setCurrentPage('settings')}
           className={`p-2 rounded-lg ${
@@ -43,7 +43,7 @@ export default function Sidebar({
               ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
               : darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
           }`}
-          title="Настройки"
+          title="Settings"
         >
           <Settings size={20} />
         </button>
@@ -151,6 +151,17 @@ export default function Sidebar({
         </button>
 
         <button
+          onClick={() => setCurrentPage('notes')}
+          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium ${
+            currentPage === 'notes'
+              ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
+              : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          <StickyNote size={18} /> Notes
+        </button>
+
+        <button
           onClick={() => setCurrentPage('wishlist')}
           className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium ${
             currentPage === 'wishlist'
@@ -182,7 +193,7 @@ export default function Sidebar({
                 value={newProjectName}
                 onChange={e => setNewProjectName(e.target.value)}
                 onKeyPress={e => e.key === 'Enter' && createProject()}
-                placeholder="Новый проект..."
+                placeholder="New project..."
                 className={`flex-1 px-2 py-2 text-sm border rounded focus:outline-none focus:border-green-500 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'}`}
               />
               <button

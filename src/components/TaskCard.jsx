@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Trash2, ListChecks } from 'lucide-react';
+import { Trash2, MoreHorizontal } from 'lucide-react';
 
-export default function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, darkMode, taskNumber, deleteTask }) {
+export default function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, darkMode, taskNumber, deleteTask, hasSubtasks, subtasksCollapsed, onToggleSubtasks }) {
   const [isDragging, setIsDragging] = useState(false);
 
   const cardBg = darkMode
@@ -9,8 +9,6 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
     : 'bg-gray-50 border border-gray-200 hover:border-gray-300';
   const textColor = darkMode ? 'text-gray-100' : 'text-gray-800';
   const descriptionText = typeof task.description === 'string' ? task.description : task.description?.content;
-  const subtasks = task.subtasks || [];
-  const completedSubtasks = subtasks.filter(s => s.completed).length;
 
   const handleDragStart = (e) => {
     setIsDragging(true);
@@ -40,9 +38,14 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
 
   const handleDeleteClick = (e) => {
     e.stopPropagation();
-    if (confirm('Удалить эту задачу?')) {
+    if (confirm('Delete this task?')) {
       deleteTask(task.id);
     }
+  };
+
+  const handleToggleSubtasksClick = (e) => {
+    e.stopPropagation();
+    onToggleSubtasks();
   };
 
   return (
@@ -55,14 +58,26 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
       className={`${cardBg} p-3 rounded-lg cursor-grab active:cursor-grabbing group relative transition ${isDragging ? 'opacity-50' : 'opacity-100'}`}
       onClick={() => setEditingTask(task)}
     >
-      <button
-        onClick={handleDeleteClick}
-        className="absolute top-2 right-2 p-1 rounded opacity-0 group-hover:opacity-100 transition bg-red-100 hover:bg-red-200 z-10"
-        title="Удалить задачу"
-      >
-        <Trash2 size={14} className="text-red-600" />
-      </button>
+      <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
+        {hasSubtasks && (
+          <button
+            onClick={handleToggleSubtasksClick}
+            className={`p-1 rounded transition ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}
+            title={subtasksCollapsed ? 'Show subtasks' : 'Hide subtasks'}
+          >
+            <MoreHorizontal size={14} className={darkMode ? 'text-gray-400' : 'text-gray-500'} />
+          </button>
+        )}
+        <button
+          onClick={handleDeleteClick}
+          className="p-1 rounded opacity-0 group-hover:opacity-100 transition bg-red-100 hover:bg-red-200"
+          title="Delete task"
+        >
+          <Trash2 size={14} className="text-red-600" />
+        </button>
+      </div>
       <div className="flex items-start gap-2 mb-2 pr-6">
+        {task.sticker && <span className="text-lg leading-none flex-shrink-0">{task.sticker}</span>}
         <span className={`font-bold text-xs px-2 py-1 rounded bg-green-500 text-white whitespace-nowrap`}>{task.taskId || `#${taskNumber}`}</span>
         <h4 className={`font-bold text-sm ${textColor} flex-1 break-words`}>{task.title}</h4>
       </div>
@@ -70,12 +85,6 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
         <p className={`text-xs truncate mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
           {descriptionText}
         </p>
-      )}
-      {subtasks.length > 0 && (
-        <div className={`flex items-center gap-1.5 text-xs mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-          <ListChecks size={13} />
-          <span>{completedSubtasks}/{subtasks.length}</span>
-        </div>
       )}
       {task.images && task.images.length > 0 && (
         <div className="mt-2 flex gap-2 flex-wrap">
@@ -95,7 +104,7 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
           task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
           'bg-green-100 text-green-700'
         }`}>
-          {task.priority === 'high' ? 'Высокий' : task.priority === 'medium' ? 'Средний' : 'Низкий'}
+          {task.priority === 'high' ? 'High' : task.priority === 'medium' ? 'Medium' : 'Low'}
         </span>
       </div>
     </div>

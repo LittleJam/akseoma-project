@@ -84,7 +84,7 @@ export default function Wishlist({ wishlist, addWishlistItem, deleteWishlistItem
             ))}
             {wishlist.length === 0 && (
               <p className={`text-sm text-center py-6 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                Пока пусто — добавьте первое желание
+                Nothing here yet — add your first wish
               </p>
             )}
           </div>
@@ -95,7 +95,7 @@ export default function Wishlist({ wishlist, addWishlistItem, deleteWishlistItem
               value={newItem}
               onChange={e => setNewItem(e.target.value)}
               onKeyPress={e => e.key === 'Enter' && handleAdd()}
-              placeholder="Добавить в вишлист..."
+              placeholder="Add to wishlist..."
               className={`flex-1 px-3 py-2 text-sm border rounded focus:outline-none focus:border-green-500 ${
                 darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'
               }`}

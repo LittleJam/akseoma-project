@@ -43,7 +43,7 @@ export default function SettingsPage({
 
   const removeColumn = (columnId) => {
     if (columns.length <= 1) return;
-    if (!confirm('Удалить колонку? Задачи из неё нужно будет заранее переместить, иначе они окажутся скрыты.')) return;
+    if (!confirm('Delete this column? Move its tasks out first, or they will become hidden.')) return;
     persistColumns(columns.filter(c => c.id !== columnId));
   };
 
@@ -65,13 +65,13 @@ export default function SettingsPage({
 
   return (
     <div className={`flex-1 overflow-auto ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="max-w-3xl mx-auto p-8 space-y-6">
-        <h2 className={`text-2xl font-semibold ${textClass}`}>Настройки</h2>
+      <div className="max-w-3xl mx-auto p-3 sm:p-8 space-y-6">
+        <h2 className={`text-xl sm:text-2xl font-semibold ${textClass}`}>Settings</h2>
 
-        {/* Тема */}
-        <div className={`rounded-lg border p-6 ${cardBorderClass}`}>
+        {/* Theme */}
+        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
           <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            Тема оформления
+            Theme
           </h3>
           <button
             onClick={() => setDarkMode(!darkMode)}
@@ -80,18 +80,18 @@ export default function SettingsPage({
             }`}
           >
             {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            {darkMode ? 'Светлая тема' : 'Тёмная тема'}
+            {darkMode ? 'Light theme' : 'Dark theme'}
           </button>
         </div>
 
-        {/* Колонки проекта */}
-        <div className={`rounded-lg border p-6 ${cardBorderClass}`}>
+        {/* Project columns */}
+        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
           <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            Колонки проекта
+            Project columns
           </h3>
 
           <div className="mb-4">
-            <label className={`block text-sm font-medium ${labelClass} mb-2`}>Проект</label>
+            <label className={`block text-sm font-medium ${labelClass} mb-2`}>Project</label>
             <select
               value={selectedProjectId || ''}
               onChange={e => setSelectedProjectId(e.target.value)}
@@ -108,7 +108,7 @@ export default function SettingsPage({
               {columns.map((column, index) => (
                 <div
                   key={column.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border ${borderClass}`}
+                  className={`flex items-center gap-3 p-3 rounded-lg border flex-wrap ${borderClass}`}
                 >
                   <div className="flex flex-col">
                     <button
@@ -131,10 +131,10 @@ export default function SettingsPage({
                     type="text"
                     value={column.title}
                     onChange={e => renameColumn(column.id, e.target.value)}
-                    className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
+                    className={`flex-1 min-w-[100px] px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
                   />
 
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {Object.entries(COLUMN_COLORS).map(([key, value]) => (
                       <button
                         key={key}
@@ -154,7 +154,7 @@ export default function SettingsPage({
                     onClick={() => removeColumn(column.id)}
                     disabled={columns.length <= 1}
                     className={`p-2 rounded-lg disabled:opacity-30 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-red-50'}`}
-                    title="Удалить колонку"
+                    title="Delete column"
                   >
                     <Trash2 size={16} className="text-red-500" />
                   </button>
@@ -167,14 +167,14 @@ export default function SettingsPage({
                   value={newColumnTitle}
                   onChange={e => setNewColumnTitle(e.target.value)}
                   onKeyPress={e => e.key === 'Enter' && addColumn()}
-                  placeholder="Новая колонка..."
+                  placeholder="New column..."
                   className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
                 />
                 <button
                   onClick={addColumn}
                   className="px-4 py-2 bg-green-800 text-white rounded-lg hover:bg-green-900 flex items-center gap-2"
                 >
-                  <Plus size={16} /> Добавить
+                  <Plus size={16} /> Add
                 </button>
               </div>
             </div>

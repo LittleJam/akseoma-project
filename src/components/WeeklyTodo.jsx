@@ -20,42 +20,47 @@ const isSameDay = (a, b) => a.toDateString() === b.toDateString();
 
 export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, darkMode, weekDays }) {
   const [newTasks, setNewTasks] = useState({});
+  const [newTimes, setNewTimes] = useState({});
   const [editingItem, setEditingItem] = useState(null); // { day, taskId }
   const [editingText, setEditingText] = useState('');
+  const [editingTime, setEditingTime] = useState('');
 
   const today = new Date();
   const weekDates = getWeekDates();
 
   const handleAddTask = (day) => {
     if (newTasks[day]?.trim()) {
-      addWeeklyTask(day, newTasks[day]);
+      addWeeklyTask(day, newTasks[day], newTimes[day] || '');
       setNewTasks({ ...newTasks, [day]: '' });
+      setNewTimes({ ...newTimes, [day]: '' });
     }
   };
 
   const startEditing = (day, task) => {
     setEditingItem({ day, taskId: task.id });
     setEditingText(task.title);
+    setEditingTime(task.time || '');
   };
 
   const saveEditing = () => {
     if (editingItem && editingText.trim()) {
-      editWeeklyTask(editingItem.day, editingItem.taskId, editingText);
+      editWeeklyTask(editingItem.day, editingItem.taskId, editingText, editingTime);
     }
     setEditingItem(null);
     setEditingText('');
+    setEditingTime('');
   };
 
   return (
     <div className={`flex-1 flex flex-col overflow-hidden ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="px-8 pt-8 pb-6 flex-shrink-0">
-        <h2 className={`text-2xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+      <div className="px-3 sm:px-8 pt-4 sm:pt-8 pb-4 sm:pb-6 flex-shrink-0">
+        <h2 className={`text-xl sm:text-2xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Schedule
         </h2>
       </div>
 
-      <div className="flex-1 min-h-0 px-8 pb-8 flex items-center justify-center">
-        <div className="grid grid-cols-4 grid-rows-2 gap-4 h-[56%] w-full">
+      <div className="flex-1 min-h-0 px-3 sm:px-8 pb-4 sm:pb-8 overflow-y-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-4 grid-rows-4 sm:grid-rows-2 gap-3 sm:gap-4 w-full">
           {weekDays.map((day, i) => {
             const date = weekDates[i];
             const isToday = isSameDay(date, today);
@@ -63,7 +68,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
             return (
               <div
                 key={day}
-                className={`rounded-lg p-4 flex flex-col h-full min-h-0 border ${
+                className={`rounded-lg p-3 sm:p-4 flex flex-col h-[350px] min-h-0 border ${
                   isToday
                     ? darkMode ? 'border-green-700 bg-green-950/40' : 'border-green-200 bg-green-50'
                     : darkMode ? 'border-gray-800 bg-gray-800/60' : 'border-gray-200 bg-white'
@@ -92,15 +97,25 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                         className="w-4 h-4 cursor-pointer flex-shrink-0"
                       />
                       {editingItem?.day === day && editingItem?.taskId === task.id ? (
-                        <input
-                          type="text"
-                          value={editingText}
-                          onChange={e => setEditingText(e.target.value)}
-                          onBlur={saveEditing}
-                          onKeyPress={e => e.key === 'Enter' && saveEditing()}
-                          autoFocus
-                          className={`flex-1 px-1 py-0.5 rounded text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
-                        />
+                        <>
+                          <input
+                            type="time"
+                            value={editingTime}
+                            onChange={e => setEditingTime(e.target.value)}
+                            onBlur={saveEditing}
+                            onKeyPress={e => e.key === 'Enter' && saveEditing()}
+                            className={`px-1 py-0.5 rounded text-xs flex-shrink-0 ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
+                          />
+                          <input
+                            type="text"
+                            value={editingText}
+                            onChange={e => setEditingText(e.target.value)}
+                            onBlur={saveEditing}
+                            onKeyPress={e => e.key === 'Enter' && saveEditing()}
+                            autoFocus
+                            className={`flex-1 px-1 py-0.5 rounded text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
+                          />
+                        </>
                       ) : (
                         <span
                           onClick={() => startEditing(day, task)}
@@ -110,6 +125,11 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                               : darkMode ? 'text-gray-200' : 'text-gray-700'
                           }`}
                         >
+                          {task.time && (
+                            <span className={`text-xs font-mono mr-1.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              {task.time}
+                            </span>
+                          )}
                           {task.title}
                         </span>
                       )}
@@ -130,6 +150,12 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                 </div>
 
                 <div className={`flex items-center gap-2 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <input
+                    type="time"
+                    value={newTimes[day] || ''}
+                    onChange={e => setNewTimes({ ...newTimes, [day]: e.target.value })}
+                    className={`text-xs bg-transparent focus:outline-none flex-shrink-0 w-[70px] ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}
+                  />
                   <input
                     type="text"
                     value={newTasks[day] || ''}

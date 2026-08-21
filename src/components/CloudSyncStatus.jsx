@@ -5,19 +5,19 @@ export default function CloudSyncStatus({ darkMode, configured, status, error })
     <div className={`p-4 border-b text-xs ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
       {!configured ? (
         <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
-          ☁️ Supabase не настроен (см. .env.example)
+          ☁️ Supabase not configured (see .env.example)
         </p>
       ) : status === 'error' ? (
         <p className="text-red-500" title={error || ''}>
-          ☁️ Ошибка синхронизации с Supabase
+          ☁️ Supabase sync error
         </p>
       ) : status === 'loading' ? (
         <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
-          ☁️ Синхронизация...
+          ☁️ Syncing...
         </p>
       ) : (
         <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
-          ☁️ Supabase подключён
+          ☁️ Supabase connected
         </p>
       )}
     </div>
