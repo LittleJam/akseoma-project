@@ -17,6 +17,8 @@ export default function KanbanBoard({
   reorderTasksInColumn,
   sortColumnByPriority,
   toggleTaskSubtask,
+  collapsedSubtasks,
+  toggleSubtasksCollapsed,
   darkMode,
   getTaskNumber,
   deleteTask
@@ -39,7 +41,7 @@ export default function KanbanBoard({
                   onChange={e => setNewTaskTitle(e.target.value)}
                   onKeyPress={e => e.key === 'Enter' && createTask()}
                   placeholder="Add new task..."
-                  className={`flex-1 min-w-[120px] px-4 py-2 border rounded focus:outline-none focus:border-green-500 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'}`}
+                  className={`flex-1 min-w-[120px] px-4 py-2 border rounded focus:outline-none focus:border-green-500 transition-colors duration-150 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'}`}
                 />
                 <select
                   value={newTaskColumn}
@@ -54,7 +56,7 @@ export default function KanbanBoard({
                 </select>
                 <button
                   onClick={createTask}
-                  className="px-6 py-2 bg-green-800 text-white rounded hover:bg-green-900 flex items-center gap-2"
+                  className="px-6 py-2 bg-green-800 text-white rounded hover:bg-green-900 flex items-center gap-2 press"
                 >
                   <Plus size={18} /> Add
                 </button>
@@ -76,6 +78,8 @@ export default function KanbanBoard({
                     reorderTasksInColumn={reorderTasksInColumn}
                     sortColumnByPriority={sortColumnByPriority}
                     toggleTaskSubtask={toggleTaskSubtask}
+                    collapsedSubtasks={collapsedSubtasks}
+                    toggleSubtasksCollapsed={toggleSubtasksCollapsed}
                     getTaskNumber={getTaskNumber}
                     deleteTask={deleteTask}
                   />

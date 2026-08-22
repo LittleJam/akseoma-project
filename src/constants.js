@@ -19,3 +19,25 @@ export const DEFAULT_COLUMNS = [
 ];
 
 export const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// Все ключи localStorage приложения — используются при сбросе к дефолтным настройкам
+export const STORAGE_KEYS = [
+  'jira-projects',
+  'jira-tasks',
+  'jira-columns',
+  'jira-weekly-tasks',
+  'jira-wishlist',
+  'jira-notes',
+  'jira-collapsed-subtasks',
+  'jira-darkMode',
+  'jira-currentProject',
+  'jira-currentPage'
+];
+
+// Эмодзи-стикеры для задач, сгруппированные по смыслу (порядок групп = порядок в пикере)
+export const STICKER_GROUPS = [
+  { label: 'Status', emojis: ['🔥', '⭐', '✅', '❌', '⚠️', '⏰', '📌', '🎯', '🚀', '💡', '🐛', '🔒'] },
+  { label: 'Mood', emojis: ['😀', '😎', '🥳', '🤔', '😴', '😭', '😡', '🤯', '🙏', '🤝', '👍', '👎'] },
+  { label: 'Work', emojis: ['💻', '📱', '🎨', '📝', '📊', '📎', '🗂️', '💰', '📦', '🔧', '🧪', '🧭'] },
+  { label: 'Life', emojis: ['🏄', '🌊', '☀️', '🌙', '🍕', '☕', '🎁', '🎉', '❤️', '🏆', '🌱', '✈️'] }
+];

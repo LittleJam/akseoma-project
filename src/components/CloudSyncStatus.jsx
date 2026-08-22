@@ -12,7 +12,8 @@ export default function CloudSyncStatus({ darkMode, configured, status, error })
           ☁️ Supabase sync error
         </p>
       ) : status === 'loading' ? (
-        <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
+        <p className={`flex items-center gap-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
           ☁️ Syncing...
         </p>
       ) : (

@@ -3,7 +3,7 @@ import { getProjectCode } from './utils/projectCode';
 import { idbGet, idbSet, writeStateToFile } from './utils/fileStorage';
 import { isSupabaseConfigured } from './utils/supabaseClient';
 import { loadRemoteState, saveRemoteState } from './utils/supabaseStorage';
-import { DEFAULT_COLUMNS, WEEK_DAYS } from './constants';
+import { DEFAULT_COLUMNS, WEEK_DAYS, STORAGE_KEYS } from './constants';
 import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -24,6 +24,7 @@ export default function PersonalJira() {
   const [weeklyTasks, setWeeklyTasks] = useState({});
   const [wishlist, setWishlist] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [collapsedSubtasks, setCollapsedSubtasks] = useState({});
   const [editingTask, setEditingTask] = useState(null);
   const [newProjectName, setNewProjectName] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -129,6 +130,7 @@ export default function PersonalJira() {
         const savedWeeklyTasks = localStorage.getItem('jira-weekly-tasks');
         const savedWishlist = localStorage.getItem('jira-wishlist');
         const savedNotes = localStorage.getItem('jira-notes');
+        const savedCollapsedSubtasks = localStorage.getItem('jira-collapsed-subtasks');
         const savedDarkMode = localStorage.getItem('jira-darkMode');
         const savedCurrentProject = localStorage.getItem('jira-currentProject');
         const savedCurrentPage = localStorage.getItem('jira-currentPage');
@@ -194,6 +196,10 @@ export default function PersonalJira() {
           localStorage.setItem('jira-notes', JSON.stringify([]));
         }
 
+        if (savedCollapsedSubtasks) {
+          setCollapsedSubtasks(JSON.parse(savedCollapsedSubtasks));
+        }
+
         if (savedDarkMode) {
           setDarkMode(JSON.parse(savedDarkMode));
         }
@@ -246,6 +252,11 @@ export default function PersonalJira() {
     safeSetItem('jira-notes', JSON.stringify(newNotes));
   };
 
+  const saveCollapsedSubtasks = (newCollapsed) => {
+    setCollapsedSubtasks(newCollapsed);
+    safeSetItem('jira-collapsed-subtasks', JSON.stringify(newCollapsed));
+  };
+
   const saveProjectColumns = (newProjectColumns) => {
     setProjectColumns(newProjectColumns);
     safeSetItem('jira-columns', JSON.stringify(newProjectColumns));
@@ -295,10 +306,10 @@ export default function PersonalJira() {
     if (loading || !fileHandle || !fileConnected) return;
     clearTimeout(fileSaveTimeout.current);
     fileSaveTimeout.current = setTimeout(() => {
-      writeStateToFile(fileHandle, { projects, tasks, projectColumns, weeklyTasks, wishlist, notes });
+      writeStateToFile(fileHandle, { projects, tasks, projectColumns, weeklyTasks, wishlist, notes, collapsedSubtasks });
     }, 300);
     return () => clearTimeout(fileSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, wishlist, notes, fileHandle, fileConnected, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, wishlist, notes, collapsedSubtasks, fileHandle, fileConnected, loading]);
 
   // Первичная загрузка данных из Supabase (перекрывает localStorage, если на сервере уже что-то есть)
   useEffect(() => {
@@ -317,6 +328,7 @@ export default function PersonalJira() {
           if (remote.weeklyTasks) saveWeeklyTasks(migrateWeeklyTasks(remote.weeklyTasks));
           if (remote.wishlist) saveWishlist(remote.wishlist);
           if (remote.notes) saveNotes(remote.notes);
+          if (remote.collapsedSubtasks) saveCollapsedSubtasks(remote.collapsedSubtasks);
           if (remote.settings?.darkMode !== undefined) setDarkMode(remote.settings.darkMode);
           if (remote.settings?.currentProject) setCurrentProject(remote.settings.currentProject);
           if (remote.settings?.currentPage) setCurrentPage(remote.settings.currentPage);
@@ -347,6 +359,7 @@ export default function PersonalJira() {
           weeklyTasks,
           wishlist,
           notes,
+          collapsedSubtasks,
           settings: { darkMode, currentProject, currentPage }
         });
         setSupabaseStatus('synced');
@@ -358,7 +371,7 @@ export default function PersonalJira() {
       }
     }, 500);
     return () => clearTimeout(supabaseSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, wishlist, notes, darkMode, currentProject, currentPage, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, wishlist, notes, collapsedSubtasks, darkMode, currentProject, currentPage, loading]);
 
   // Подключить (создать или выбрать существующий) JSON-файл для автосохранения
   const connectFile = async () => {
@@ -383,6 +396,7 @@ export default function PersonalJira() {
               if (parsed.weeklyTasks) saveWeeklyTasks(migrateWeeklyTasks(parsed.weeklyTasks));
               if (parsed.wishlist) saveWishlist(parsed.wishlist);
               if (parsed.notes) saveNotes(parsed.notes);
+              if (parsed.collapsedSubtasks) saveCollapsedSubtasks(parsed.collapsedSubtasks);
             }
           }
         } catch (err) {
@@ -572,6 +586,12 @@ export default function PersonalJira() {
 
     saveTasks(newTasks);
 
+    if (collapsedSubtasks[taskId]) {
+      const newCollapsed = { ...collapsedSubtasks };
+      delete newCollapsed[taskId];
+      saveCollapsedSubtasks(newCollapsed);
+    }
+
     if (editingTask?.id === taskId) {
       setEditingTask(null);
       setHasUnsavedChanges(false);
@@ -657,6 +677,17 @@ export default function PersonalJira() {
     if (!task?.subtasks) return;
     task.subtasks = task.subtasks.map(s => (s.id === subtaskId ? { ...s, completed: !s.completed } : s));
     saveTasks(newTasks);
+  };
+
+  // Свернуть/развернуть подзадачи задачи на борде (состояние запоминается между сессиями)
+  const toggleSubtasksCollapsed = (taskId) => {
+    const newCollapsed = { ...collapsedSubtasks };
+    if (newCollapsed[taskId]) {
+      delete newCollapsed[taskId];
+    } else {
+      newCollapsed[taskId] = true;
+    }
+    saveCollapsedSubtasks(newCollapsed);
   };
 
   // Переупорядочить задачи внутри столбика
@@ -770,6 +801,63 @@ export default function PersonalJira() {
     saveNotes(notes.filter(n => n.id !== noteId));
   };
 
+  // Заблюрить/показать текст заметки (updatedAt не меняем — содержимое не тронуто)
+  const toggleNoteBlur = (noteId) => {
+    saveNotes(notes.map(n => (n.id === noteId ? { ...n, blurred: !n.blurred } : n)));
+  };
+
+  // Переставить заметки местами (drag & drop)
+  const reorderNotes = (fromIndex, toIndex) => {
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 || fromIndex >= notes.length ||
+      toIndex < 0 || toIndex >= notes.length
+    ) return;
+
+    const newNotes = [...notes];
+    const [movedNote] = newNotes.splice(fromIndex, 1);
+    newNotes.splice(toIndex, 0, movedNote);
+    saveNotes(newNotes);
+  };
+
+  // Сбросить все данные и настройки сайта к исходному состоянию
+  const resetAllData = () => {
+    STORAGE_KEYS.forEach(key => {
+      try {
+        localStorage.removeItem(key);
+      } catch (error) {
+        console.error('Reset storage error:', error);
+      }
+    });
+
+    const defaultProject = { id: 'default', name: 'PROJECT' };
+    const emptyWeekly = {};
+    weekDays.forEach(day => {
+      emptyWeekly[day] = [];
+    });
+
+    setEditingTask(null);
+    setHasUnsavedChanges(false);
+    setShowConfirmDialog(false);
+    setPendingProject(null);
+    setEditingProjectId(null);
+    setEditingProjectName('');
+    setNewProjectName('');
+    setNewTaskTitle('');
+    setNewTaskColumn(DEFAULT_COLUMNS[0].id);
+
+    saveProjects([defaultProject]);
+    saveTasks({});
+    saveProjectColumns({});
+    saveWeeklyTasks(emptyWeekly);
+    saveWishlist([]);
+    saveNotes([]);
+    saveCollapsedSubtasks({});
+    setDarkMode(false);
+    setCurrentProject(defaultProject.id);
+    setCurrentPage('kanban');
+  };
+
   if (loading) {
     return <div className={`flex items-center justify-center h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-800'}`}>Loading...</div>;
   }
@@ -845,6 +933,8 @@ export default function PersonalJira() {
             reorderTasksInColumn={reorderTasksInColumn}
             sortColumnByPriority={sortColumnByPriority}
             toggleTaskSubtask={toggleTaskSubtask}
+            collapsedSubtasks={collapsedSubtasks}
+            toggleSubtasksCollapsed={toggleSubtasksCollapsed}
             darkMode={darkMode}
             getTaskNumber={getTaskNumber}
             deleteTask={deleteTask}
@@ -875,6 +965,8 @@ export default function PersonalJira() {
           addNote={addNote}
           updateNote={updateNote}
           deleteNote={deleteNote}
+          toggleNoteBlur={toggleNoteBlur}
+          reorderNotes={reorderNotes}
           darkMode={darkMode}
         />
       ) : currentPage === 'chill' ? (
@@ -887,6 +979,7 @@ export default function PersonalJira() {
           currentProject={currentProject}
           getProjectColumns={getProjectColumns}
           updateProjectColumns={updateProjectColumns}
+          resetAllData={resetAllData}
         />
       )}
     </div>

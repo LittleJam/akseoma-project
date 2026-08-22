@@ -13,23 +13,12 @@ export default function DropZone({
   reorderTasksInColumn,
   sortColumnByPriority,
   toggleTaskSubtask,
+  collapsedSubtasks,
+  toggleSubtasksCollapsed,
   getTaskNumber,
   deleteTask
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
-  const [collapsedSubtasks, setCollapsedSubtasks] = useState(() => new Set());
-
-  const toggleSubtasksCollapsed = (taskId) => {
-    setCollapsedSubtasks(prev => {
-      const next = new Set(prev);
-      if (next.has(taskId)) {
-        next.delete(taskId);
-      } else {
-        next.add(taskId);
-      }
-      return next;
-    });
-  };
 
   const palette = COLUMN_COLORS[column.color] || COLUMN_COLORS.gray;
   const headerBg = darkMode ? 'bg-gray-800' : 'bg-white';
@@ -63,7 +52,9 @@ export default function DropZone({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`border ${borderClass} rounded-lg transition h-full flex flex-col ${isDragOver ? 'ring-1 ring-green-600 border-green-600' : ''}`}
+      className={`border ${borderClass} rounded-lg h-full flex flex-col transition duration-150 ${
+        isDragOver ? 'ring-2 ring-green-600 border-green-600 scale-[1.01]' : ''
+      }`}
     >
       <div className={`${headerBg} flex items-center gap-2 p-4 pb-2 sticky top-0 z-10 rounded-t-lg`}>
         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
@@ -74,7 +65,7 @@ export default function DropZone({
           <button
             onClick={() => sortColumnByPriority(column.id)}
             title="Sort by priority"
-            className={`p-1 rounded flex-shrink-0 ${darkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+            className={`p-1 rounded flex-shrink-0 press-icon ${darkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
           >
             <ArrowDownWideNarrow size={14} />
           </button>
@@ -84,7 +75,7 @@ export default function DropZone({
         {tasks.map((task, index) => {
           const parentDisplayId = task.taskId || `#${getTaskNumber(task.id)}`;
           const hasSubtasks = (task.subtasks || []).length > 0;
-          const isCollapsed = collapsedSubtasks.has(task.id);
+          const isCollapsed = !!collapsedSubtasks[task.id];
           return (
             <div key={task.id} className="space-y-1.5">
               <TaskCard

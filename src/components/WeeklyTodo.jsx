@@ -135,13 +135,13 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                       )}
                       <button
                         onClick={() => startEditing(day, task)}
-                        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-green-100'}`}
+                        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-green-100'}`}
                       >
                         <Edit2 size={12} className={darkMode ? 'text-green-400' : 'text-green-600'} />
                       </button>
                       <button
                         onClick={() => deleteWeeklyTask(day, task.id)}
-                        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-red-100'}`}
+                        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-red-100'}`}
                       >
                         <X size={13} className={darkMode ? 'text-red-400' : 'text-red-500'} />
                       </button>
@@ -166,7 +166,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                   />
                   <button
                     onClick={() => handleAddTask(day)}
-                    className={darkMode ? 'text-green-500 hover:text-green-400' : 'text-green-700 hover:text-green-800'}
+                    className={`press ${darkMode ? 'text-green-500 hover:text-green-400' : 'text-green-700 hover:text-green-800'}`}
                   >
                     <Plus size={16} />
                   </button>

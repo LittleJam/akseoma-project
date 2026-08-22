@@ -38,7 +38,7 @@ export default function Sidebar({
         <h1 className={`text-lg sm:text-2xl font-bold truncate ${darkMode ? 'text-white' : 'text-gray-800'}`}>Surf the Task</h1>
         <button
           onClick={() => setCurrentPage('settings')}
-          className={`p-2 rounded-lg ${
+          className={`p-2 rounded-lg press ${
             currentPage === 'settings'
               ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
               : darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
@@ -78,10 +78,10 @@ export default function Sidebar({
               setProjectsCollapsed(false);
             }
           }}
-          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium ${
+          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press border-l-2 ${
             currentPage === 'kanban'
-              ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
-              : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+              ? darkMode ? 'bg-green-900 text-green-100 border-green-400' : 'bg-green-100 text-green-900 border-green-700'
+              : darkMode ? 'text-gray-300 hover:bg-gray-700 border-transparent' : 'text-gray-700 hover:bg-gray-100 border-transparent'
           }`}
         >
           <Home size={18} />
@@ -94,7 +94,7 @@ export default function Sidebar({
             {!projectsCollapsed && projects.map(project => (
               <div
                 key={project.id}
-                className={`p-3 rounded cursor-pointer mb-2 flex items-center justify-between group ${
+                className={`p-3 rounded cursor-pointer mb-2 flex items-center justify-between group transition duration-150 ${
                   currentProject === project.id
                     ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
                     : darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-700'
@@ -115,20 +115,20 @@ export default function Sidebar({
                     {project.name}
                   </span>
                 )}
-                <div className="opacity-0 group-hover:opacity-100 flex gap-1">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex gap-1">
                   <button
                     onClick={() => {
                       setEditingProjectId(project.id);
                       setEditingProjectName(project.name);
                     }}
-                    className={`p-1 rounded ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-green-200'}`}
+                    className={`p-1 rounded press-icon ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-green-200'}`}
                   >
                     <Edit2 size={14} className={darkMode ? 'text-green-400' : 'text-green-600'} />
                   </button>
                   {projects.length > 1 && (
                     <button
                       onClick={() => deleteProject(project.id)}
-                      className={`p-1 rounded ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-red-100'}`}
+                      className={`p-1 rounded press-icon ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-red-100'}`}
                     >
                       <X size={14} className={darkMode ? 'text-red-400' : 'text-red-600'} />
                     </button>
@@ -141,10 +141,10 @@ export default function Sidebar({
 
         <button
           onClick={() => setCurrentPage('weekly')}
-          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium ${
+          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press border-l-2 ${
             currentPage === 'weekly'
-              ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
-              : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+              ? darkMode ? 'bg-green-900 text-green-100 border-green-400' : 'bg-green-100 text-green-900 border-green-700'
+              : darkMode ? 'text-gray-300 hover:bg-gray-700 border-transparent' : 'text-gray-700 hover:bg-gray-100 border-transparent'
           }`}
         >
           <Calendar size={18} /> Schedule
@@ -152,10 +152,10 @@ export default function Sidebar({
 
         <button
           onClick={() => setCurrentPage('notes')}
-          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium ${
+          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press border-l-2 ${
             currentPage === 'notes'
-              ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
-              : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+              ? darkMode ? 'bg-green-900 text-green-100 border-green-400' : 'bg-green-100 text-green-900 border-green-700'
+              : darkMode ? 'text-gray-300 hover:bg-gray-700 border-transparent' : 'text-gray-700 hover:bg-gray-100 border-transparent'
           }`}
         >
           <StickyNote size={18} /> Notes
@@ -163,10 +163,10 @@ export default function Sidebar({
 
         <button
           onClick={() => setCurrentPage('wishlist')}
-          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium ${
+          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press border-l-2 ${
             currentPage === 'wishlist'
-              ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
-              : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+              ? darkMode ? 'bg-green-900 text-green-100 border-green-400' : 'bg-green-100 text-green-900 border-green-700'
+              : darkMode ? 'text-gray-300 hover:bg-gray-700 border-transparent' : 'text-gray-700 hover:bg-gray-100 border-transparent'
           }`}
         >
           <Heart size={18} /> Wishlist
@@ -174,10 +174,10 @@ export default function Sidebar({
 
         <button
           onClick={() => setCurrentPage('chill')}
-          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium ${
+          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press border-l-2 ${
             currentPage === 'chill'
-              ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
-              : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+              ? darkMode ? 'bg-green-900 text-green-100 border-green-400' : 'bg-green-100 text-green-900 border-green-700'
+              : darkMode ? 'text-gray-300 hover:bg-gray-700 border-transparent' : 'text-gray-700 hover:bg-gray-100 border-transparent'
           }`}
         >
           <Coffee size={18} /> Chill
@@ -198,7 +198,7 @@ export default function Sidebar({
               />
               <button
                 onClick={createProject}
-                className="p-2 bg-green-800 text-white rounded hover:bg-green-900"
+                className="p-2 bg-green-800 text-white rounded hover:bg-green-900 press"
               >
                 <Plus size={16} />
               </button>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, X, Image as ImageIcon, Plus, ArrowRightLeft, ChevronDown } from 'lucide-react';
+import { Trash2, X, Image as ImageIcon, Plus, ArrowRightLeft, ChevronDown, SmilePlus } from 'lucide-react';
 import { compressImage } from '../utils/imageCompression';
+import { STICKER_GROUPS } from '../constants';
 
 const TEXT_COLORS = [
   { hex: '#000000', name: 'Black' },
@@ -12,8 +13,6 @@ const TEXT_COLORS = [
   { hex: '#7c3aed', name: 'Purple' },
   { hex: '#db2777', name: 'Pink' }
 ];
-
-const STICKER_EMOJIS = ['🔥', '⭐', '✅', '❤️', '😀', '😎', '🎉', '🚀', '📌', '⚠️', '💡', '🐛', '👍', '🤔', '⏰', '🎯'];
 
 const getDescriptionText = (description) =>
   typeof description === 'string' ? description : (description?.content || '');
@@ -230,61 +229,12 @@ export default function TaskEditor({
             {/* Title */}
             <div>
               <label className={`block text-sm font-medium ${labelClass} mb-2`}>Title</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  className={`flex-1 px-4 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
-                />
-                <div className="relative flex-shrink-0" ref={stickerPickerRef}>
-                  <button
-                    type="button"
-                    onClick={() => setStickerPickerOpen(prev => !prev)}
-                    title={sticker ? 'Change sticker' : 'Add sticker'}
-                    className={`w-11 h-11 flex items-center justify-center rounded-lg border text-xl ${borderClass} ${darkMode ? 'bg-gray-700' : 'bg-white'}`}
-                  >
-                    {sticker || <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>+</span>}
-                  </button>
-
-                  {stickerPickerOpen && (
-                    <div className={`absolute z-20 top-full mt-1 right-0 p-2 rounded-lg border shadow-lg w-48 ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
-                      <div className={`text-xs mb-2 px-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Sticker</div>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {STICKER_EMOJIS.map(emoji => (
-                          <button
-                            key={emoji}
-                            type="button"
-                            onClick={() => {
-                              setSticker(emoji);
-                              setStickerPickerOpen(false);
-                            }}
-                            className={`w-9 h-9 flex items-center justify-center text-lg rounded-lg transition ${
-                              sticker === emoji
-                                ? darkMode ? 'bg-gray-600 ring-2 ring-green-500' : 'bg-gray-100 ring-2 ring-green-500'
-                                : darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
-                            }`}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                      {sticker && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSticker('');
-                            setStickerPickerOpen(false);
-                          }}
-                          className={`w-full mt-2 text-xs py-1 rounded-lg ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-600 hover:bg-gray-100'}`}
-                        >
-                          Remove sticker
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <input
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                className={`w-full px-4 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
+              />
             </div>
 
             {/* Description with formatting */}
@@ -309,7 +259,7 @@ export default function TaskEditor({
                   <button
                     title="Bold"
                     onClick={() => setTextFormat({ ...textFormat, fontWeight: textFormat.fontWeight === 'bold' ? 'normal' : 'bold' })}
-                    className={`px-3 py-1 text-sm rounded-lg font-bold ${textFormat.fontWeight === 'bold' ? 'bg-green-800 text-white' : darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
+                    className={`px-3 py-1 text-sm rounded-lg font-bold press ${textFormat.fontWeight === 'bold' ? 'bg-green-800 text-white' : darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
                   >
                     B
                   </button>
@@ -317,7 +267,7 @@ export default function TaskEditor({
                   <button
                     title="Italic"
                     onClick={() => setTextFormat({ ...textFormat, fontStyle: textFormat.fontStyle === 'italic' ? 'normal' : 'italic' })}
-                    className={`px-3 py-1 text-sm rounded-lg italic ${textFormat.fontStyle === 'italic' ? 'bg-green-800 text-white' : darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
+                    className={`px-3 py-1 text-sm rounded-lg italic press ${textFormat.fontStyle === 'italic' ? 'bg-green-800 text-white' : darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
                   >
                     I
                   </button>
@@ -325,7 +275,7 @@ export default function TaskEditor({
                   <button
                     title="Underline"
                     onClick={() => setTextFormat({ ...textFormat, textDecoration: textFormat.textDecoration === 'underline' ? 'none' : 'underline' })}
-                    className={`px-3 py-1 text-sm rounded-lg underline ${textFormat.textDecoration === 'underline' ? 'bg-green-800 text-white' : darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
+                    className={`px-3 py-1 text-sm rounded-lg underline press ${textFormat.textDecoration === 'underline' ? 'bg-green-800 text-white' : darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
                   >
                     U
                   </button>
@@ -335,7 +285,7 @@ export default function TaskEditor({
                       type="button"
                       onClick={() => setColorPickerOpen(prev => !prev)}
                       title={`Text color: ${TEXT_COLORS.find(c => c.hex === textFormat.color)?.name || textFormat.color}`}
-                      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm ${darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
+                      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm press ${darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
                     >
                       <span
                         className={`w-4 h-4 rounded border ${darkMode ? 'border-gray-400' : 'border-gray-400'}`}
@@ -345,7 +295,7 @@ export default function TaskEditor({
                     </button>
 
                     {colorPickerOpen && (
-                      <div className={`absolute z-20 top-full mt-1 left-0 p-2 rounded-lg border shadow-lg ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                      <div className={`absolute z-20 top-full mt-1 left-0 p-2 rounded-lg border shadow-lg origin-top-left animate-pop-in ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
                         <div className={`text-xs mb-2 px-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Text color</div>
                         <div className="flex items-center gap-1.5">
                           {TEXT_COLORS.map(c => (
@@ -358,7 +308,7 @@ export default function TaskEditor({
                               }}
                               title={c.name}
                               style={{ backgroundColor: c.hex }}
-                              className={`w-6 h-6 rounded-full flex-shrink-0 transition ${
+                              className={`w-6 h-6 rounded-full flex-shrink-0 transition duration-150 hover:scale-110 active:scale-90 ${
                                 textFormat.color === c.hex
                                   ? `ring-2 ring-offset-2 ${darkMode ? 'ring-gray-300 ring-offset-gray-700' : 'ring-gray-500 ring-offset-white'}`
                                   : 'opacity-60 hover:opacity-100'
@@ -366,6 +316,68 @@ export default function TaskEditor({
                             />
                           ))}
                         </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="relative" ref={stickerPickerRef}>
+                    <button
+                      type="button"
+                      onClick={() => setStickerPickerOpen(prev => !prev)}
+                      title={sticker ? 'Change sticker' : 'Add sticker'}
+                      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm press ${
+                        sticker ? 'bg-green-800 text-white' : darkMode ? 'bg-gray-600' : 'bg-gray-100'
+                      }`}
+                    >
+                      <SmilePlus size={16} />
+                      {sticker
+                        ? <span className="text-base leading-none">{sticker}</span>
+                        : <span className="text-xs">Sticker</span>}
+                      <ChevronDown size={12} className={sticker ? 'text-green-100' : darkMode ? 'text-gray-300' : 'text-gray-500'} />
+                    </button>
+
+                    {stickerPickerOpen && (
+                      <div className={`absolute z-20 top-full mt-1 left-0 p-2 rounded-lg border shadow-lg w-60 origin-top-left animate-pop-in ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                        <div className="max-h-64 overflow-y-auto pr-0.5 space-y-2">
+                          {STICKER_GROUPS.map(group => (
+                            <div key={group.label}>
+                              <div className={`text-[10px] uppercase tracking-wide mb-1 px-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {group.label}
+                              </div>
+                              <div className="grid grid-cols-6 gap-1">
+                                {group.emojis.map(emoji => (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => {
+                                      setSticker(emoji);
+                                      setStickerPickerOpen(false);
+                                    }}
+                                    className={`w-8 h-8 flex items-center justify-center text-lg rounded-lg transition duration-150 hover:scale-110 active:scale-90 ${
+                                      sticker === emoji
+                                        ? darkMode ? 'bg-gray-600 ring-2 ring-green-500' : 'bg-gray-100 ring-2 ring-green-500'
+                                        : darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+                                    }`}
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {sticker && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSticker('');
+                              setStickerPickerOpen(false);
+                            }}
+                            className={`w-full mt-2 text-xs py-1 rounded-lg ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-600 hover:bg-gray-100'}`}
+                          >
+                            Remove sticker
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -580,7 +592,7 @@ export default function TaskEditor({
             <button
               onClick={handleSave}
               disabled={isUploading}
-              className="flex-1 px-6 py-2 bg-green-800 text-white rounded-lg hover:bg-green-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-2 bg-green-800 text-white rounded-lg hover:bg-green-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed press"
             >
               {isUploading ? 'Please wait...' : 'Save'}
             </button>

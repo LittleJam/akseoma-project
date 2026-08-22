@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Moon, Sun, Plus, Trash2, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
 import { COLUMN_COLORS } from '../constants';
 
 export default function SettingsPage({
@@ -8,10 +8,12 @@ export default function SettingsPage({
   projects,
   currentProject,
   getProjectColumns,
-  updateProjectColumns
+  updateProjectColumns,
+  resetAllData
 }) {
   const [selectedProjectId, setSelectedProjectId] = useState(currentProject);
   const [newColumnTitle, setNewColumnTitle] = useState('');
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
   useEffect(() => {
     if (currentProject) setSelectedProjectId(currentProject);
@@ -55,6 +57,14 @@ export default function SettingsPage({
     persistColumns(columns.map(c => (c.id === columnId ? { ...c, color } : c)));
   };
 
+  // Сброс всего сайта — двухшаговый, чтобы нельзя было стереть данные одним случайным кликом
+  const handleReset = () => {
+    resetAllData();
+    setConfirmingReset(false);
+    setSelectedProjectId('default');
+    setNewColumnTitle('');
+  };
+
   const moveColumn = (index, direction) => {
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= columns.length) return;
@@ -75,7 +85,7 @@ export default function SettingsPage({
           </h3>
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium border ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium border press ${
               darkMode ? 'border-gray-700 text-yellow-400 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
             }`}
           >
@@ -114,14 +124,14 @@ export default function SettingsPage({
                     <button
                       onClick={() => moveColumn(index, -1)}
                       disabled={index === 0}
-                      className={`p-1 rounded disabled:opacity-30 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                      className={`p-1 rounded disabled:opacity-30 press-icon ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                     >
                       <ArrowUp size={14} className={labelClass} />
                     </button>
                     <button
                       onClick={() => moveColumn(index, 1)}
                       disabled={index === columns.length - 1}
-                      className={`p-1 rounded disabled:opacity-30 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                      className={`p-1 rounded disabled:opacity-30 press-icon ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                     >
                       <ArrowDown size={14} className={labelClass} />
                     </button>
@@ -141,7 +151,7 @@ export default function SettingsPage({
                         type="button"
                         onClick={() => recolorColumn(column.id, key)}
                         title={value.label}
-                        className={`w-5 h-5 rounded-full flex-shrink-0 transition ${value.dot} ${
+                        className={`w-5 h-5 rounded-full flex-shrink-0 transition duration-150 hover:scale-110 active:scale-90 ${value.dot} ${
                           column.color === key
                             ? `ring-2 ring-offset-2 ${darkMode ? 'ring-gray-300 ring-offset-gray-800' : 'ring-gray-500 ring-offset-white'}`
                             : 'opacity-40 hover:opacity-80'
@@ -153,7 +163,7 @@ export default function SettingsPage({
                   <button
                     onClick={() => removeColumn(column.id)}
                     disabled={columns.length <= 1}
-                    className={`p-2 rounded-lg disabled:opacity-30 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-red-50'}`}
+                    className={`p-2 rounded-lg disabled:opacity-30 press-icon ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-red-50'}`}
                     title="Delete column"
                   >
                     <Trash2 size={16} className="text-red-500" />
@@ -172,12 +182,59 @@ export default function SettingsPage({
                 />
                 <button
                   onClick={addColumn}
-                  className="px-4 py-2 bg-green-800 text-white rounded-lg hover:bg-green-900 flex items-center gap-2"
+                  className="px-4 py-2 bg-green-800 text-white rounded-lg hover:bg-green-900 flex items-center gap-2 press"
                 >
                   <Plus size={16} /> Add
                 </button>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Reset */}
+        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
+          <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            Reset
+          </h3>
+
+          {confirmingReset ? (
+            <div className="space-y-3 animate-pop-in">
+              <p className={`text-sm ${labelClass}`}>
+                This erases everything across the site — projects, tasks, columns, weekly plan,
+                wishlist and notes — and restores the default settings. It cannot be undone.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={handleReset}
+                  className="px-4 py-2 rounded-lg font-medium bg-red-600 text-white hover:bg-red-700 press"
+                >
+                  Yes, reset everything
+                </button>
+                <button
+                  onClick={() => setConfirmingReset(false)}
+                  className={`px-4 py-2 rounded-lg font-medium border press ${
+                    darkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => setConfirmingReset(true)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium border text-red-500 press ${
+                  darkMode ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-red-50'
+                }`}
+              >
+                <RotateCcw size={18} />
+                Reset to defaults
+              </button>
+              <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                Clears all site data and restores the default settings.
+              </p>
+            </>
           )}
         </div>
       </div>

@@ -38,13 +38,15 @@ export default function Wishlist({ wishlist, addWishlistItem, deleteWishlistItem
             {wishlist.map(item => (
               <div
                 key={item.id}
-                className={`flex items-center gap-3 p-3 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}
+                className={`flex items-center gap-3 p-3 rounded transition duration-150 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}
               >
                 <input
                   type="checkbox"
                   checked={item.completed}
                   onChange={() => toggleWishlistItem(item.id)}
-                  className="w-5 h-5 cursor-pointer flex-shrink-0"
+                  className={`w-5 h-5 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
+                    item.completed ? 'animate-check-pop' : ''
+                  }`}
                 />
                 {editingId === item.id ? (
                   <input
@@ -59,7 +61,7 @@ export default function Wishlist({ wishlist, addWishlistItem, deleteWishlistItem
                 ) : (
                   <span
                     onClick={() => startEditing(item)}
-                    className={`flex-1 cursor-text ${
+                    className={`flex-1 cursor-text transition-colors duration-200 ${
                       item.completed
                         ? darkMode ? 'line-through text-gray-500' : 'line-through text-gray-400'
                         : darkMode ? 'text-gray-100' : 'text-gray-800'
@@ -70,13 +72,13 @@ export default function Wishlist({ wishlist, addWishlistItem, deleteWishlistItem
                 )}
                 <button
                   onClick={() => startEditing(item)}
-                  className={`p-1 rounded flex-shrink-0 ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-green-100'}`}
+                  className={`p-1 rounded flex-shrink-0 press-icon ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-green-100'}`}
                 >
                   <Edit2 size={14} className={darkMode ? 'text-green-400' : 'text-green-600'} />
                 </button>
                 <button
                   onClick={() => deleteWishlistItem(item.id)}
-                  className={`p-1 rounded flex-shrink-0 ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-red-100'}`}
+                  className={`p-1 rounded flex-shrink-0 press-icon ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-red-100'}`}
                 >
                   <X size={16} className={darkMode ? 'text-red-400' : 'text-red-600'} />
                 </button>
@@ -102,7 +104,7 @@ export default function Wishlist({ wishlist, addWishlistItem, deleteWishlistItem
             />
             <button
               onClick={handleAdd}
-              className="px-4 py-2 bg-green-800 text-white rounded hover:bg-green-900"
+              className="px-4 py-2 bg-green-800 text-white rounded hover:bg-green-900 press"
             >
               <Plus size={18} />
             </button>
