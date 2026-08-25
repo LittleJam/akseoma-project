@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, X, Plus, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Edit2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { themeIcon } from '../themes';
 import { getWeekStart, addWeeks, getWeekKey, getWeekDates, isSameDay } from '../utils/weeks';
 import { getQuoteForDate } from '../quotes';
 
-export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, darkMode, weekDays }) {
+export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, darkMode, theme, weekDays }) {
+  const AddIcon = themeIcon(theme, 'add');
+  const RefreshIcon = themeIcon(theme, 'refresh');
   const [weekOffset, setWeekOffset] = useState(0);
   const [quoteOffset, setQuoteOffset] = useState(0);
   // Фраза привязана к дате. Если вкладку не закрывали, в полночь надо перерисоваться —
@@ -14,6 +17,9 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
   const [editingItem, setEditingItem] = useState(null); // { day, taskId }
   const [editingText, setEditingText] = useState('');
   const [editingTime, setEditingTime] = useState('');
+  // Что тащим и над каким днём держим — подсветка дня-приёмника
+  const [draggedTask, setDraggedTask] = useState(null); // { day, taskId }
+  const [dragOverDay, setDragOverDay] = useState(null);
 
   const today = new Date();
   const weekStart = addWeeks(getWeekStart(today), weekOffset);
@@ -36,6 +42,8 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
     setEditingTime('');
     setNewTasks({});
     setNewTimes({});
+    setDraggedTask(null);
+    setDragOverDay(null);
   }, [weekKey]);
 
   const handleAddTask = (day) => {
@@ -59,6 +67,42 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
     setEditingItem(null);
     setEditingText('');
     setEditingTime('');
+  };
+
+  const handleTaskDragStart = (e, day, task) => {
+    setDraggedTask({ day, taskId: task.id });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('weeklytask', JSON.stringify({ day, taskId: task.id }));
+  };
+
+  const resetDrag = () => {
+    setDraggedTask(null);
+    setDragOverDay(null);
+  };
+
+  const handleDayDragOver = (e, day) => {
+    // Тип в dataTransfer — источник правды: состояние может ещё не успеть обновиться,
+    // да и тащить могли из другой вкладки
+    if (!draggedTask && !e.dataTransfer.types.includes('weeklytask')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverDay(day);
+  };
+
+  const handleDayDrop = (e, day) => {
+    e.preventDefault();
+    let payload = draggedTask;
+    // Данные из dataTransfer надёжнее состояния: перетаскивать могли из другой вкладки
+    try {
+      const raw = e.dataTransfer.getData('weeklytask');
+      if (raw) payload = JSON.parse(raw);
+    } catch {
+      // оставляем то, что запомнили на старте перетаскивания
+    }
+    if (payload && payload.day !== day) {
+      moveWeeklyTask(weekKey, payload.day, day, payload.taskId);
+    }
+    resetDrag();
   };
 
   const navButtonClass = `p-1.5 rounded-lg border press ${
@@ -115,17 +159,17 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
             onClick={() => setQuoteOffset(prev => prev + 1)}
             title="Another quote"
             aria-label="Another quote"
-            className={`p-0.5 rounded opacity-0 group-hover/quote:opacity-100 press-icon flex-shrink-0 mt-px ${
+            className={`p-1.5 sm:p-0.5 rounded opacity-0 group-hover/quote:opacity-100 press-icon flex-shrink-0 ${
               darkMode ? 'text-gray-600 hover:text-gray-400' : 'text-gray-300 hover:text-gray-500'
             }`}
           >
-            <RefreshCw size={12} />
+            <RefreshIcon size={12} />
           </button>
         </div>
       </div>
 
       <div className="flex-1 min-h-0 p-5 sm:p-10 pt-2 sm:pt-4 overflow-y-auto">
-        <div className="grid grid-cols-2 sm:grid-cols-4 grid-rows-4 sm:grid-rows-2 gap-3 sm:gap-4 w-full">
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-4 sm:grid-rows-2 gap-3 sm:gap-4 w-full">
           {weekDays.map((day, i) => {
             const date = weekDates[i];
             const isToday = isSameDay(date, today);
@@ -133,10 +177,18 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
             return (
               <div
                 key={day}
-                className={`rounded-lg p-3 sm:p-4 flex flex-col h-[315px] min-h-0 border transition duration-150 ${
+                onDragOver={e => handleDayDragOver(e, day)}
+                onDragLeave={e => {
+                  if (e.currentTarget.contains(e.relatedTarget)) return;
+                  setDragOverDay(prev => (prev === day ? null : prev));
+                }}
+                onDrop={e => handleDayDrop(e, day)}
+                className={`rounded-lg p-3 sm:p-4 flex flex-col h-[315px] min-h-0 min-w-0 border transition duration-150 ${
                   isToday
                     ? darkMode ? 'border-green-700 bg-green-950/40' : 'border-green-200 bg-green-50'
                     : darkMode ? 'border-gray-800 bg-gray-800/60' : 'border-gray-200 bg-white'
+                } ${
+                  dragOverDay === day && draggedTask?.day !== day ? 'ring-2 ring-green-600 scale-[1.01]' : ''
                 }`}
               >
                 <div className="mb-4 flex-shrink-0">
@@ -153,17 +205,31 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                 </div>
 
                 <div className="space-y-1 mb-3 flex-1 min-h-0 overflow-y-auto">
-                  {weekTasks[day]?.map(task => (
-                    <div key={task.id} className="flex items-center gap-2 py-1.5 group">
+                  {weekTasks[day]?.map(task => {
+                    const isEditingThis = editingItem?.day === day && editingItem?.taskId === task.id;
+                    return (
+                    <div
+                      key={task.id}
+                      // Пока правим текст, перетаскивание выключено — иначе не выделить строку мышью
+                      draggable={!isEditingThis}
+                      onDragStart={e => handleTaskDragStart(e, day, task)}
+                      onDragEnd={resetDrag}
+                      title="Drag to another day"
+                      className={`flex items-center gap-2 py-1.5 group rounded transition duration-150 ${
+                        isEditingThis ? '' : 'cursor-grab active:cursor-grabbing'
+                      } ${
+                        draggedTask?.taskId === task.id ? 'opacity-40' : ''
+                      }`}
+                    >
                       <input
                         type="checkbox"
                         checked={task.completed}
                         onChange={() => toggleWeeklyTask(weekKey, day, task.id)}
-                        className={`w-4 h-4 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
+                        className={`w-5 h-5 sm:w-4 sm:h-4 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
                           task.completed ? 'animate-check-pop' : ''
                         }`}
                       />
-                      {editingItem?.day === day && editingItem?.taskId === task.id ? (
+                      {isEditingThis ? (
                         <>
                           <input
                             type="time"
@@ -171,7 +237,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                             onChange={e => setEditingTime(e.target.value)}
                             onBlur={saveEditing}
                             onKeyPress={e => e.key === 'Enter' && saveEditing()}
-                            className={`px-1 py-0.5 rounded text-xs flex-shrink-0 ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
+                            className={`px-1 py-0.5 rounded text-xs flex-shrink-0 w-[70px] ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
                           />
                           <input
                             type="text"
@@ -180,13 +246,12 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                             onBlur={saveEditing}
                             onKeyPress={e => e.key === 'Enter' && saveEditing()}
                             autoFocus
-                            className={`flex-1 px-1 py-0.5 rounded text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
+                            className={`flex-1 min-w-0 px-1 py-0.5 rounded text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
                           />
                         </>
                       ) : (
                         <span
-                          onClick={() => startEditing(day, task)}
-                          className={`flex-1 text-sm cursor-text transition-colors duration-200 ${
+                          className={`flex-1 min-w-0 text-sm break-words transition-colors duration-200 ${
                             task.completed
                               ? darkMode ? 'line-through text-gray-500' : 'line-through text-gray-400'
                               : darkMode ? 'text-gray-200' : 'text-gray-700'
@@ -202,18 +267,23 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                       )}
                       <button
                         onClick={() => startEditing(day, task)}
-                        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-green-100'}`}
+                        title="Edit task"
+                        aria-label="Edit task"
+                        className={`p-1.5 sm:p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-green-100'}`}
                       >
                         <Edit2 size={12} className={darkMode ? 'text-green-400' : 'text-green-600'} />
                       </button>
                       <button
                         onClick={() => deleteWeeklyTask(weekKey, day, task.id)}
-                        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-red-100'}`}
+                        title="Delete task"
+                        aria-label="Delete task"
+                        className={`p-1.5 sm:p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-red-100'}`}
                       >
                         <X size={13} className={darkMode ? 'text-red-400' : 'text-red-500'} />
                       </button>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className={`flex items-center gap-2 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
@@ -221,7 +291,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                     type="time"
                     value={newTimes[day] || ''}
                     onChange={e => setNewTimes({ ...newTimes, [day]: e.target.value })}
-                    className={`text-xs bg-transparent focus:outline-none flex-shrink-0 w-[70px] ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}
+                    className={`text-xs py-1 bg-transparent focus:outline-none flex-shrink-0 w-[62px] ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}
                   />
                   <input
                     type="text"
@@ -229,13 +299,15 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                     onChange={e => setNewTasks({ ...newTasks, [day]: e.target.value })}
                     onKeyPress={e => e.key === 'Enter' && handleAddTask(day)}
                     placeholder="Add task..."
-                    className={`flex-1 text-sm bg-transparent focus:outline-none ${darkMode ? 'text-white placeholder-gray-500' : 'placeholder-gray-400'}`}
+                    className={`flex-1 min-w-0 text-sm py-1 bg-transparent focus:outline-none ${darkMode ? 'text-white placeholder-gray-500' : 'placeholder-gray-400'}`}
                   />
                   <button
                     onClick={() => handleAddTask(day)}
-                    className={`press ${darkMode ? 'text-green-500 hover:text-green-400' : 'text-green-700 hover:text-green-800'}`}
+                    title="Add task"
+                    aria-label="Add task"
+                    className={`p-1 flex-shrink-0 press ${darkMode ? 'text-green-500 hover:text-green-400' : 'text-green-700 hover:text-green-800'}`}
                   >
-                    <Plus size={16} />
+                    <AddIcon size={16} />
                   </button>
                 </div>
               </div>

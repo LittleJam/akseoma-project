@@ -9,6 +9,9 @@
 }
 
 body {
+  /* В установленном приложении лишний «отскок» страницы только мешает */
+  overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: transparent;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -24,6 +27,10 @@ code {
 #root {
   width: 100%;
   height: 100vh;
+  /* dvh считает панели браузера на телефоне, поэтому страница не уезжает под них */
+  height: 100dvh;
+  /* Вырез и домашняя полоска на телефоне не должны перекрывать интерфейс */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 @layer base {
@@ -46,6 +53,14 @@ code {
   }
 }
 
+/* На тач-экранах наведения нет, поэтому кнопки, которые на десктопе
+   проявляются при наведении на карточку, там видны всегда */
+@media (hover: none) {
+  [class*='opacity-0'][class*='group-hover'] {
+    opacity: 1;
+  }
+}
+
 @layer components {
   /* Нажатие: кнопка проседает под курсором — мгновенная тактильная реакция на клик */
   .press {
@@ -62,4 +77,502 @@ code {
   .lift {
     @apply transition duration-150 ease-out hover:-translate-y-0.5;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Темы оформления. Класс вешается на <html>, а сама тема — это переопределение
+   тех же утилит Tailwind, которыми покрашен сайт: так тема доезжает до каждой
+   страницы и модалки, не переписывая компоненты. Селекторы начинаются с html,
+   чтобы уверенно перебивать hover-варианты Tailwind.
+   ───────────────────────────────────────────────────────────── */
+
+/* ═══ WIZARD ═══ Палитра «Узника Азкабана»: холодный синий туман, лунное серебро,
+   тёмная хвоя и тёплая свеча как единственный тёплый акцент */
+html.theme-wizard {
+  /* Родные контролы (чекбоксы, поля времени, скроллбары) сразу становятся тёмными */
+  color-scheme: dark;
+  --wz-ink: #e2ddcd;          /* выцветший пергамент в лунном свете */
+  --wz-ink-dim: #9aa5a4;
+  --wz-ink-faint: #6d7c7c;
+  --wz-gold: #eeba30;         /* золото Гриффиндора — акцент и подписи */
+  --wz-gold-deep: #d3a625;
+  --wz-scarlet: #7f0f13;      /* алый Гриффиндора — главные кнопки и активный раздел */
+  --wz-scarlet-bright: #ae0001;
+  --wz-slyth: #2a623d;        /* зелень Слизерина — отметки, «сегодня», чекбоксы */
+  --wz-slyth-deep: #1a472a;
+  --wz-silver: #c5c7c4;       /* серебро Слизерина — рамки и разделители */
+  --wz-moon: #8fb8c9;         /* лунное серебро — свечение и кольца фокуса */
+  --wz-surface: rgba(17, 31, 33, 0.78);
+  --wz-surface-2: rgba(27, 45, 46, 0.9);
+  --wz-line: rgba(197, 199, 196, 0.2);
+  --wz-crimson: #c3423b;
+}
+
+html.theme-wizard body {
+  /* Холодная ночь «Узника Азкабана», но по углам тлеют цвета факультетов:
+     справа сверху — камин Гриффиндора, слева снизу — подземелья Слизерина */
+  background:
+    radial-gradient(760px 520px at 88% -8%, rgba(174, 0, 1, 0.16), transparent 66%),
+    radial-gradient(820px 620px at 6% 108%, rgba(26, 71, 42, 0.28), transparent 66%),
+    radial-gradient(1200px 820px at 60% -14%, #24414b 0%, #16292f 45%, #0a1418 100%),
+    #0a1418;
+  color: var(--wz-ink);
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+}
+
+/* Звёзды и туман: неподвижный слой под интерфейсом, поэтому фон страниц прозрачный */
+html.theme-wizard body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 18%, rgba(226, 240, 245, 0.9), transparent 60%),
+    radial-gradient(1.4px 1.4px at 27% 62%, rgba(226, 240, 245, 0.65), transparent 60%),
+    radial-gradient(1.8px 1.8px at 41% 12%, rgba(226, 240, 245, 0.8), transparent 60%),
+    radial-gradient(1.2px 1.2px at 58% 44%, rgba(226, 240, 245, 0.55), transparent 60%),
+    radial-gradient(1.7px 1.7px at 69% 76%, rgba(226, 240, 245, 0.85), transparent 60%),
+    radial-gradient(1.3px 1.3px at 83% 28%, rgba(226, 240, 245, 0.7), transparent 60%),
+    radial-gradient(1.5px 1.5px at 91% 58%, rgba(226, 240, 245, 0.8), transparent 60%),
+    radial-gradient(1.2px 1.2px at 34% 88%, rgba(226, 240, 245, 0.55), transparent 60%),
+    radial-gradient(1.6px 1.6px at 6% 74%, rgba(226, 240, 245, 0.7), transparent 60%),
+    radial-gradient(1.4px 1.4px at 51% 32%, rgba(226, 240, 245, 0.6), transparent 60%);
+}
+
+/* Дымка над подземельями — неподвижная, только глубина фона */
+html.theme-wizard body::after {
+  content: '';
+  position: fixed;
+  inset: -20% -40%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(45% 30% at 20% 70%, rgba(143, 184, 201, 0.10), transparent 70%),
+    radial-gradient(40% 25% at 70% 40%, rgba(143, 184, 201, 0.08), transparent 70%);
+}
+
+html.theme-wizard #root,
+html.theme-surf #root {
+  position: relative;
+  z-index: 1;
+}
+
+html.theme-wizard .bg-gray-900,
+html.theme-wizard .bg-gray-50 {
+  background-color: transparent;
+}
+
+html.theme-wizard .bg-gray-800,
+html.theme-wizard .bg-gray-800\/60,
+html.theme-wizard .bg-gray-800\/40,
+html.theme-wizard .bg-gray-100,
+html.theme-wizard .bg-white {
+  background-color: var(--wz-surface);
+  backdrop-filter: blur(2px);
+}
+
+html.theme-wizard .bg-gray-700,
+html.theme-wizard .bg-gray-600,
+html.theme-wizard .bg-gray-200,
+html.theme-wizard .bg-gray-300 {
+  background-color: var(--wz-surface-2);
+}
+
+/* Главные кнопки — свечное золото на тёмном */
+html.theme-wizard .bg-green-800,
+html.theme-wizard .bg-green-900,
+html.theme-wizard .animate-toast-in {
+  background-color: var(--wz-scarlet);
+  color: var(--wz-gold);
+  border-color: rgba(238, 186, 48, 0.4);
+  box-shadow: 0 0 16px rgba(174, 0, 1, 0.35);
+}
+
+/* «Сегодня» и прочие спокойные подсветки — зелень Слизерина */
+html.theme-wizard .bg-green-950\/40,
+html.theme-wizard .bg-green-50,
+html.theme-wizard .bg-green-100 {
+  background-color: rgba(42, 98, 61, 0.3);
+}
+
+html.theme-wizard .bg-red-600,
+html.theme-wizard .bg-red-500 {
+  background-color: var(--wz-scarlet-bright);
+}
+
+html.theme-wizard .text-white,
+html.theme-wizard .text-gray-100,
+html.theme-wizard .text-gray-200,
+html.theme-wizard .text-gray-300,
+html.theme-wizard .text-gray-700,
+html.theme-wizard .text-gray-800,
+html.theme-wizard .text-gray-900 {
+  color: var(--wz-ink);
+}
+
+html.theme-wizard .text-gray-400,
+html.theme-wizard .text-gray-500,
+html.theme-wizard .text-gray-600 {
+  color: var(--wz-ink-dim);
+}
+
+html.theme-wizard .text-green-100,
+html.theme-wizard .text-green-400,
+html.theme-wizard .text-green-500,
+html.theme-wizard .text-green-600,
+html.theme-wizard .text-green-700,
+html.theme-wizard .text-green-900,
+html.theme-wizard .text-amber-500,
+html.theme-wizard .text-yellow-400 {
+  color: var(--wz-gold);
+}
+
+html.theme-wizard .text-red-400,
+html.theme-wizard .text-red-500,
+html.theme-wizard .text-red-600 {
+  color: var(--wz-crimson);
+}
+
+html.theme-wizard .placeholder-gray-300::placeholder,
+html.theme-wizard .placeholder-gray-400::placeholder,
+html.theme-wizard .placeholder-gray-500::placeholder,
+html.theme-wizard .placeholder-gray-600::placeholder {
+  color: var(--wz-ink-faint);
+}
+
+html.theme-wizard ::selection {
+  background: rgba(238, 186, 48, 0.3);
+  color: var(--wz-ink);
+}
+
+/* Только структурные рамки. Цветные рамки заметок (border-green-500/25 и прочие)
+   не трогаем — иначе заметки потеряют свои цвета */
+html.theme-wizard .border-gray-200,
+html.theme-wizard .border-gray-300,
+html.theme-wizard .border-gray-400,
+html.theme-wizard .border-gray-600,
+html.theme-wizard .border-gray-700,
+html.theme-wizard .border-gray-800,
+html.theme-wizard .border-green-200 {
+  border-color: var(--wz-line);
+}
+
+html.theme-wizard .border-green-500,
+html.theme-wizard .border-green-600 {
+  border-color: var(--wz-gold-deep);
+}
+
+html.theme-wizard .border-green-700 {
+  border-color: rgba(42, 98, 61, 0.75);
+}
+
+html.theme-wizard .ring-green-600 {
+  --tw-ring-color: var(--wz-gold);
+}
+
+html.theme-wizard .accent-green-700,
+html.theme-wizard input[type='checkbox'] {
+  accent-color: var(--wz-slyth);
+}
+
+html.theme-wizard select,
+html.theme-wizard option {
+  background-color: #16292f;
+  color: var(--wz-ink);
+}
+
+html.theme-wizard [class*='hover\:bg-gray-']:hover {
+  background-color: rgba(197, 199, 196, 0.12);
+}
+
+html.theme-wizard [class*='hover\:bg-green-']:hover {
+  background-color: rgba(42, 98, 61, 0.35);
+}
+
+html.theme-wizard [class*='hover\:bg-red-']:hover {
+  background-color: rgba(174, 0, 1, 0.25);
+}
+
+html.theme-wizard [class*='hover\:text-gray-']:hover,
+html.theme-wizard [class*='hover\:text-green-']:hover {
+  color: var(--wz-gold);
+}
+
+html.theme-wizard .focus\:border-green-500:focus {
+  border-color: var(--wz-moon);
+}
+
+html.theme-wizard :focus-visible {
+  outline-color: var(--wz-moon);
+}
+
+html.theme-wizard .press:hover,
+html.theme-wizard .press-icon:hover {
+  filter: drop-shadow(0 0 6px rgba(238, 186, 48, 0.55));
+}
+
+html.theme-wizard .lift:hover {
+  box-shadow: 0 0 20px rgba(238, 186, 48, 0.2);
+}
+
+/* ═══ SURF ═══ Океанская палитра: небо, бирюза, песок и коралл.
+   Тема светлая, поэтому переопределяем светлый набор утилит */
+html.theme-surf {
+  --sf-ink: #0d3b4c;          /* глубокая вода — основной текст */
+  --sf-ink-dim: #4b7f90;
+  --sf-ink-faint: #93b8c4;
+  --sf-aqua: #0aa2b8;         /* бирюза — акцент вместо зелёного */
+  --sf-aqua-deep: #07798c;
+  --sf-coral: #f4664a;
+  --sf-surface: rgba(255, 255, 255, 0.74);
+  --sf-surface-2: rgba(255, 255, 255, 0.92);
+  --sf-sand: rgba(253, 244, 226, 0.85);
+  --sf-line: rgba(10, 162, 184, 0.18);
+}
+
+html.theme-surf body {
+  background:
+    linear-gradient(180deg, #eef9fc 0%, #dcf1f6 42%, #c9e9f0 100%),
+    #eef9fc;
+  color: var(--sf-ink);
+  /* Скруглённые гротески: линии мягче, чем у системного шрифта */
+  font-family: ui-rounded, 'SF Pro Rounded', 'Avenir Next Rounded', Avenir, 'Nunito',
+    'Quicksand', 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0.01em;
+}
+
+html.theme-surf .bg-gray-50 {
+  background-color: transparent;
+}
+
+html.theme-surf .bg-white {
+  background-color: var(--sf-surface);
+  backdrop-filter: blur(3px);
+}
+
+html.theme-surf .bg-gray-100,
+html.theme-surf .bg-gray-200 {
+  background-color: var(--sf-sand);
+}
+
+html.theme-surf .bg-gray-300 {
+  background-color: rgba(10, 162, 184, 0.16);
+}
+
+html.theme-surf .bg-green-800,
+html.theme-surf .bg-green-900,
+html.theme-surf .animate-toast-in {
+  background-color: var(--sf-aqua);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(10, 162, 184, 0.28);
+}
+
+html.theme-surf .bg-green-50,
+html.theme-surf .bg-green-100 {
+  background-color: rgba(10, 162, 184, 0.12);
+}
+
+html.theme-surf .bg-red-600,
+html.theme-surf .bg-red-500 {
+  background-color: var(--sf-coral);
+}
+
+html.theme-surf .text-gray-700,
+html.theme-surf .text-gray-800,
+html.theme-surf .text-gray-900,
+html.theme-surf .text-green-900 {
+  color: var(--sf-ink);
+}
+
+html.theme-surf .text-gray-400,
+html.theme-surf .text-gray-500,
+html.theme-surf .text-gray-600 {
+  color: var(--sf-ink-dim);
+}
+
+html.theme-surf .text-gray-200,
+html.theme-surf .text-gray-300 {
+  color: var(--sf-ink-faint);
+}
+
+html.theme-surf .text-green-600,
+html.theme-surf .text-green-700,
+html.theme-surf .text-green-800 {
+  color: var(--sf-aqua-deep);
+}
+
+html.theme-surf .text-red-500,
+html.theme-surf .text-red-600 {
+  color: var(--sf-coral);
+}
+
+html.theme-surf .placeholder-gray-300::placeholder,
+html.theme-surf .placeholder-gray-400::placeholder {
+  color: var(--sf-ink-faint);
+}
+
+html.theme-surf ::selection {
+  background: rgba(10, 162, 184, 0.25);
+  color: var(--sf-ink);
+}
+
+html.theme-surf .border-gray-200,
+html.theme-surf .border-gray-300,
+html.theme-surf .border-gray-400,
+html.theme-surf .border-green-200,
+html.theme-surf .border-green-500,
+html.theme-surf .border-green-600 {
+  border-color: var(--sf-line);
+}
+
+html.theme-surf .ring-green-600 {
+  --tw-ring-color: var(--sf-aqua);
+}
+
+html.theme-surf .accent-green-700,
+html.theme-surf input[type='checkbox'] {
+  accent-color: var(--sf-aqua);
+}
+
+html.theme-surf [class*='hover\:bg-gray-']:hover,
+html.theme-surf [class*='hover\:bg-green-']:hover {
+  background-color: rgba(10, 162, 184, 0.12);
+}
+
+html.theme-surf [class*='hover\:bg-red-']:hover {
+  background-color: rgba(244, 102, 74, 0.14);
+}
+
+html.theme-surf [class*='hover\:text-gray-']:hover,
+html.theme-surf [class*='hover\:text-green-']:hover {
+  color: var(--sf-aqua-deep);
+}
+
+html.theme-surf .focus\:border-green-500:focus {
+  border-color: var(--sf-aqua);
+}
+
+html.theme-surf :focus-visible {
+  outline-color: var(--sf-aqua);
+}
+
+/* Всё скругляем сильнее — форма темы такая же плавная, как её цвета */
+html.theme-surf .rounded {
+  border-radius: 0.7rem;
+}
+
+html.theme-surf .rounded-lg {
+  border-radius: 1rem;
+}
+
+html.theme-surf .rounded-xl {
+  border-radius: 1.4rem;
+}
+
+html.theme-surf .lift:hover {
+  box-shadow: 0 10px 24px rgba(10, 118, 140, 0.14);
+}
+
+html.theme-surf .press:hover,
+html.theme-surf .press-icon:hover {
+  filter: drop-shadow(0 2px 6px rgba(10, 162, 184, 0.35));
+}
+
+/* Волны Surf: три статичных слоя прибоя, ближний — с пенным гребнем */
+.fx-wave {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 200%;
+  pointer-events: none;
+  z-index: 0;
+  background-repeat: repeat-x;
+  background-position: left bottom;
+  background-size: 50% 100%;
+}
+
+.fx-wave-back {
+  height: 300px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 240' preserveAspectRatio='none'%3E%3Cpath d='M0 120C160 60 320 170 600 120s440-60 600 0v120H0z' fill='%230aa2b8' fill-opacity='0.26'/%3E%3C/svg%3E");
+}
+
+.fx-wave-mid {
+  height: 220px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 200' preserveAspectRatio='none'%3E%3Cpath d='M0 100C200 30 400 150 700 90s340-40 500 20v90H0z' fill='%23077c8c' fill-opacity='0.3'/%3E%3C/svg%3E");
+}
+
+.fx-wave-front {
+  height: 150px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 140' preserveAspectRatio='none'%3E%3Cpath d='M0 70C150 20 320 110 600 70s450-50 600 10v60H0z' fill='%23ffffff' fill-opacity='0.55'/%3E%3Cpath d='M0 70C150 20 320 110 600 70s450-50 600 10' stroke='%23ffffff' stroke-opacity='0.85' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+}
+
+/* Блик солнца на воде */
+.fx-sunglare {
+  position: fixed;
+  top: -10%;
+  right: -5%;
+  width: 46vw;
+  height: 46vw;
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle, rgba(255, 236, 179, 0.5) 0%, rgba(255, 236, 179, 0.14) 45%, transparent 70%);
+}
+
+/* Цветная лента факультетов поверх страницы в теме Wizard */
+.fx-house-band {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  pointer-events: none;
+  z-index: 40;
+  background: linear-gradient(
+    90deg,
+    #7f0f13 0%,
+    #ae0001 18%,
+    #eeba30 38%,
+    #d3a625 52%,
+    #c5c7c4 68%,
+    #2a623d 86%,
+    #1a472a 100%
+  );
+  opacity: 0.75;
+}
+
+/* Искры от клика в Wizard — живут полсекунды и убирают себя сами */
+.fx-spark {
+  position: fixed;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, #fff6d5 0%, #d9a441 55%, transparent 72%);
+  pointer-events: none;
+  z-index: 60;
+  animation: fx-spark 600ms ease-out forwards;
+}
+
+/* Круги по воде от клика в Surf */
+.fx-ripple {
+  position: fixed;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 9999px;
+  border: 2px solid rgba(10, 162, 184, 0.55);
+  pointer-events: none;
+  z-index: 60;
+  animation: fx-ripple 620ms ease-out forwards;
+}
+
+@keyframes fx-spark {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--fx-dx), var(--fx-dy)) scale(0.2); opacity: 0; }
+}
+
+@keyframes fx-ripple {
+  0% { transform: scale(0.4); opacity: 0.9; }
+  100% { transform: scale(4.5); opacity: 0; }
 }

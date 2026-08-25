@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Plus, Eye, EyeOff, Palette, AlignLeft, ListTodo, List, Image as ImageIcon } from 'lucide-react';
+import { X, Plus, Eye, EyeOff, Palette, AlignLeft, ListTodo, List, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { NOTE_COLORS, NOTE_MODES } from '../constants';
 import { compressImage } from '../utils/imageCompression';
 
@@ -158,7 +158,7 @@ export default function NoteModal({
             <button
               onClick={() => deleteNoteItem(note.id, item.id)}
               title="Remove item"
-              className={`p-0.5 rounded opacity-0 group-hover/item:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
+              className={`p-1.5 sm:p-0.5 rounded opacity-0 group-hover/item:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
             >
               <X size={13} />
             </button>
@@ -238,7 +238,7 @@ export default function NoteModal({
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
             title={isUploading ? 'Processing images...' : 'Add image'}
-            className={`p-1 rounded press-icon flex-shrink-0 disabled:opacity-40 ${mutedText} ${iconHover}`}
+            className={`p-2 sm:p-1 rounded press-icon flex-shrink-0 disabled:opacity-40 ${mutedText} ${iconHover}`}
           >
             <ImageIcon size={16} />
           </button>
@@ -248,7 +248,7 @@ export default function NoteModal({
             <button
               onClick={() => setOpenMenu(prev => (prev === 'mode' ? null : 'mode'))}
               title="Note type"
-              className={`p-1 rounded press-icon ${mutedText} ${iconHover}`}
+              className={`p-2 sm:p-1 rounded press-icon ${mutedText} ${iconHover}`}
             >
               <ModeIcon size={16} />
             </button>
@@ -285,7 +285,7 @@ export default function NoteModal({
             <button
               onClick={() => setOpenMenu(prev => (prev === 'color' ? null : 'color'))}
               title="Note color"
-              className={`p-1 rounded press-icon ${mutedText} ${iconHover}`}
+              className={`p-2 sm:p-1 rounded press-icon ${mutedText} ${iconHover}`}
             >
               <Palette size={16} />
             </button>
@@ -301,7 +301,7 @@ export default function NoteModal({
                         setOpenMenu(null);
                       }}
                       title={value.label}
-                      className={`w-5 h-5 rounded-full flex-shrink-0 transition duration-150 hover:scale-110 active:scale-90 ${value.swatch} ${
+                      className={`w-7 h-7 sm:w-5 sm:h-5 rounded-full flex-shrink-0 transition duration-150 hover:scale-110 active:scale-90 ${value.swatch} ${
                         (note.color || 'default') === key
                           ? `ring-2 ring-offset-2 ${darkMode ? 'ring-gray-300 ring-offset-gray-700' : 'ring-gray-500 ring-offset-white'}`
                           : 'opacity-50 hover:opacity-100'
@@ -316,7 +316,7 @@ export default function NoteModal({
           <button
             onClick={() => toggleNoteBlur(note.id)}
             title={note.blurred ? 'Show text' : 'Blur text'}
-            className={`p-1 rounded press-icon flex-shrink-0 ${mutedText} ${iconHover}`}
+            className={`p-2 sm:p-1 rounded press-icon flex-shrink-0 ${mutedText} ${iconHover}`}
           >
             {note.blurred ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
@@ -324,7 +324,18 @@ export default function NoteModal({
           <button
             onClick={handleDelete}
             title="Delete note"
-            className={`p-1 rounded press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
+            aria-label="Delete note"
+            className={`p-2 sm:p-1 rounded press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
+          >
+            <Trash2 size={16} />
+          </button>
+
+          {/* Крестик закрывает окно и ничего не удаляет — за удаление отвечает корзина */}
+          <button
+            onClick={onClose}
+            title="Close"
+            aria-label="Close"
+            className={`p-2 sm:p-1 rounded press-icon flex-shrink-0 ${mutedText} ${iconHover}`}
           >
             <X size={16} />
           </button>
@@ -360,7 +371,7 @@ export default function NoteModal({
                   <button
                     onClick={() => deleteNoteImage(note.id, index)}
                     title="Remove image"
-                    className="absolute top-1 right-1 p-1 rounded-full bg-black/55 text-white opacity-0 group-hover/img:opacity-100 press-icon"
+                    className="absolute top-1 right-1 p-1.5 sm:p-1 rounded-full bg-black/55 text-white opacity-0 group-hover/img:opacity-100 press-icon"
                   >
                     <X size={12} />
                   </button>

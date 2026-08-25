@@ -350,7 +350,7 @@ export default function TaskEditor({
                           type="checkbox"
                           checked={subtask.completed}
                           onChange={() => toggleSubtask(subtask.id)}
-                          className="w-4 h-4 cursor-pointer flex-shrink-0"
+                          className="w-5 h-5 sm:w-4 sm:h-4 cursor-pointer flex-shrink-0"
                         />
                         {editingSubtaskId === subtask.id ? (
                           <input
@@ -376,7 +376,7 @@ export default function TaskEditor({
                         )}
                         <button
                           onClick={() => deleteSubtask(subtask.id)}
-                          className={`p-0.5 rounded opacity-0 group-hover:opacity-100 flex-shrink-0 ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-red-100'}`}
+                          className={`p-1.5 sm:p-0.5 rounded opacity-0 group-hover:opacity-100 flex-shrink-0 ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-red-100'}`}
                         >
                           <X size={13} className={darkMode ? 'text-red-400' : 'text-red-500'} />
                         </button>

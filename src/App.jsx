@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Menu, X } from 'lucide-react';
 import { getProjectCode } from './utils/projectCode';
 import { idbGet, idbSet, writeStateToFile } from './utils/fileStorage';
 import { isSupabaseConfigured } from './utils/supabaseClient';
 import { loadRemoteState, saveRemoteState } from './utils/supabaseStorage';
 import { DEFAULT_COLUMNS, WEEK_DAYS, STORAGE_KEYS } from './constants';
+import { DARK_THEMES, THEME_COLORS } from './themes';
 import { getWeekKey } from './utils/weeks';
 import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
@@ -15,6 +17,7 @@ import WeeklyTodo from './components/WeeklyTodo';
 import Notes from './components/Notes';
 import ChillTimer from './components/ChillTimer';
 import SettingsPage from './components/SettingsPage';
+import ThemeFx from './components/ThemeFx';
 
 export default function PersonalJira() {
   const [projects, setProjects] = useState([]);
@@ -25,11 +28,16 @@ export default function PersonalJira() {
   const [notes, setNotes] = useState([]);
   const [collapsedSubtasks, setCollapsedSubtasks] = useState({});
   const [editingTask, setEditingTask] = useState(null);
+  // На телефоне боковая панель выезжает поверх содержимого, на широком экране всегда на месте
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskColumn, setNewTaskColumn] = useState('idea');
   const [loading, setLoading] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  // Тема сайта: light | dark | wizard | surf. Компоненты по-прежнему знают только
+  // про darkMode — тёмная она или светлая, — а характер темы накручивается сверху в CSS
+  const [theme, setTheme] = useState('light');
+  const darkMode = DARK_THEMES.includes(theme);
   const [editingProjectId, setEditingProjectId] = useState(null);
   const [editingProjectName, setEditingProjectName] = useState('');
   const [currentPage, setCurrentPage] = useState('kanban');
@@ -178,6 +186,7 @@ export default function PersonalJira() {
         const savedNotes = localStorage.getItem('jira-notes');
         const savedCollapsedSubtasks = localStorage.getItem('jira-collapsed-subtasks');
         const savedDarkMode = localStorage.getItem('jira-darkMode');
+        const savedTheme = localStorage.getItem('jira-theme');
         const savedCurrentProject = localStorage.getItem('jira-currentProject');
         const savedCurrentPage = localStorage.getItem('jira-currentPage');
 
@@ -242,8 +251,11 @@ export default function PersonalJira() {
           setCollapsedSubtasks(JSON.parse(savedCollapsedSubtasks));
         }
 
-        if (savedDarkMode) {
-          setDarkMode(JSON.parse(savedDarkMode));
+        // Старые версии хранили только флаг тёмной темы — переносим его в новое поле
+        if (savedTheme) {
+          setTheme(JSON.parse(savedTheme));
+        } else if (savedDarkMode) {
+          setTheme(JSON.parse(savedDarkMode) ? 'dark' : 'light');
         }
       } catch (error) {
         console.error('Loading error:', error);
@@ -306,8 +318,15 @@ export default function PersonalJira() {
 
   // Сохранение темы
   useEffect(() => {
+    localStorage.setItem('jira-theme', JSON.stringify(theme));
+    // Флаг оставляем ради старых копий данных и облака
     localStorage.setItem('jira-darkMode', JSON.stringify(darkMode));
-  }, [darkMode]);
+    // Волшебство целиком живёт в CSS: класс на <html> перекрашивает весь сайт
+    document.documentElement.classList.toggle('theme-wizard', theme === 'wizard');
+    document.documentElement.classList.toggle('theme-surf', theme === 'surf');
+    // В установленном PWA этим красится строка состояния телефона
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[theme] || THEME_COLORS.light);
+  }, [theme, darkMode]);
 
   // Сохранение текущего проекта
   useEffect(() => {
@@ -367,7 +386,8 @@ export default function PersonalJira() {
             saveNotes(foldWishlistIntoNotes(remote.wishlist, remote.notes || notes));
           }
           if (remote.collapsedSubtasks) saveCollapsedSubtasks(remote.collapsedSubtasks);
-          if (remote.settings?.darkMode !== undefined) setDarkMode(remote.settings.darkMode);
+          if (remote.settings?.theme) setTheme(remote.settings.theme);
+          else if (remote.settings?.darkMode !== undefined) setTheme(remote.settings.darkMode ? 'dark' : 'light');
           if (remote.settings?.currentProject) setCurrentProject(remote.settings.currentProject);
           if (remote.settings?.currentPage) setCurrentPage(remote.settings.currentPage);
         }
@@ -397,7 +417,7 @@ export default function PersonalJira() {
           weeklyTasks,
           notes,
           collapsedSubtasks,
-          settings: { darkMode, currentProject, currentPage }
+          settings: { darkMode, theme, currentProject, currentPage }
         });
         setSupabaseStatus('synced');
         setSupabaseError(null);
@@ -408,7 +428,7 @@ export default function PersonalJira() {
       }
     }, 500);
     return () => clearTimeout(supabaseSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, darkMode, currentProject, currentPage, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, currentProject, currentPage, loading]);
 
   // Подключить (создать или выбрать существующий) JSON-файл для автосохранения
   const connectFile = async () => {
@@ -794,6 +814,20 @@ export default function PersonalJira() {
     }));
   };
 
+  // Перенести задачу в другой день недели: из списка одного дня в конец другого
+  const moveWeeklyTask = (weekKey, fromDay, toDay, taskId) => {
+    if (fromDay === toDay) return;
+    updateWeek(weekKey, week => {
+      const task = (week[fromDay] || []).find(t => t.id === taskId);
+      if (!task) return null;
+      return {
+        ...week,
+        [fromDay]: (week[fromDay] || []).filter(t => t.id !== taskId),
+        [toDay]: [...(week[toDay] || []), task]
+      };
+    });
+  };
+
   // Редактировать текст и время недельной задачи
   const editWeeklyTask = (weekKey, day, taskId, newTitle, newTime) => {
     if (!newTitle.trim()) return;
@@ -966,7 +1000,7 @@ export default function PersonalJira() {
     saveWeeklyTasks({});
     saveNotes([]);
     saveCollapsedSubtasks({});
-    setDarkMode(false);
+    setTheme('light');
     setCurrentProject(defaultProject.id);
     setCurrentPage('kanban');
   };
@@ -976,8 +1010,28 @@ export default function PersonalJira() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-full bg-gray-50">
+      <ThemeFx theme={theme} />
       {storageError && <StorageErrorBanner />}
+
+      {/* Кнопка меню и затемнение — только на узком экране */}
+      <button
+        onClick={() => setSidebarOpen(prev => !prev)}
+        title="Menu"
+        aria-label="Menu"
+        className={`sm:hidden fixed top-2 left-2 z-[60] p-2 rounded-lg border press ${
+          darkMode ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-200 text-gray-700'
+        }`}
+      >
+        {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+      </button>
+
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="sm:hidden fixed inset-0 z-40 bg-black/40 animate-fade-in"
+        />
+      )}
 
       {showConfirmDialog && (
         <ConfirmDialog darkMode={darkMode} onConfirm={handleConfirmSwitchProject} />
@@ -985,6 +1039,7 @@ export default function PersonalJira() {
 
       <Sidebar
         darkMode={darkMode}
+        theme={theme}
         fileSupported={fileSupported}
         fileConnected={fileConnected}
         fileHandle={fileHandle}
@@ -994,14 +1049,21 @@ export default function PersonalJira() {
         supabaseStatus={supabaseStatus}
         supabaseError={supabaseError}
         currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
+        setCurrentPage={page => {
+          setCurrentPage(page);
+          setSidebarOpen(false);
+        }}
+        mobileOpen={sidebarOpen}
         projects={projects}
         currentProject={currentProject}
         editingProjectId={editingProjectId}
         editingProjectName={editingProjectName}
         setEditingProjectId={setEditingProjectId}
         setEditingProjectName={setEditingProjectName}
-        handleProjectClick={handleProjectClick}
+        handleProjectClick={projectId => {
+          handleProjectClick(projectId);
+          setSidebarOpen(false);
+        }}
         updateProjectName={updateProjectName}
         deleteProject={deleteProject}
         newProjectName={newProjectName}
@@ -1009,7 +1071,8 @@ export default function PersonalJira() {
         createProject={createProject}
       />
 
-      {/* Основное содержимое */}
+      {/* Основное содержимое. На телефоне сверху остаётся место под кнопку меню */}
+      <div className="flex-1 min-w-0 flex flex-col pt-12 sm:pt-0">
       {editingTask && currentPage === 'kanban' ? (
         <TaskEditor
           task={editingTask}
@@ -1058,6 +1121,8 @@ export default function PersonalJira() {
           deleteWeeklyTask={deleteWeeklyTask}
           toggleWeeklyTask={toggleWeeklyTask}
           editWeeklyTask={editWeeklyTask}
+          moveWeeklyTask={moveWeeklyTask}
+          theme={theme}
           darkMode={darkMode}
           weekDays={weekDays}
         />
@@ -1078,13 +1143,15 @@ export default function PersonalJira() {
           toggleNoteBlur={toggleNoteBlur}
           reorderNotes={reorderNotes}
           darkMode={darkMode}
+          theme={theme}
         />
       ) : currentPage === 'chill' ? (
-        <ChillTimer darkMode={darkMode} />
+        <ChillTimer darkMode={darkMode} theme={theme} />
       ) : (
         <SettingsPage
           darkMode={darkMode}
-          setDarkMode={setDarkMode}
+          theme={theme}
+          setTheme={setTheme}
           projects={projects}
           currentProject={currentProject}
           getProjectColumns={getProjectColumns}
@@ -1102,6 +1169,7 @@ export default function PersonalJira() {
           disconnectFile={disconnectFile}
         />
       )}
+      </div>
     </div>
   );
 }

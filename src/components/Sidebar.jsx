@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, X, Home, Calendar, Settings, ChevronDown, ChevronRight, Coffee, StickyNote } from 'lucide-react';
+import { Plus, Edit2, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { themeIcon } from '../themes';
 import FileSyncStatus from './FileSyncStatus';
 import CloudSyncStatus from './CloudSyncStatus';
 
 export default function Sidebar({
   darkMode,
+  theme,
   fileSupported,
   fileConnected,
   fileHandle,
@@ -15,6 +17,7 @@ export default function Sidebar({
   supabaseError,
   currentPage,
   setCurrentPage,
+  mobileOpen,
   projects,
   currentProject,
   editingProjectId,
@@ -30,9 +33,23 @@ export default function Sidebar({
 }) {
   const [projectsCollapsed, setProjectsCollapsed] = useState(false);
 
+  // Иконки разделов задаёт тема: в Wizard это замок и свиток, в Surf — компас и ракушка
+  const ProjectsIcon = themeIcon(theme, 'projects');
+  const ScheduleIcon = themeIcon(theme, 'schedule');
+  const NotesIcon = themeIcon(theme, 'notes');
+  const ChillIcon = themeIcon(theme, 'chill');
+  const SettingsIcon = themeIcon(theme, 'settings');
+  const AddIcon = themeIcon(theme, 'add');
+
   return (
-    <div className={`w-48 sm:w-64 flex-shrink-0 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col overflow-y-auto`}>
-      <div className={`p-4 sm:p-6 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between gap-2`}>
+    <div
+      className={`w-64 flex-shrink-0 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col overflow-y-auto
+        fixed inset-y-0 left-0 z-50 pt-[env(safe-area-inset-top)] transition-transform duration-200 ease-out
+        sm:static sm:z-auto sm:translate-x-0 sm:pt-0 sm:transition-none ${
+        mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+      }`}
+    >
+      <div className={`p-4 sm:p-6 pl-14 sm:pl-6 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between gap-2`}>
         <h1 className={`text-lg sm:text-2xl font-bold truncate ${darkMode ? 'text-white' : 'text-gray-800'}`}>Surf the Task</h1>
         <button
           onClick={() => setCurrentPage('settings')}
@@ -43,7 +60,7 @@ export default function Sidebar({
           }`}
           title="Settings"
         >
-          <Settings size={20} />
+          <SettingsIcon size={20} />
         </button>
       </div>
 
@@ -80,7 +97,7 @@ export default function Sidebar({
               : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
-          <Home size={18} />
+          <ProjectsIcon size={18} />
           <span className="flex-1 text-left">Projects</span>
           {currentPage === 'kanban' && (projectsCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
         </button>
@@ -143,7 +160,7 @@ export default function Sidebar({
               : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
-          <Calendar size={18} /> Schedule
+          <ScheduleIcon size={18} /> Schedule
         </button>
 
         <button
@@ -154,7 +171,7 @@ export default function Sidebar({
               : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
-          <StickyNote size={18} /> Notes
+          <NotesIcon size={18} /> Notes
         </button>
 
         <button
@@ -165,7 +182,7 @@ export default function Sidebar({
               : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
-          <Coffee size={18} /> Chill
+          <ChillIcon size={18} /> Chill
         </button>
       </div>
 
@@ -185,7 +202,7 @@ export default function Sidebar({
                 onClick={createProject}
                 className="p-2 bg-green-800 text-white rounded hover:bg-green-900 press"
               >
-                <Plus size={16} />
+                <AddIcon size={16} />
               </button>
             </div>
           </div>

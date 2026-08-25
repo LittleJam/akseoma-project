@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, X, GripVertical, EyeOff } from 'lucide-react';
+import { X, GripVertical, EyeOff } from 'lucide-react';
 import { NOTE_COLORS } from '../constants';
 import { compressImage } from '../utils/imageCompression';
+import { themeIcon } from '../themes';
 import NoteModal from './NoteModal';
 
 const PREVIEW_ITEMS = 6;
@@ -22,8 +23,10 @@ export default function Notes({
   deleteNote,
   toggleNoteBlur,
   reorderNotes,
-  darkMode
+  darkMode,
+  theme
 }) {
+  const AddIcon = themeIcon(theme, 'add');
   // id заметки, за которую сейчас «взялись» — draggable включается только при захвате за ручку
   const [handleGrabbedId, setHandleGrabbedId] = useState(null);
   const [dragIndex, setDragIndex] = useState(null);
@@ -93,9 +96,9 @@ export default function Notes({
           </h2>
           <button
             onClick={addNote}
-            className={`flex items-center gap-1.5 text-sm px-2 py-1 -mr-2 rounded press ${mutedText} ${iconHover}`}
+            className={`flex items-center gap-1.5 text-sm px-2 py-1 sm:-mr-2 rounded press ${mutedText} ${iconHover}`}
           >
-            <Plus size={16} /> New note
+            <AddIcon size={16} /> New note
           </button>
         </div>
 
@@ -163,7 +166,7 @@ export default function Notes({
                         deleteNote(note.id);
                       }}
                       title="Delete note"
-                      className={`p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
+                      className={`p-1.5 sm:p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
                     >
                       <X size={14} />
                     </button>
@@ -196,7 +199,7 @@ export default function Notes({
                                 onClick={e => e.stopPropagation()}
                                 onChange={() => updateNoteItem(note.id, item.id, { checked: !item.checked })}
                                 disabled={!!note.blurred}
-                                className={`w-3.5 h-3.5 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
+                                className={`w-4 h-4 sm:w-3.5 sm:h-3.5 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
                                   item.checked ? 'animate-check-pop' : ''
                                 }`}
                               />

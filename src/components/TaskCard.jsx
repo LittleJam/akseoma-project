@@ -84,7 +84,7 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
         )}
         <button
           onClick={handleDeleteClick}
-          className={`p-1 rounded opacity-0 group-hover:opacity-100 press ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+          className={`p-2 sm:p-1 rounded opacity-0 group-hover:opacity-100 press ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
           title="Delete task"
         >
           <Trash2 size={14} className={darkMode ? 'text-red-400' : 'text-red-500'} />

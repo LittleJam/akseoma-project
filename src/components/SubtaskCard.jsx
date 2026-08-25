@@ -11,7 +11,7 @@ export default function SubtaskCard({ subtask, index, parentDisplayId, onToggle,
         type="checkbox"
         checked={subtask.completed}
         onChange={onToggle}
-        className={`w-3.5 h-3.5 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
+        className={`w-4 h-4 sm:w-3.5 sm:h-3.5 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
           subtask.completed ? 'animate-check-pop' : ''
         }`}
       />

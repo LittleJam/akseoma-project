@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, Plus, Trash2, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
 import { COLUMN_COLORS } from '../constants';
+import { THEME_OPTIONS } from '../themes';
 
 export default function SettingsPage({
   darkMode,
-  setDarkMode,
+  theme,
+  setTheme,
   projects,
   currentProject,
   getProjectColumns,
@@ -93,15 +95,35 @@ export default function SettingsPage({
           <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Theme
           </h3>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium border press ${
-              darkMode ? 'border-gray-700 text-yellow-400 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            {darkMode ? 'Light theme' : 'Dark theme'}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {THEME_OPTIONS.map(({ key, label, Icon, hint }) => {
+              const active = theme === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setTheme(key)}
+                  title={hint}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium border press ${
+                    active
+                      ? 'border-green-600 text-green-600'
+                      : darkMode
+                        ? 'border-gray-700 text-gray-300 hover:bg-gray-700'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon size={18} />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <p className={`text-xs mt-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            {theme === 'wizard'
+              ? 'Wizard: the Prisoner of Azkaban night — misty blues, candlelight, a snitch and a bit of magic.'
+              : theme === 'surf'
+                ? 'Surf: ocean palette, soft rounded shapes and lazy bubbles.'
+                : 'Wizard turns the site into the Harry Potter universe, Surf into an ocean morning.'}
+          </p>
         </div>
 
         {/* Sync — полная картина здесь; в сайдбаре остаются только проблемы */}
@@ -193,14 +215,14 @@ export default function SettingsPage({
                     <button
                       onClick={() => moveColumn(index, -1)}
                       disabled={index === 0}
-                      className={`p-1 rounded disabled:opacity-30 press-icon ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                      className={`p-2 sm:p-1 rounded disabled:opacity-30 press-icon ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                     >
                       <ArrowUp size={14} className={labelClass} />
                     </button>
                     <button
                       onClick={() => moveColumn(index, 1)}
                       disabled={index === columns.length - 1}
-                      className={`p-1 rounded disabled:opacity-30 press-icon ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                      className={`p-2 sm:p-1 rounded disabled:opacity-30 press-icon ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                     >
                       <ArrowDown size={14} className={labelClass} />
                     </button>
@@ -220,7 +242,7 @@ export default function SettingsPage({
                         type="button"
                         onClick={() => recolorColumn(column.id, key)}
                         title={value.label}
-                        className={`w-5 h-5 rounded-full flex-shrink-0 transition duration-150 hover:scale-110 active:scale-90 ${value.dot} ${
+                        className={`w-7 h-7 sm:w-5 sm:h-5 rounded-full flex-shrink-0 transition duration-150 hover:scale-110 active:scale-90 ${value.dot} ${
                           column.color === key
                             ? `ring-2 ring-offset-2 ${darkMode ? 'ring-gray-300 ring-offset-gray-800' : 'ring-gray-500 ring-offset-white'}`
                             : 'opacity-40 hover:opacity-80'
