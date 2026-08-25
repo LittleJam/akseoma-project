@@ -9,7 +9,17 @@ export default function SettingsPage({
   currentProject,
   getProjectColumns,
   updateProjectColumns,
-  resetAllData
+  resetAllData,
+  supabaseConfigured,
+  supabaseStatus,
+  supabaseError,
+  fileSupported,
+  fileConnected,
+  fileHandle,
+  fileName,
+  connectFile,
+  reconnectFile,
+  disconnectFile
 }) {
   const [selectedProjectId, setSelectedProjectId] = useState(currentProject);
   const [newColumnTitle, setNewColumnTitle] = useState('');
@@ -92,6 +102,65 @@ export default function SettingsPage({
             {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             {darkMode ? 'Light theme' : 'Dark theme'}
           </button>
+        </div>
+
+        {/* Sync — полная картина здесь; в сайдбаре остаются только проблемы */}
+        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
+          <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            Sync
+          </h3>
+
+          <div className="space-y-4">
+            <div>
+              <div className={`text-sm font-medium ${labelClass}`}>Cloud (Supabase)</div>
+              <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                {!supabaseConfigured
+                  ? 'Not configured — see .env.example'
+                  : supabaseStatus === 'error'
+                    ? supabaseError || 'Sync failed'
+                    : supabaseStatus === 'loading'
+                      ? 'Syncing…'
+                      : 'Connected — changes save automatically'}
+              </p>
+            </div>
+
+            <div className={`pt-4 border-t ${borderClass}`}>
+              <div className={`text-sm font-medium ${labelClass}`}>File autosave</div>
+              {!fileSupported ? (
+                <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Not supported in this browser (needs Chrome or Edge)
+                </p>
+              ) : fileConnected ? (
+                <div className="flex items-center justify-between gap-3 mt-1 flex-wrap">
+                  <p className={`text-xs truncate ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} title={fileName}>
+                    Writing to {fileName}
+                  </p>
+                  <button
+                    onClick={disconnectFile}
+                    className={`text-xs px-3 py-1.5 rounded-lg border press ${
+                      darkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-1">
+                  <p className={`text-xs mb-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Keep a JSON copy on disk, updated on every change
+                  </p>
+                  <button
+                    onClick={fileHandle ? reconnectFile : connectFile}
+                    className={`text-xs px-3 py-1.5 rounded-lg border press ${
+                      darkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {fileHandle ? `Restore access to ${fileName}` : 'Connect a file'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Project columns */}
@@ -200,8 +269,8 @@ export default function SettingsPage({
           {confirmingReset ? (
             <div className="space-y-3 animate-pop-in">
               <p className={`text-sm ${labelClass}`}>
-                This erases everything across the site — projects, tasks, columns, weekly plan,
-                wishlist and notes — and restores the default settings. It cannot be undone.
+                This erases everything across the site — projects, tasks, columns, weekly plan
+                and notes — and restores the default settings. It cannot be undone.
               </p>
               <div className="flex gap-2 flex-wrap">
                 <button

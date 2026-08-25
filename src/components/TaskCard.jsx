@@ -6,12 +6,13 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
 
   const cardBg = darkMode
     ? 'bg-gray-900 border border-gray-700 hover:border-gray-600'
-    : 'bg-gray-50 border border-gray-200 hover:border-gray-300';
+    : 'bg-white border border-gray-200 hover:border-gray-300';
   const textColor = darkMode ? 'text-gray-100' : 'text-gray-800';
+  // Точка вместо залитого чипа: словом выделяем только high — цвет должен значить «внимание»
   const PRIORITY_STYLES = {
-    high: { label: 'High', className: 'bg-red-100 text-red-700' },
-    medium: { label: 'Medium', className: 'bg-yellow-100 text-yellow-700' },
-    low: { label: 'Low', className: 'bg-green-100 text-green-700' }
+    high: { label: 'High', dot: 'bg-red-500' },
+    medium: { label: 'Medium', dot: 'bg-amber-500' },
+    low: { label: 'Low', dot: darkMode ? 'bg-gray-600' : 'bg-gray-300' }
   };
   const priority = PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.low;
   const descriptionText = typeof task.description === 'string' ? task.description : task.description?.content;
@@ -83,23 +84,27 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
         )}
         <button
           onClick={handleDeleteClick}
-          className="p-1 rounded opacity-0 group-hover:opacity-100 bg-red-100 hover:bg-red-200 press"
+          className={`p-1 rounded opacity-0 group-hover:opacity-100 press ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
           title="Delete task"
         >
-          <Trash2 size={14} className="text-red-600" />
+          <Trash2 size={14} className={darkMode ? 'text-red-400' : 'text-red-500'} />
         </button>
       </div>
       <div className="mb-2 pr-6">
-        <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-          {task.sticker && <span className="text-lg leading-none flex-shrink-0">{task.sticker}</span>}
-          <span className="font-bold text-xs px-2 py-1 rounded bg-green-500 text-white whitespace-nowrap">
+        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+          {task.sticker && <span className="text-base leading-none flex-shrink-0">{task.sticker}</span>}
+          <span className={`font-mono text-[11px] whitespace-nowrap ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             {task.taskId || `#${taskNumber}`}
           </span>
-          <span className={`text-[10px] font-medium px-1.5 py-1 rounded whitespace-nowrap ${priority.className}`}>
-            {priority.label}
-          </span>
+          <span
+            title={`Priority: ${priority.label}`}
+            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${priority.dot}`}
+          />
+          {task.priority === 'high' && (
+            <span className="text-[10px] font-medium uppercase tracking-wide text-red-500">High</span>
+          )}
         </div>
-        <h4 className={`font-bold text-sm ${textColor} break-words`}>{task.title}</h4>
+        <h4 className={`font-medium text-sm ${textColor} break-words`}>{task.title}</h4>
       </div>
       {descriptionText && descriptionText.trim() && (
         <p className={`text-xs truncate mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>

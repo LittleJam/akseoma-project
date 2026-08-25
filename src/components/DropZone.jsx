@@ -21,9 +21,8 @@ export default function DropZone({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const palette = COLUMN_COLORS[column.color] || COLUMN_COLORS.gray;
-  const headerBg = darkMode ? 'bg-gray-800' : 'bg-white';
-  const tintBg = darkMode ? palette.dark : palette.light;
-  const borderClass = darkMode ? 'border-gray-800' : 'border-gray-200';
+  // Одна поверхность на всю колонку вместо «рамка + заливка + отдельный фон заголовка»
+  const surfaceBg = darkMode ? 'bg-gray-800' : 'bg-gray-100';
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -52,11 +51,11 @@ export default function DropZone({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`border ${borderClass} rounded-lg h-full flex flex-col transition duration-150 ${
-        isDragOver ? 'ring-2 ring-green-600 border-green-600 scale-[1.01]' : ''
+      className={`${surfaceBg} rounded-lg h-full flex flex-col transition duration-150 ${
+        isDragOver ? 'ring-2 ring-green-600 scale-[1.01]' : ''
       }`}
     >
-      <div className={`${headerBg} flex items-center gap-2 p-4 pb-2 sticky top-0 z-10 rounded-t-lg`}>
+      <div className={`${surfaceBg} flex items-center gap-2 p-4 pb-2 sticky top-0 z-10 rounded-t-lg`}>
         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
         <h3 className={`text-xs font-medium uppercase tracking-wide flex-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
           {column.title} ({tasks.length})
@@ -71,7 +70,7 @@ export default function DropZone({
           </button>
         )}
       </div>
-      <div className={`${tintBg} space-y-3 min-h-[100px] px-4 pb-4 pt-3 flex-1 rounded-b-lg`}>
+      <div className="space-y-3 min-h-[100px] px-4 pb-4 pt-3 flex-1 rounded-b-lg">
         {tasks.map((task, index) => {
           const parentDisplayId = task.taskId || `#${getTaskNumber(task.id)}`;
           const hasSubtasks = (task.subtasks || []).length > 0;

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, X, Image as ImageIcon, Plus, ArrowRightLeft, ChevronDown, SmilePlus } from 'lucide-react';
+import { Trash2, X, Image as ImageIcon, Plus, ArrowRightLeft, ChevronDown } from 'lucide-react';
 import { compressImage } from '../utils/imageCompression';
-import { STICKER_GROUPS } from '../constants';
 
 const TEXT_COLORS = [
   { hex: '#000000', name: 'Black' },
@@ -37,9 +36,6 @@ export default function TaskEditor({
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [editingSubtaskId, setEditingSubtaskId] = useState(null);
   const [editingSubtaskText, setEditingSubtaskText] = useState('');
-  const [sticker, setSticker] = useState(task.sticker || '');
-  const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
-  const stickerPickerRef = useRef(null);
   const otherProjects = (projects || []).filter(p => p.id !== currentProjectId);
   const [targetProjectId, setTargetProjectId] = useState('');
   const [targetColumnId, setTargetColumnId] = useState('');
@@ -66,29 +62,17 @@ export default function TaskEditor({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [colorPickerOpen]);
 
-  useEffect(() => {
-    if (!stickerPickerOpen) return;
-    const handleClickOutside = (e) => {
-      if (stickerPickerRef.current && !stickerPickerRef.current.contains(e.target)) {
-        setStickerPickerOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [stickerPickerOpen]);
-
   // Track unsaved changes
   useEffect(() => {
     const hasChanges =
       title !== task.title ||
       description !== getDescriptionText(task.description) ||
       priority !== task.priority ||
-      sticker !== (task.sticker || '') ||
       JSON.stringify(images) !== JSON.stringify(task.images || []) ||
       JSON.stringify(subtasks) !== JSON.stringify(task.subtasks || []);
 
     onUnsavedChange(hasChanges);
-  }, [title, description, priority, images, subtasks, sticker, task, onUnsavedChange]);
+  }, [title, description, priority, images, subtasks, task, onUnsavedChange]);
 
   const addSubtask = () => {
     if (!newSubtaskTitle.trim()) return;
@@ -183,7 +167,6 @@ export default function TaskEditor({
     if (description !== getDescriptionText(task.description)) changes.description = 'Description changed';
     if (JSON.stringify(images) !== JSON.stringify(task.images || [])) changes.images = `Images: ${images.length}`;
     if (JSON.stringify(subtasks) !== JSON.stringify(task.subtasks || [])) changes.subtasks = `Subtasks: ${subtasks.length}`;
-    if (sticker !== (task.sticker || '')) changes.sticker = 'Sticker changed';
 
     let newHistory = task.history || [];
     if (Object.keys(changes).length > 0) {
@@ -201,7 +184,6 @@ export default function TaskEditor({
       priority,
       images,
       subtasks,
-      sticker,
       history: newHistory
     });
   };
@@ -320,67 +302,6 @@ export default function TaskEditor({
                     )}
                   </div>
 
-                  <div className="relative" ref={stickerPickerRef}>
-                    <button
-                      type="button"
-                      onClick={() => setStickerPickerOpen(prev => !prev)}
-                      title={sticker ? 'Change sticker' : 'Add sticker'}
-                      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm press ${
-                        sticker ? 'bg-green-800 text-white' : darkMode ? 'bg-gray-600' : 'bg-gray-100'
-                      }`}
-                    >
-                      <SmilePlus size={16} />
-                      {sticker
-                        ? <span className="text-base leading-none">{sticker}</span>
-                        : <span className="text-xs">Sticker</span>}
-                      <ChevronDown size={12} className={sticker ? 'text-green-100' : darkMode ? 'text-gray-300' : 'text-gray-500'} />
-                    </button>
-
-                    {stickerPickerOpen && (
-                      <div className={`absolute z-20 top-full mt-1 left-0 p-2 rounded-lg border shadow-lg w-60 origin-top-left animate-pop-in ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
-                        <div className="max-h-64 overflow-y-auto pr-0.5 space-y-2">
-                          {STICKER_GROUPS.map(group => (
-                            <div key={group.label}>
-                              <div className={`text-[10px] uppercase tracking-wide mb-1 px-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                {group.label}
-                              </div>
-                              <div className="grid grid-cols-6 gap-1">
-                                {group.emojis.map(emoji => (
-                                  <button
-                                    key={emoji}
-                                    type="button"
-                                    onClick={() => {
-                                      setSticker(emoji);
-                                      setStickerPickerOpen(false);
-                                    }}
-                                    className={`w-8 h-8 flex items-center justify-center text-lg rounded-lg transition duration-150 hover:scale-110 active:scale-90 ${
-                                      sticker === emoji
-                                        ? darkMode ? 'bg-gray-600 ring-2 ring-green-500' : 'bg-gray-100 ring-2 ring-green-500'
-                                        : darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
-                                    }`}
-                                  >
-                                    {emoji}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        {sticker && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSticker('');
-                              setStickerPickerOpen(false);
-                            }}
-                            className={`w-full mt-2 text-xs py-1 rounded-lg ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-600 hover:bg-gray-100'}`}
-                          >
-                            Remove sticker
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 {/* Text field */}

@@ -1,26 +1,17 @@
 import React from 'react';
+import { AlertCircle } from 'lucide-react';
 
+// В сайдбаре живёт только то, что требует внимания. Рабочее состояние молчит,
+// полная картина синхронизации — в Settings → Sync.
 export default function CloudSyncStatus({ darkMode, configured, status, error }) {
+  if (!configured || status !== 'error') return null;
+
   return (
-    <div className={`p-4 border-b text-xs ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-      {!configured ? (
-        <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
-          ☁️ Supabase not configured (see .env.example)
-        </p>
-      ) : status === 'error' ? (
-        <p className="text-red-500" title={error || ''}>
-          ☁️ Supabase sync error
-        </p>
-      ) : status === 'loading' ? (
-        <p className={`flex items-center gap-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
-          ☁️ Syncing...
-        </p>
-      ) : (
-        <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
-          ☁️ Supabase connected
-        </p>
-      )}
+    <div className={`px-4 py-2.5 border-b text-xs ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+      <p className="flex items-center gap-1.5 text-red-500" title={error || ''}>
+        <AlertCircle size={13} className="flex-shrink-0" />
+        Cloud sync failed
+      </p>
     </div>
   );
 }

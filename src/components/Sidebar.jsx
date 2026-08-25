@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, X, Home, Calendar, Settings, ChevronDown, ChevronRight, Heart, Coffee, StickyNote } from 'lucide-react';
+import { Plus, Edit2, X, Home, Calendar, Settings, ChevronDown, ChevronRight, Coffee, StickyNote } from 'lucide-react';
 import FileSyncStatus from './FileSyncStatus';
 import CloudSyncStatus from './CloudSyncStatus';
 
@@ -9,9 +9,7 @@ export default function Sidebar({
   fileConnected,
   fileHandle,
   fileName,
-  connectFile,
   reconnectFile,
-  disconnectFile,
   supabaseConfigured,
   supabaseStatus,
   supabaseError,
@@ -62,9 +60,7 @@ export default function Sidebar({
         fileConnected={fileConnected}
         fileHandle={fileHandle}
         fileName={fileName}
-        connectFile={connectFile}
         reconnectFile={reconnectFile}
-        disconnectFile={disconnectFile}
       />
 
       {/* Навигация */}
@@ -78,10 +74,10 @@ export default function Sidebar({
               setProjectsCollapsed(false);
             }
           }}
-          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press border-l-2 ${
+          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press ${
             currentPage === 'kanban'
-              ? darkMode ? 'bg-green-900 text-green-100 border-green-400' : 'bg-green-100 text-green-900 border-green-700'
-              : darkMode ? 'text-gray-300 hover:bg-gray-700 border-transparent' : 'text-gray-700 hover:bg-gray-100 border-transparent'
+              ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
+              : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
           <Home size={18} />
@@ -141,10 +137,10 @@ export default function Sidebar({
 
         <button
           onClick={() => setCurrentPage('weekly')}
-          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press border-l-2 ${
+          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press ${
             currentPage === 'weekly'
-              ? darkMode ? 'bg-green-900 text-green-100 border-green-400' : 'bg-green-100 text-green-900 border-green-700'
-              : darkMode ? 'text-gray-300 hover:bg-gray-700 border-transparent' : 'text-gray-700 hover:bg-gray-100 border-transparent'
+              ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
+              : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
           <Calendar size={18} /> Schedule
@@ -152,32 +148,21 @@ export default function Sidebar({
 
         <button
           onClick={() => setCurrentPage('notes')}
-          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press border-l-2 ${
+          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press ${
             currentPage === 'notes'
-              ? darkMode ? 'bg-green-900 text-green-100 border-green-400' : 'bg-green-100 text-green-900 border-green-700'
-              : darkMode ? 'text-gray-300 hover:bg-gray-700 border-transparent' : 'text-gray-700 hover:bg-gray-100 border-transparent'
+              ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
+              : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
           <StickyNote size={18} /> Notes
         </button>
 
         <button
-          onClick={() => setCurrentPage('wishlist')}
-          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press border-l-2 ${
-            currentPage === 'wishlist'
-              ? darkMode ? 'bg-green-900 text-green-100 border-green-400' : 'bg-green-100 text-green-900 border-green-700'
-              : darkMode ? 'text-gray-300 hover:bg-gray-700 border-transparent' : 'text-gray-700 hover:bg-gray-100 border-transparent'
-          }`}
-        >
-          <Heart size={18} /> Wishlist
-        </button>
-
-        <button
           onClick={() => setCurrentPage('chill')}
-          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press border-l-2 ${
+          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press ${
             currentPage === 'chill'
-              ? darkMode ? 'bg-green-900 text-green-100 border-green-400' : 'bg-green-100 text-green-900 border-green-700'
-              : darkMode ? 'text-gray-300 hover:bg-gray-700 border-transparent' : 'text-gray-700 hover:bg-gray-100 border-transparent'
+              ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
+              : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
           <Coffee size={18} /> Chill

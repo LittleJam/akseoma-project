@@ -57,8 +57,9 @@ code {
     @apply transition duration-150 ease-out hover:scale-110 active:scale-90;
   }
 
-  /* Карточка приподнимается под курсором — подсказка, что её можно открыть/тащить */
+  /* Карточка чуть приподнимается под курсором. Без тени: границы карточки достаточно,
+     тень была вторым способом сказать то же самое */
   .lift {
-    @apply transition duration-150 ease-out hover:-translate-y-0.5 hover:shadow-md;
+    @apply transition duration-150 ease-out hover:-translate-y-0.5;
   }
 }

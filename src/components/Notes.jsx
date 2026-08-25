@@ -1,12 +1,40 @@
 import React, { useState } from 'react';
-import { Plus, X, GripVertical, Eye, EyeOff } from 'lucide-react';
+import { Plus, X, GripVertical, EyeOff } from 'lucide-react';
+import { NOTE_COLORS } from '../constants';
+import { compressImage } from '../utils/imageCompression';
+import NoteModal from './NoteModal';
 
-export default function Notes({ notes, addNote, updateNote, deleteNote, toggleNoteBlur, reorderNotes, darkMode }) {
-  // id заметки, за которую сейчас «взялись» — draggable включается только при захвате за ручку,
-  // иначе нельзя было бы выделять текст внутри заметки
+const PREVIEW_ITEMS = 6;
+const PREVIEW_IMAGES = 3;
+
+export default function Notes({
+  notes,
+  addNote,
+  updateNote,
+  updateNoteTitle,
+  setNoteColor,
+  setNoteMode,
+  addNoteItem,
+  updateNoteItem,
+  deleteNoteItem,
+  addNoteImages,
+  deleteNoteImage,
+  deleteNote,
+  toggleNoteBlur,
+  reorderNotes,
+  darkMode
+}) {
+  // id заметки, за которую сейчас «взялись» — draggable включается только при захвате за ручку
   const [handleGrabbedId, setHandleGrabbedId] = useState(null);
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
+  // id заметки, над которой держат перетаскиваемый файл
+  const [fileOverId, setFileOverId] = useState(null);
+
+  // Ищем заметку в списке каждый раз, чтобы окно показывало свежие правки,
+  // а удаление заметки закрывало окно само
+  const expandedNote = notes.find(n => n.id === expandedId) || null;
 
   const handleDragStart = (e, index) => {
     setDragIndex(index);
@@ -14,21 +42,40 @@ export default function Notes({ notes, addNote, updateNote, deleteNote, toggleNo
     e.dataTransfer.setData('noteIndex', index.toString());
   };
 
-  const handleDragOver = (e, index) => {
+  const handleDragOver = (e, index, noteId) => {
+    // Файл из системы кидают, чтобы прикрепить картинку; карточку — чтобы поменять порядок
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setFileOverId(noteId);
+      return;
+    }
     if (dragIndex === null) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverIndex(index);
   };
 
-  const handleDrop = (e, index) => {
+  const handleDrop = async (e, index, noteId) => {
     e.preventDefault();
+    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+    if (files.length) {
+      resetDrag();
+      try {
+        const compressed = await Promise.all(files.map(file => compressImage(file)));
+        addNoteImages(noteId, compressed);
+      } catch (err) {
+        console.error('Image compression error:', err);
+      }
+      return;
+    }
     const fromIndex = parseInt(e.dataTransfer.getData('noteIndex'), 10);
     if (!Number.isNaN(fromIndex)) reorderNotes(fromIndex, index);
     resetDrag();
   };
 
   const resetDrag = () => {
+    setFileOverId(null);
     setHandleGrabbedId(null);
     setDragIndex(null);
     setDragOverIndex(null);
@@ -61,6 +108,12 @@ export default function Notes({ notes, addNote, updateNote, deleteNote, toggleNo
             {notes.map((note, index) => {
               const isDragging = dragIndex === index;
               const isDropTarget = dragOverIndex === index && dragIndex !== null && dragIndex !== index;
+              const palette = NOTE_COLORS[note.color] || NOTE_COLORS.default;
+              const mode = note.mode || 'text';
+              const items = note.items || [];
+              const images = note.images || [];
+              const hiddenItems = items.length - PREVIEW_ITEMS;
+              const blurClass = note.blurred ? 'blur-[5px] select-none' : '';
 
               return (
                 <div
@@ -68,39 +121,47 @@ export default function Notes({ notes, addNote, updateNote, deleteNote, toggleNo
                   draggable={handleGrabbedId === note.id}
                   onDragStart={e => handleDragStart(e, index)}
                   onDragEnd={resetDrag}
-                  onDragOver={e => handleDragOver(e, index)}
-                  onDrop={e => handleDrop(e, index)}
-                  className={`rounded-lg border p-3 flex flex-col group ${
+                  onDragOver={e => handleDragOver(e, index, note.id)}
+                  onDragLeave={e => {
+                    if (e.currentTarget.contains(e.relatedTarget)) return;
+                    setFileOverId(null);
+                  }}
+                  onDrop={e => handleDrop(e, index, note.id)}
+                  onClick={() => setExpandedId(note.id)}
+                  className={`aspect-square self-start min-h-0 overflow-hidden rounded-lg border p-3 flex flex-col cursor-pointer group ${
                     isDragging ? 'opacity-40 transition duration-150' : 'lift'
-                  } ${
-                    darkMode ? 'border-gray-800 bg-gray-800/40' : 'border-gray-200 bg-white'
-                  } ${
-                    isDropTarget ? (darkMode ? 'border-green-600 ring-1 ring-green-600' : 'border-green-600 ring-1 ring-green-600') : ''
+                  } ${darkMode ? palette.dark : palette.light} ${
+                    isDropTarget || fileOverId === note.id ? 'ring-2 ring-green-600' : ''
                   }`}
                 >
-                  <div className="flex items-center gap-1 mb-2">
+                  <div className="flex items-center gap-1 mb-1">
                     <span
                       onMouseDown={() => setHandleGrabbedId(note.id)}
                       onMouseUp={() => setHandleGrabbedId(null)}
+                      onClick={e => e.stopPropagation()}
                       title="Drag to reorder"
-                      className={`-ml-1 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition ${mutedText} ${iconHover}`}
+                      className={`-ml-1 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition flex-shrink-0 ${mutedText} ${iconHover}`}
                     >
                       <GripVertical size={14} />
                     </span>
-                    <span className={`text-[10px] flex-1 truncate ${mutedText}`}>
-                      {note.updatedAt}
-                    </span>
+
+                    {note.title ? (
+                      <h3 className={`flex-1 min-w-0 text-sm font-medium truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                        {note.title}
+                      </h3>
+                    ) : (
+                      <span className={`flex-1 min-w-0 text-sm ${darkMode ? 'text-gray-600' : 'text-gray-300'}`}>
+                        Untitled
+                      </span>
+                    )}
+
+                    {note.blurred && <EyeOff size={12} className={`flex-shrink-0 ${mutedText}`} />}
+
                     <button
-                      onClick={() => toggleNoteBlur(note.id)}
-                      title={note.blurred ? 'Show text' : 'Blur text'}
-                      className={`p-0.5 rounded press-icon flex-shrink-0 ${mutedText} ${iconHover} ${
-                        note.blurred ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                      }`}
-                    >
-                      {note.blurred ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                    <button
-                      onClick={() => deleteNote(note.id)}
+                      onClick={e => {
+                        e.stopPropagation();
+                        deleteNote(note.id);
+                      }}
                       title="Delete note"
                       className={`p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
                     >
@@ -108,24 +169,104 @@ export default function Notes({ notes, addNote, updateNote, deleteNote, toggleNo
                     </button>
                   </div>
 
-                  {/* Заблюренную заметку не даём редактировать вслепую — клик по тексту снимает блюр */}
-                  <textarea
-                    value={note.content}
-                    onChange={e => updateNote(note.id, e.target.value)}
-                    onClick={() => note.blurred && toggleNoteBlur(note.id)}
-                    readOnly={!!note.blurred}
-                    placeholder="Write a note..."
-                    rows={6}
-                    className={`w-full flex-1 text-sm resize-none focus:outline-none bg-transparent transition ${
-                      darkMode ? 'text-gray-200 placeholder-gray-500' : 'text-gray-700 placeholder-gray-400'
-                    } ${note.blurred ? 'blur-[5px] select-none cursor-pointer' : ''}`}
-                  />
+                  <span className={`text-[10px] mb-2 ${mutedText}`}>{note.updatedAt}</span>
+
+                  <div className={`flex-1 min-h-0 overflow-hidden ${blurClass}`}>
+                    {mode === 'text' ? (
+                      note.content?.trim() ? (
+                        <p className={`text-sm whitespace-pre-wrap line-clamp-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                          {note.content}
+                        </p>
+                      ) : (
+                        <p className={`text-sm ${darkMode ? 'text-gray-600' : 'text-gray-300'}`}>Empty note</p>
+                      )
+                    ) : items.length === 0 ? (
+                      <p className={`text-sm ${darkMode ? 'text-gray-600' : 'text-gray-300'}`}>
+                        {mode === 'todo' ? 'No tasks yet' : 'No items yet'}
+                      </p>
+                    ) : (
+                      <div className="space-y-0.5">
+                        {items.slice(0, PREVIEW_ITEMS).map(item => (
+                          <div key={item.id} className="flex items-center gap-2">
+                            {mode === 'todo' ? (
+                              /* Отметить пункт можно прямо в превью — окно для этого открывать не нужно */
+                              <input
+                                type="checkbox"
+                                checked={!!item.checked}
+                                onClick={e => e.stopPropagation()}
+                                onChange={() => updateNoteItem(note.id, item.id, { checked: !item.checked })}
+                                disabled={!!note.blurred}
+                                className={`w-3.5 h-3.5 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
+                                  item.checked ? 'animate-check-pop' : ''
+                                }`}
+                              />
+                            ) : (
+                              <span className={`w-1 h-1 rounded-full flex-shrink-0 mx-[5px] ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} />
+                            )}
+                            <span className={`flex-1 min-w-0 text-sm truncate transition-colors duration-200 ${
+                              item.checked
+                                ? darkMode ? 'line-through text-gray-500' : 'line-through text-gray-400'
+                                : darkMode ? 'text-gray-300' : 'text-gray-600'
+                            }`}>
+                              {item.text}
+                            </span>
+                          </div>
+                        ))}
+                        {hiddenItems > 0 && (
+                          <p className={`text-[11px] pl-[22px] pt-0.5 ${mutedText}`}>+{hiddenItems} more</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {images.length > 0 && (
+                    <div className={`grid grid-cols-3 gap-1 mt-2 flex-shrink-0 ${blurClass}`}>
+                      {images.slice(0, PREVIEW_IMAGES).map((img, imgIndex) => {
+                        const hiddenImages = images.length - PREVIEW_IMAGES;
+                        const isLastPreview = imgIndex === PREVIEW_IMAGES - 1;
+                        return (
+                          <div key={imgIndex} className="relative min-w-0">
+                            <img
+                              src={img}
+                              alt=""
+                              draggable={false}
+                              className="w-full h-12 object-cover rounded"
+                            />
+                            {isLastPreview && hiddenImages > 0 && (
+                              <span className="absolute inset-0 rounded bg-black/50 text-white text-[11px] flex items-center justify-center">
+                                +{hiddenImages}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {expandedNote && (
+        <NoteModal
+          note={expandedNote}
+          updateNote={updateNote}
+          updateNoteTitle={updateNoteTitle}
+          setNoteColor={setNoteColor}
+          setNoteMode={setNoteMode}
+          addNoteItem={addNoteItem}
+          updateNoteItem={updateNoteItem}
+          deleteNoteItem={deleteNoteItem}
+          addNoteImages={addNoteImages}
+          deleteNoteImage={deleteNoteImage}
+          deleteNote={deleteNote}
+          toggleNoteBlur={toggleNoteBlur}
+          onClose={() => setExpandedId(null)}
+          darkMode={darkMode}
+        />
+      )}
     </div>
   );
 }

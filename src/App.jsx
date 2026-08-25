@@ -4,6 +4,7 @@ import { idbGet, idbSet, writeStateToFile } from './utils/fileStorage';
 import { isSupabaseConfigured } from './utils/supabaseClient';
 import { loadRemoteState, saveRemoteState } from './utils/supabaseStorage';
 import { DEFAULT_COLUMNS, WEEK_DAYS, STORAGE_KEYS } from './constants';
+import { getWeekKey } from './utils/weeks';
 import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -11,7 +12,6 @@ import Sidebar from './components/Sidebar';
 import KanbanBoard from './components/KanbanBoard';
 import TaskEditor from './components/TaskEditor';
 import WeeklyTodo from './components/WeeklyTodo';
-import Wishlist from './components/Wishlist';
 import Notes from './components/Notes';
 import ChillTimer from './components/ChillTimer';
 import SettingsPage from './components/SettingsPage';
@@ -22,7 +22,6 @@ export default function PersonalJira() {
   const [tasks, setTasks] = useState({});
   const [projectColumns, setProjectColumns] = useState({});
   const [weeklyTasks, setWeeklyTasks] = useState({});
-  const [wishlist, setWishlist] = useState([]);
   const [notes, setNotes] = useState([]);
   const [collapsedSubtasks, setCollapsedSubtasks] = useState({});
   const [editingTask, setEditingTask] = useState(null);
@@ -61,12 +60,59 @@ export default function PersonalJira() {
     'Воскресенье': 'Sunday'
   };
 
-  // Перенести задачи с русских названий дней (старый формат) на английские
+  // Раздел Wishlist убран — заметки умеют чек-листы, и это было вторым способом делать одно и то же.
+  // Старые пункты не выбрасываем, а складываем в заметку-чеклист
+  const foldWishlistIntoNotes = (wishlistItems, notesList) => {
+    if (!Array.isArray(wishlistItems) || wishlistItems.length === 0) return notesList || [];
+
+    const stamp = Date.now();
+    const wishlistNote = {
+      id: `wishlist-${stamp}`,
+      title: 'Wishlist',
+      content: '',
+      mode: 'todo',
+      color: 'pink',
+      items: wishlistItems.map((item, index) => ({
+        id: `${stamp}-${index}`,
+        text: item.title || '',
+        checked: !!item.completed
+      })),
+      updatedAt: new Date().toLocaleString('en-US')
+    };
+
+    return [...(notesList || []), wishlistNote];
+  };
+
+  // Привести одну неделю к полному набору дней с английскими названиями
+  const normalizeWeek = (week) => {
+    const normalized = {};
+    weekDays.forEach(day => {
+      normalized[day] = [];
+    });
+    Object.entries(week || {}).forEach(([day, dayTasks]) => {
+      const enDay = RU_TO_EN_DAY[day] || day;
+      if (normalized[enDay]) normalized[enDay] = dayTasks || [];
+    });
+    return normalized;
+  };
+
+  // Старый формат — одна «вечная» неделя { Monday: [...] }, в т.ч. с русскими днями.
+  // Новый — недели по дате понедельника: { '2026-08-17': { Monday: [...] } }.
   const migrateWeeklyTasks = (weeklyTasksObj) => {
-    if (!weeklyTasksObj) return weeklyTasksObj;
+    if (!weeklyTasksObj || typeof weeklyTasksObj !== 'object') return {};
+
+    const keys = Object.keys(weeklyTasksObj);
+    if (keys.length === 0) return {};
+
+    const isFlatWeek = keys.some(key => weekDays.includes(key) || RU_TO_EN_DAY[key]);
+    if (isFlatWeek) {
+      // Существующие задачи попадают в текущую неделю
+      return { [getWeekKey()]: normalizeWeek(weeklyTasksObj) };
+    }
+
     const migrated = {};
-    Object.entries(weeklyTasksObj).forEach(([day, dayTasks]) => {
-      migrated[RU_TO_EN_DAY[day] || day] = dayTasks;
+    keys.forEach(weekKey => {
+      migrated[weekKey] = normalizeWeek(weeklyTasksObj[weekKey]);
     });
     return migrated;
   };
@@ -154,7 +200,7 @@ export default function PersonalJira() {
         }
 
         if (savedCurrentPage) {
-          setCurrentPage(savedCurrentPage);
+          setCurrentPage(savedCurrentPage === 'wishlist' ? 'notes' : savedCurrentPage);
         }
 
         let loadedTasks = {};
@@ -174,27 +220,23 @@ export default function PersonalJira() {
         }
 
         if (savedWeeklyTasks) {
-          setWeeklyTasks(migrateWeeklyTasks(JSON.parse(savedWeeklyTasks)));
+          // Результат миграции сразу сохраняем: иначе при следующем запуске
+          // старый плоский формат привязался бы уже к другой неделе
+          const migratedWeekly = migrateWeeklyTasks(JSON.parse(savedWeeklyTasks));
+          setWeeklyTasks(migratedWeekly);
+          localStorage.setItem('jira-weekly-tasks', JSON.stringify(migratedWeekly));
         } else {
-          const emptyWeekly = {};
-          weekDays.forEach(day => {
-            emptyWeekly[day] = [];
-          });
-          localStorage.setItem('jira-weekly-tasks', JSON.stringify(emptyWeekly));
-          setWeeklyTasks(emptyWeekly);
+          localStorage.setItem('jira-weekly-tasks', JSON.stringify({}));
+          setWeeklyTasks({});
         }
 
-        if (savedWishlist) {
-          setWishlist(JSON.parse(savedWishlist));
-        } else {
-          localStorage.setItem('jira-wishlist', JSON.stringify([]));
-        }
-
-        if (savedNotes) {
-          setNotes(JSON.parse(savedNotes));
-        } else {
-          localStorage.setItem('jira-notes', JSON.stringify([]));
-        }
+        const loadedNotes = savedNotes ? JSON.parse(savedNotes) : [];
+        const savedWishlistItems = savedWishlist ? JSON.parse(savedWishlist) : [];
+        const notesWithWishlist = foldWishlistIntoNotes(savedWishlistItems, loadedNotes);
+        setNotes(notesWithWishlist);
+        localStorage.setItem('jira-notes', JSON.stringify(notesWithWishlist));
+        // Ключ убираем, иначе на следующем запуске появилась бы вторая копия заметки
+        localStorage.removeItem('jira-wishlist');
 
         if (savedCollapsedSubtasks) {
           setCollapsedSubtasks(JSON.parse(savedCollapsedSubtasks));
@@ -240,11 +282,6 @@ export default function PersonalJira() {
   const saveWeeklyTasks = (newWeeklyTasks) => {
     setWeeklyTasks(newWeeklyTasks);
     safeSetItem('jira-weekly-tasks', JSON.stringify(newWeeklyTasks));
-  };
-
-  const saveWishlist = (newWishlist) => {
-    setWishlist(newWishlist);
-    safeSetItem('jira-wishlist', JSON.stringify(newWishlist));
   };
 
   const saveNotes = (newNotes) => {
@@ -306,10 +343,10 @@ export default function PersonalJira() {
     if (loading || !fileHandle || !fileConnected) return;
     clearTimeout(fileSaveTimeout.current);
     fileSaveTimeout.current = setTimeout(() => {
-      writeStateToFile(fileHandle, { projects, tasks, projectColumns, weeklyTasks, wishlist, notes, collapsedSubtasks });
+      writeStateToFile(fileHandle, { projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks });
     }, 300);
     return () => clearTimeout(fileSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, wishlist, notes, collapsedSubtasks, fileHandle, fileConnected, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, fileHandle, fileConnected, loading]);
 
   // Первичная загрузка данных из Supabase (перекрывает localStorage, если на сервере уже что-то есть)
   useEffect(() => {
@@ -326,8 +363,9 @@ export default function PersonalJira() {
           }
           if (remote.columns) saveProjectColumns(remote.columns);
           if (remote.weeklyTasks) saveWeeklyTasks(migrateWeeklyTasks(remote.weeklyTasks));
-          if (remote.wishlist) saveWishlist(remote.wishlist);
-          if (remote.notes) saveNotes(remote.notes);
+          if (remote.notes || remote.wishlist) {
+            saveNotes(foldWishlistIntoNotes(remote.wishlist, remote.notes || notes));
+          }
           if (remote.collapsedSubtasks) saveCollapsedSubtasks(remote.collapsedSubtasks);
           if (remote.settings?.darkMode !== undefined) setDarkMode(remote.settings.darkMode);
           if (remote.settings?.currentProject) setCurrentProject(remote.settings.currentProject);
@@ -357,7 +395,6 @@ export default function PersonalJira() {
           tasks,
           columns: projectColumns,
           weeklyTasks,
-          wishlist,
           notes,
           collapsedSubtasks,
           settings: { darkMode, currentProject, currentPage }
@@ -371,7 +408,7 @@ export default function PersonalJira() {
       }
     }, 500);
     return () => clearTimeout(supabaseSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, wishlist, notes, collapsedSubtasks, darkMode, currentProject, currentPage, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, darkMode, currentProject, currentPage, loading]);
 
   // Подключить (создать или выбрать существующий) JSON-файл для автосохранения
   const connectFile = async () => {
@@ -394,8 +431,9 @@ export default function PersonalJira() {
               }
               if (parsed.projectColumns) saveProjectColumns(parsed.projectColumns);
               if (parsed.weeklyTasks) saveWeeklyTasks(migrateWeeklyTasks(parsed.weeklyTasks));
-              if (parsed.wishlist) saveWishlist(parsed.wishlist);
-              if (parsed.notes) saveNotes(parsed.notes);
+              if (parsed.notes || parsed.wishlist) {
+                saveNotes(foldWishlistIntoNotes(parsed.wishlist, parsed.notes || notes));
+              }
               if (parsed.collapsedSubtasks) saveCollapsedSubtasks(parsed.collapsedSubtasks);
             }
           }
@@ -720,75 +758,68 @@ export default function PersonalJira() {
     saveTasks(newTasks);
   };
 
+  // Все операции с расписанием адресуются к конкретной неделе (weekKey — дата её понедельника)
+  const updateWeek = (weekKey, updateDays) => {
+    const week = { ...(weeklyTasks[weekKey] || normalizeWeek(null)) };
+    const updatedWeek = updateDays(week);
+    if (!updatedWeek) return;
+    saveWeeklyTasks({ ...weeklyTasks, [weekKey]: updatedWeek });
+  };
+
   // Добавить задачу в недельный список
-  const addWeeklyTask = (day, title, time) => {
+  const addWeeklyTask = (weekKey, day, title, time) => {
     if (!title.trim()) return;
-
-    const newWeeklyTasks = { ...weeklyTasks };
-    newWeeklyTasks[day].push({
-      id: Date.now().toString(),
-      title,
-      completed: false,
-      time: time || ''
-    });
-
-    saveWeeklyTasks(newWeeklyTasks);
+    updateWeek(weekKey, week => ({
+      ...week,
+      [day]: [
+        ...(week[day] || []),
+        { id: Date.now().toString(), title, completed: false, time: time || '' }
+      ]
+    }));
   };
 
   // Удалить задачу из недельного списка
-  const deleteWeeklyTask = (day, taskId) => {
-    const newWeeklyTasks = { ...weeklyTasks };
-    newWeeklyTasks[day] = newWeeklyTasks[day].filter(t => t.id !== taskId);
-    saveWeeklyTasks(newWeeklyTasks);
+  const deleteWeeklyTask = (weekKey, day, taskId) => {
+    updateWeek(weekKey, week => ({
+      ...week,
+      [day]: (week[day] || []).filter(t => t.id !== taskId)
+    }));
   };
 
   // Переключить статус недельной задачи
-  const toggleWeeklyTask = (day, taskId) => {
-    const newWeeklyTasks = { ...weeklyTasks };
-    const task = newWeeklyTasks[day].find(t => t.id === taskId);
-    if (task) {
-      task.completed = !task.completed;
-      saveWeeklyTasks(newWeeklyTasks);
-    }
+  const toggleWeeklyTask = (weekKey, day, taskId) => {
+    updateWeek(weekKey, week => ({
+      ...week,
+      [day]: (week[day] || []).map(t => (t.id === taskId ? { ...t, completed: !t.completed } : t))
+    }));
   };
 
   // Редактировать текст и время недельной задачи
-  const editWeeklyTask = (day, taskId, newTitle, newTime) => {
+  const editWeeklyTask = (weekKey, day, taskId, newTitle, newTime) => {
     if (!newTitle.trim()) return;
-    const newWeeklyTasks = { ...weeklyTasks };
-    const task = newWeeklyTasks[day].find(t => t.id === taskId);
-    if (task) {
-      task.title = newTitle;
-      task.time = newTime || '';
-      saveWeeklyTasks(newWeeklyTasks);
-    }
-  };
-
-  // Добавить пункт в вишлист
-  const addWishlistItem = (title) => {
-    if (!title.trim()) return;
-    saveWishlist([...wishlist, { id: Date.now().toString(), title, completed: false }]);
-  };
-
-  // Удалить пункт из вишлиста
-  const deleteWishlistItem = (itemId) => {
-    saveWishlist(wishlist.filter(item => item.id !== itemId));
-  };
-
-  // Переключить статус пункта вишлиста
-  const toggleWishlistItem = (itemId) => {
-    saveWishlist(wishlist.map(item => (item.id === itemId ? { ...item, completed: !item.completed } : item)));
-  };
-
-  // Редактировать текст пункта вишлиста
-  const editWishlistItem = (itemId, newTitle) => {
-    if (!newTitle.trim()) return;
-    saveWishlist(wishlist.map(item => (item.id === itemId ? { ...item, title: newTitle } : item)));
+    updateWeek(weekKey, week => ({
+      ...week,
+      [day]: (week[day] || []).map(t =>
+        t.id === taskId ? { ...t, title: newTitle, time: newTime || '' } : t
+      )
+    }));
   };
 
   // Создать новую заметку
   const addNote = () => {
-    saveNotes([...notes, { id: Date.now().toString(), content: '', updatedAt: new Date().toLocaleString('en-US') }]);
+    saveNotes([
+      ...notes,
+      {
+        id: Date.now().toString(),
+        title: '',
+        content: '',
+        items: [],
+        mode: 'text',
+        color: 'default',
+        images: [],
+        updatedAt: new Date().toLocaleString('en-US')
+      }
+    ]);
   };
 
   // Отредактировать содержимое заметки
@@ -799,6 +830,93 @@ export default function PersonalJira() {
   // Удалить заметку
   const deleteNote = (noteId) => {
     saveNotes(notes.filter(n => n.id !== noteId));
+  };
+
+  // Переименовать заметку
+  const updateNoteTitle = (noteId, title) => {
+    saveNotes(notes.map(n => (n.id === noteId ? { ...n, title, updatedAt: new Date().toLocaleString('en-US') } : n)));
+  };
+
+  const stampNote = (noteId, patch) =>
+    saveNotes(notes.map(n => (
+      n.id === noteId
+        ? { ...n, ...patch, updatedAt: new Date().toLocaleString('en-US') }
+        : n
+    )));
+
+  // Переключить заметку между текстом, чек-листом и списком.
+  // Строки текста становятся пунктами и наоборот — ничего не теряется при переключении
+  const setNoteMode = (noteId, mode) => {
+    const note = notes.find(n => n.id === noteId);
+    if (!note || (note.mode || 'text') === mode) return;
+
+    const wasText = (note.mode || 'text') === 'text';
+    const isText = mode === 'text';
+
+    if (wasText && !isText) {
+      const items = (note.content || '')
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map((text, index) => ({ id: `${Date.now()}-${index}`, text, checked: false }));
+      stampNote(noteId, { mode, items: items.length ? items : (note.items || []), content: '' });
+      return;
+    }
+
+    if (!wasText && isText) {
+      const lines = (note.items || []).map(item => item.text).filter(Boolean).join('\n');
+      stampNote(noteId, { mode, content: lines || note.content || '', items: [] });
+      return;
+    }
+
+    // todo ↔ bullet: меняется только отображение
+    stampNote(noteId, { mode });
+  };
+
+  // Добавить пункт в список заметки
+  const addNoteItem = (noteId, text) => {
+    if (!text.trim()) return;
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    stampNote(noteId, {
+      items: [...(note.items || []), { id: Date.now().toString(), text: text.trim(), checked: false }]
+    });
+  };
+
+  // Изменить пункт списка (текст или отметку)
+  const updateNoteItem = (noteId, itemId, patch) => {
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    stampNote(noteId, {
+      items: (note.items || []).map(item => (item.id === itemId ? { ...item, ...patch } : item))
+    });
+  };
+
+  // Удалить пункт списка
+  const deleteNoteItem = (noteId, itemId) => {
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    stampNote(noteId, { items: (note.items || []).filter(item => item.id !== itemId) });
+  };
+
+  // Прикрепить картинки к заметке (уже сжатые в data URL)
+  const addNoteImages = (noteId, images) => {
+    if (!images.length) return;
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    stampNote(noteId, { images: [...(note.images || []), ...images] });
+  };
+
+  // Убрать одну картинку из заметки
+  const deleteNoteImage = (noteId, index) => {
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    stampNote(noteId, { images: (note.images || []).filter((_, i) => i !== index) });
+  };
+
+  // Покрасить заметку (updatedAt не меняем — это оформление, а не содержимое)
+  const setNoteColor = (noteId, color) => {
+    saveNotes(notes.map(n => (n.id === noteId ? { ...n, color } : n)));
   };
 
   // Заблюрить/показать текст заметки (updatedAt не меняем — содержимое не тронуто)
@@ -831,10 +949,6 @@ export default function PersonalJira() {
     });
 
     const defaultProject = { id: 'default', name: 'PROJECT' };
-    const emptyWeekly = {};
-    weekDays.forEach(day => {
-      emptyWeekly[day] = [];
-    });
 
     setEditingTask(null);
     setHasUnsavedChanges(false);
@@ -849,8 +963,7 @@ export default function PersonalJira() {
     saveProjects([defaultProject]);
     saveTasks({});
     saveProjectColumns({});
-    saveWeeklyTasks(emptyWeekly);
-    saveWishlist([]);
+    saveWeeklyTasks({});
     saveNotes([]);
     saveCollapsedSubtasks({});
     setDarkMode(false);
@@ -876,9 +989,7 @@ export default function PersonalJira() {
         fileConnected={fileConnected}
         fileHandle={fileHandle}
         fileName={fileName}
-        connectFile={connectFile}
         reconnectFile={reconnectFile}
-        disconnectFile={disconnectFile}
         supabaseConfigured={isSupabaseConfigured}
         supabaseStatus={supabaseStatus}
         supabaseError={supabaseError}
@@ -950,20 +1061,19 @@ export default function PersonalJira() {
           darkMode={darkMode}
           weekDays={weekDays}
         />
-      ) : currentPage === 'wishlist' ? (
-        <Wishlist
-          wishlist={wishlist}
-          addWishlistItem={addWishlistItem}
-          deleteWishlistItem={deleteWishlistItem}
-          toggleWishlistItem={toggleWishlistItem}
-          editWishlistItem={editWishlistItem}
-          darkMode={darkMode}
-        />
       ) : currentPage === 'notes' ? (
         <Notes
           notes={notes}
           addNote={addNote}
           updateNote={updateNote}
+          updateNoteTitle={updateNoteTitle}
+          setNoteColor={setNoteColor}
+          setNoteMode={setNoteMode}
+          addNoteItem={addNoteItem}
+          updateNoteItem={updateNoteItem}
+          deleteNoteItem={deleteNoteItem}
+          addNoteImages={addNoteImages}
+          deleteNoteImage={deleteNoteImage}
           deleteNote={deleteNote}
           toggleNoteBlur={toggleNoteBlur}
           reorderNotes={reorderNotes}
@@ -980,6 +1090,16 @@ export default function PersonalJira() {
           getProjectColumns={getProjectColumns}
           updateProjectColumns={updateProjectColumns}
           resetAllData={resetAllData}
+          supabaseConfigured={isSupabaseConfigured}
+          supabaseStatus={supabaseStatus}
+          supabaseError={supabaseError}
+          fileSupported={fileSupported}
+          fileConnected={fileConnected}
+          fileHandle={fileHandle}
+          fileName={fileName}
+          connectFile={connectFile}
+          reconnectFile={reconnectFile}
+          disconnectFile={disconnectFile}
         />
       )}
     </div>

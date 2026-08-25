@@ -1,42 +1,18 @@
 import React from 'react';
+import { AlertCircle } from 'lucide-react';
 
-export default function FileSyncStatus({
-  darkMode,
-  fileSupported,
-  fileConnected,
-  fileHandle,
-  fileName,
-  connectFile,
-  reconnectFile,
-  disconnectFile
-}) {
+// Показываем только один случай — доступ к файлу автосохранения потерян и его надо вернуть.
+// Подключение и отключение файла переехали в Settings → Sync.
+export default function FileSyncStatus({ darkMode, fileSupported, fileConnected, fileHandle, fileName, reconnectFile }) {
+  const needsPermission = fileSupported && fileHandle && !fileConnected;
+  if (!needsPermission) return null;
+
   return (
-    <div className={`p-4 border-b text-xs ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-      {!fileSupported ? (
-        <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
-          File autosave is not supported in this browser (Chrome/Edge required)
-        </p>
-      ) : fileConnected ? (
-        <div className="flex items-center justify-between gap-2">
-          <span className={`truncate ${darkMode ? 'text-gray-300' : 'text-gray-600'}`} title={fileName}>
-            📄 {fileName}
-          </span>
-          <button
-            onClick={disconnectFile}
-            className={darkMode ? 'text-red-400 hover:underline flex-shrink-0' : 'text-red-600 hover:underline flex-shrink-0'}
-          >
-            Disconnect
-          </button>
-        </div>
-      ) : fileHandle ? (
-        <button onClick={reconnectFile} className="text-green-500 hover:underline">
-          Allow access to {fileName}
-        </button>
-      ) : (
-        <button onClick={connectFile} className="text-green-500 hover:underline">
-          📁 Connect a file for autosave
-        </button>
-      )}
+    <div className={`px-4 py-2.5 border-b text-xs ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+      <button onClick={reconnectFile} className="flex items-center gap-1.5 text-amber-500 hover:underline press">
+        <AlertCircle size={13} className="flex-shrink-0" />
+        <span className="truncate">Restore access to {fileName}</span>
+      </button>
     </div>
   );
 }
