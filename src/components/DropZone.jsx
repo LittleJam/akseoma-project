@@ -13,6 +13,7 @@ export default function DropZone({
   reorderTasksInColumn,
   sortColumnByPriority,
   toggleTaskSubtask,
+  promoteSubtaskToTask,
   collapsedSubtasks,
   toggleSubtasksCollapsed,
   getTaskNumber,
@@ -97,6 +98,7 @@ export default function DropZone({
                   index={subIndex}
                   parentDisplayId={parentDisplayId}
                   onToggle={() => toggleTaskSubtask(task.id, column.id, subtask.id)}
+                  onPromote={() => promoteSubtaskToTask(task.id, subtask.id)}
                   darkMode={darkMode}
                 />
               ))}

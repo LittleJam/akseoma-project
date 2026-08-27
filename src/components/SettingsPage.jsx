@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, LogOut, ShieldCheck } from 'lucide-react';
 import { COLUMN_COLORS } from '../constants';
 import { THEME_OPTIONS } from '../themes';
+import { FEATURES, DEFAULT_FLAGS } from '../auth';
 
 export default function SettingsPage({
   darkMode,
   theme,
   setTheme,
+  user,
+  allowed = () => true,
+  featureFlags = DEFAULT_FLAGS,
+  setFeatureFlags,
+  onSignOut,
   projects,
   currentProject,
   getProjectColumns,
@@ -90,7 +96,68 @@ export default function SettingsPage({
       <div className="max-w-3xl mx-auto p-3 sm:p-8 space-y-6">
         <h2 className={`text-xl sm:text-2xl font-semibold ${textClass}`}>Settings</h2>
 
+        {/* Кто вошёл */}
+        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
+          <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            Account
+          </h3>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <div className={`text-sm font-medium ${labelClass}`}>{user?.name}</div>
+              <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                {user?.username} · {user?.role === 'admin' ? 'administrator' : 'user'}
+              </p>
+            </div>
+            <button
+              onClick={onSignOut}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium border press ${
+                darkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <LogOut size={16} /> Sign out
+            </button>
+          </div>
+        </div>
+
+        {/* Доступы: видит и меняет только админ */}
+        {user?.role === 'admin' && setFeatureFlags && (
+          <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
+            <h3 className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wide mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              <ShieldCheck size={14} /> Features for users
+            </h3>
+            <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              Applies to everyone except administrators — they always see everything.
+            </p>
+
+            <div className="space-y-1">
+              {FEATURES.map(feature => {
+                const enabled = { ...DEFAULT_FLAGS, ...featureFlags }[feature.key] !== false;
+                return (
+                  <label
+                    key={feature.key}
+                    className={`flex items-start gap-3 p-2 rounded-lg cursor-pointer ${
+                      darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      onChange={() => setFeatureFlags({ ...DEFAULT_FLAGS, ...featureFlags, [feature.key]: !enabled })}
+                      className="w-5 h-5 sm:w-4 sm:h-4 mt-0.5 cursor-pointer flex-shrink-0 accent-green-700"
+                    />
+                    <span className="min-w-0">
+                      <span className={`block text-sm font-medium ${labelClass}`}>{feature.label}</span>
+                      <span className={`block text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{feature.hint}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Theme */}
+        {allowed('themes') && (
         <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
           <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Theme
@@ -127,8 +194,10 @@ export default function SettingsPage({
                   : 'Wizard is Hogwarts at night, Surf is the Indian ocean, Millenial is Windows XP.'}
           </p>
         </div>
+        )}
 
         {/* Sync — полная картина здесь; в сайдбаре остаются только проблемы */}
+        {allowed('sync') && (
         <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
           <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Sync
@@ -186,8 +255,10 @@ export default function SettingsPage({
             </div>
           </div>
         </div>
+        )}
 
         {/* Project columns */}
+        {allowed('kanban') && (
         <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
           <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Project columns
@@ -283,8 +354,10 @@ export default function SettingsPage({
             </div>
           )}
         </div>
+        )}
 
         {/* Reset */}
+        {allowed('reset') && (
         <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
           <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Reset
@@ -330,6 +403,7 @@ export default function SettingsPage({
             </>
           )}
         </div>
+        )}
       </div>
     </div>
   );

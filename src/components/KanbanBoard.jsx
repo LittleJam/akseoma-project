@@ -17,6 +17,7 @@ export default function KanbanBoard({
   reorderTasksInColumn,
   sortColumnByPriority,
   toggleTaskSubtask,
+  promoteSubtaskToTask,
   collapsedSubtasks,
   toggleSubtasksCollapsed,
   darkMode,
@@ -78,6 +79,7 @@ export default function KanbanBoard({
                     reorderTasksInColumn={reorderTasksInColumn}
                     sortColumnByPriority={sortColumnByPriority}
                     toggleTaskSubtask={toggleTaskSubtask}
+                    promoteSubtaskToTask={promoteSubtaskToTask}
                     collapsedSubtasks={collapsedSubtasks}
                     toggleSubtasksCollapsed={toggleSubtasksCollapsed}
                     getTaskNumber={getTaskNumber}

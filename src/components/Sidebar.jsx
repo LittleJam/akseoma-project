@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, X, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
 import { themeIcon } from '../themes';
 import FileSyncStatus from './FileSyncStatus';
 import CloudSyncStatus from './CloudSyncStatus';
@@ -7,6 +7,9 @@ import CloudSyncStatus from './CloudSyncStatus';
 export default function Sidebar({
   darkMode,
   theme,
+  user,
+  allowed = () => true,
+  onSignOut,
   fileSupported,
   fileConnected,
   fileHandle,
@@ -83,6 +86,7 @@ export default function Sidebar({
 
       {/* Навигация */}
       <div className="p-4 space-y-2 border-b border-gray-300">
+        {allowed('kanban') && (
         <button
           onClick={() => {
             if (currentPage === 'kanban') {
@@ -102,8 +106,9 @@ export default function Sidebar({
           <span className="flex-1 text-left">Projects</span>
           {currentPage === 'kanban' && (projectsCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
         </button>
+        )}
 
-        {currentPage === 'kanban' && (
+        {allowed('kanban') && currentPage === 'kanban' && (
           <div className="mb-4 pl-4">
             {!projectsCollapsed && projects.map(project => (
               <div
@@ -153,6 +158,7 @@ export default function Sidebar({
           </div>
         )}
 
+        {allowed('weekly') && (
         <button
           onClick={() => setCurrentPage('weekly')}
           className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press ${
@@ -163,7 +169,9 @@ export default function Sidebar({
         >
           <ScheduleIcon size={18} /> Schedule
         </button>
+        )}
 
+        {allowed('notes') && (
         <button
           onClick={() => setCurrentPage('notes')}
           className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press ${
@@ -174,7 +182,9 @@ export default function Sidebar({
         >
           <NotesIcon size={18} /> Notes
         </button>
+        )}
 
+        {allowed('chill') && (
         <button
           onClick={() => setCurrentPage('chill')}
           className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press ${
@@ -185,7 +195,30 @@ export default function Sidebar({
         >
           <ChillIcon size={18} /> Chill
         </button>
+        )}
       </div>
+
+      {/* Кто вошёл и выход */}
+      {user && (
+        <div className={`px-4 py-3 flex items-center gap-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="flex-1 min-w-0">
+            <div className={`text-sm font-medium truncate ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+              {user.name}
+            </div>
+            <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              {user.role === 'admin' ? 'Admin' : 'User'}
+            </div>
+          </div>
+          <button
+            onClick={onSignOut}
+            title="Sign out"
+            aria-label="Sign out"
+            className={`p-2 rounded-lg press-icon flex-shrink-0 ${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-4">
         {currentPage === 'kanban' && (

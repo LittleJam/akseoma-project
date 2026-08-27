@@ -26,6 +26,7 @@ export default function TaskEditor({
   projects,
   currentProjectId,
   getProjectColumns,
+  projectTasks = [],
   onMoveToProject
 }) {
   const [title, setTitle] = useState(task.title);
@@ -33,6 +34,7 @@ export default function TaskEditor({
   const [priority, setPriority] = useState(task.priority);
   const [images, setImages] = useState(task.images || []);
   const [subtasks, setSubtasks] = useState(task.subtasks || []);
+  const [parentTaskId, setParentTaskId] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [editingSubtaskId, setEditingSubtaskId] = useState(null);
   const [editingSubtaskText, setEditingSubtaskText] = useState('');
@@ -69,10 +71,11 @@ export default function TaskEditor({
       description !== getDescriptionText(task.description) ||
       priority !== task.priority ||
       JSON.stringify(images) !== JSON.stringify(task.images || []) ||
-      JSON.stringify(subtasks) !== JSON.stringify(task.subtasks || []);
+      JSON.stringify(subtasks) !== JSON.stringify(task.subtasks || []) ||
+      Boolean(parentTaskId);
 
     onUnsavedChange(hasChanges);
-  }, [title, description, priority, images, subtasks, task, onUnsavedChange]);
+  }, [title, description, priority, images, subtasks, parentTaskId, task, onUnsavedChange]);
 
   const addSubtask = () => {
     if (!newSubtaskTitle.trim()) return;
@@ -159,6 +162,19 @@ export default function TaskEditor({
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Подзадача хранит только заголовок и галочку, поэтому остальное при переезде пропадёт.
+  // Считаем это по текущему состоянию редактора, а не по сохранённой задаче
+  const historyCount = (task.history || []).length;
+  const lostParts = [
+    description.trim() ? 'the description' : null,
+    images.length ? `${images.length} image${images.length > 1 ? 's' : ''}` : null,
+    historyCount ? `the history (${historyCount} ${historyCount > 1 ? 'entries' : 'entry'})` : null
+  ].filter(Boolean);
+
+  const lostWarning = lostParts.length
+    ? `${lostParts.join(', ').replace(/, ([^,]*)$/, ' and $1')} will be lost — a subtask keeps only its title.`
+    : '';
+
   const handleSave = () => {
     const now = new Date();
     const changes = {};
@@ -177,15 +193,20 @@ export default function TaskEditor({
       }];
     }
 
-    onSave({
-      ...task,
-      title,
-      description: { content: description, editorState: textFormat },
-      priority,
-      images,
-      subtasks,
-      history: newHistory
-    });
+    onSave(
+      {
+        ...task,
+        title,
+        description: { content: description, editorState: textFormat },
+        priority,
+        images,
+        subtasks,
+        history: newHistory
+      },
+      false,
+      // Родителя выбрали — задача уедет к нему тем же сохранением
+      parentTaskId
+    );
   };
 
   return (
@@ -439,6 +460,37 @@ export default function TaskEditor({
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Превратить задачу в подзадачу другой задачи */}
+            {projectTasks.length > 0 && (
+              <div>
+                <label className={`block text-sm font-medium ${labelClass} mb-2`}>Make it a subtask</label>
+                <select
+                  value={parentTaskId}
+                  onChange={e => setParentTaskId(e.target.value)}
+                  className={`w-full min-w-0 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
+                >
+                  <option value="">Keep it a task</option>
+                  {projectTasks.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.taskId ? `${t.taskId} · ` : ''}{t.title}
+                    </option>
+                  ))}
+                </select>
+                <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  {parentTaskId
+                    ? 'On save the task becomes a subtask of the selected one; its own subtasks move along with it.'
+                    : 'Pick a parent task and press Save to move this task under it.'}
+                </p>
+
+                {/* Предупреждаем ровно о том, что действительно пропадёт */}
+                {parentTaskId && lostWarning && (
+                  <p className={`text-xs mt-1 font-medium ${darkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                    {lostWarning.charAt(0).toUpperCase() + lostWarning.slice(1)}
+                  </p>
+                )}
               </div>
             )}
 

@@ -316,63 +316,39 @@ html.theme-wizard .lift:hover {
   box-shadow: 0 0 20px rgba(238, 186, 48, 0.2);
 }
 
-/* ═══ SURF ═══ Океанская палитра: небо, бирюза, песок и коралл.
-   Тема светлая, поэтому переопределяем светлый набор утилит */
+/* ═══ SURF ═══ Минималистичный океан: светлое полотно, один спокойный акцент,
+   тонкие линии и единственная волна у нижней кромки */
 html.theme-surf {
-  --sf-ink: #063a4e;          /* глубокая вода — основной текст */
-  --sf-ink-dim: #3f7c8e;
-  --sf-ink-faint: #8ab6c2;
-  --sf-aqua: #0e9b95;         /* лагуна — акцент вместо зелёного */
-  --sf-aqua-deep: #0a726e;
-  --sf-coral: #f4693f;        /* закатный коралл — предупреждения и удаление */
-  --sf-surface: rgba(255, 255, 255, 0.93);
-  --sf-surface-2: rgba(255, 255, 255, 0.97);
-  --sf-sand: rgba(253, 240, 218, 0.92);
-  --sf-line: rgba(14, 155, 149, 0.22);
+  --sf-ink: #0b3b45;          /* глубокая вода — основной текст */
+  --sf-ink-dim: #5c8996;
+  --sf-ink-faint: #9dc0c8;
+  --sf-aqua: #0f8fa3;         /* единственный акцент */
+  --sf-aqua-deep: #0b7080;
+  --sf-coral: #e2705a;        /* только предупреждения и удаление */
+  --sf-surface: #ffffff;
+  --sf-surface-2: #f4fafb;
+  --sf-sand: #f1f8f9;
+  --sf-line: rgba(11, 59, 69, 0.09);
 }
 
 html.theme-surf body {
-  /* Рассвет над океаном: тёплое небо, бирюзовая лагуна и глубокая вода */
+  /* Спокойный переход от воздуха к воде, без лишних оттенков */
   background:
-    linear-gradient(180deg,
-      #fff6ea 0%,
-      #ffe7d2 9%,
-      #dff3ef 28%,
-      #97e2d8 48%,
-      #3cbcb6 66%,
-      #12849a 84%,
-      #084f6b 100%),
-    #fff6ea;
+    linear-gradient(180deg, #fcfeff 0%, #f3fbfc 42%, #e6f4f7 74%, #d8edf1 100%),
+    #fcfeff;
   color: var(--sf-ink);
-  /* Скруглённые гротески: линии мягче, чем у системного шрифта */
+  /* Мягкий гротеск: линии спокойные, без декоративности */
   font-family: ui-rounded, 'SF Pro Rounded', 'Avenir Next Rounded', Avenir, 'Nunito',
-    'Quicksand', 'Segoe UI', system-ui, sans-serif;
-  letter-spacing: 0.01em;
+    'Segoe UI', system-ui, sans-serif;
+}
+
+html.theme-surf .bg-gray-50 {
+  background-color: transparent;
 }
 
 html.theme-surf .bg-white {
   background-color: var(--sf-surface);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 6px 20px rgba(8, 74, 97, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.65);
-}
-
-/* Полотно страницы — лёгкая вуаль поверх воды: волна видна, текст читается */
-html.theme-surf .bg-gray-50 {
-  background-image: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.42) 0%,
-    rgba(255, 255, 255, 0.24) 42%,
-    rgba(255, 255, 255, 0.06) 68%,
-    rgba(255, 255, 255, 0) 82%
-  );
-  background-color: transparent;
-}
-
-/* Крупный текст лежит прямо на фоне, поэтому получает мягкое свечение */
-html.theme-surf h1,
-html.theme-surf h2,
-html.theme-surf h3 {
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+  box-shadow: 0 1px 2px rgba(11, 59, 69, 0.05), 0 12px 28px -18px rgba(11, 59, 69, 0.35);
 }
 
 html.theme-surf .bg-gray-100,
@@ -381,7 +357,7 @@ html.theme-surf .bg-gray-200 {
 }
 
 html.theme-surf .bg-gray-300 {
-  background-color: rgba(10, 162, 184, 0.16);
+  background-color: rgba(15, 143, 163, 0.14);
 }
 
 html.theme-surf .bg-green-800,
@@ -389,12 +365,12 @@ html.theme-surf .bg-green-900,
 html.theme-surf .animate-toast-in {
   background-color: var(--sf-aqua);
   color: #ffffff;
-  box-shadow: 0 6px 16px rgba(10, 162, 184, 0.28);
+  box-shadow: none;
 }
 
 html.theme-surf .bg-green-50,
 html.theme-surf .bg-green-100 {
-  background-color: rgba(10, 162, 184, 0.12);
+  background-color: rgba(15, 143, 163, 0.09);
 }
 
 html.theme-surf .bg-red-600,
@@ -431,16 +407,30 @@ html.theme-surf .text-red-600 {
   color: var(--sf-coral);
 }
 
+/* Отметка «важное» — приглушённый песочный янтарь вместо кричащего */
+html.theme-surf .text-amber-500 {
+  color: #d9973a;
+}
+
+html.theme-surf .bg-amber-50 {
+  background-color: #fdf6e9;
+}
+
+html.theme-surf .border-amber-400 {
+  border-color: #e8b062;
+}
+
 html.theme-surf .placeholder-gray-300::placeholder,
 html.theme-surf .placeholder-gray-400::placeholder {
   color: var(--sf-ink-faint);
 }
 
 html.theme-surf ::selection {
-  background: rgba(10, 162, 184, 0.25);
+  background: rgba(15, 143, 163, 0.18);
   color: var(--sf-ink);
 }
 
+/* Границы — волосяные линии одного тона */
 html.theme-surf .border-gray-200,
 html.theme-surf .border-gray-300,
 html.theme-surf .border-gray-400,
@@ -461,11 +451,11 @@ html.theme-surf input[type='checkbox'] {
 
 html.theme-surf [class*='hover\:bg-gray-']:hover,
 html.theme-surf [class*='hover\:bg-green-']:hover {
-  background-color: rgba(10, 162, 184, 0.12);
+  background-color: rgba(15, 143, 163, 0.08);
 }
 
 html.theme-surf [class*='hover\:bg-red-']:hover {
-  background-color: rgba(244, 102, 74, 0.14);
+  background-color: rgba(226, 112, 90, 0.1);
 }
 
 html.theme-surf [class*='hover\:text-gray-']:hover,
@@ -481,26 +471,27 @@ html.theme-surf :focus-visible {
   outline-color: var(--sf-aqua);
 }
 
-/* Всё скругляем сильнее — форма темы такая же плавная, как её цвета */
+/* Скругления заметные, но не «пилюльные» */
 html.theme-surf .rounded {
-  border-radius: 0.7rem;
+  border-radius: 0.5rem;
 }
 
 html.theme-surf .rounded-lg {
-  border-radius: 1rem;
+  border-radius: 0.75rem;
 }
 
 html.theme-surf .rounded-xl {
-  border-radius: 1.4rem;
+  border-radius: 1rem;
 }
 
+/* Наведение — короткий подъём вместо свечения */
 html.theme-surf .lift:hover {
-  box-shadow: 0 10px 24px rgba(10, 118, 140, 0.14);
+  box-shadow: 0 1px 2px rgba(11, 59, 69, 0.05), 0 18px 30px -20px rgba(11, 59, 69, 0.4);
 }
 
 html.theme-surf .press:hover,
 html.theme-surf .press-icon:hover {
-  filter: drop-shadow(0 2px 6px rgba(10, 162, 184, 0.35));
+  filter: none;
 }
 
 /* ═══ MILLENIAL ═══ Windows XP, 2001: Luna-синий, бежевые панели, Tahoma,
@@ -818,7 +809,7 @@ html.theme-millenial :focus-visible {
   background: radial-gradient(circle at 40% 45%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.55) 55%, transparent 72%);
 }
 
-/* Сцена с волной — один широкий SVG у нижней кромки (компонент ThemeFx) */
+/* Одна спокойная волна у нижней кромки (компонент ThemeFx) */
 .fx-ocean {
   position: fixed;
   left: 0;
@@ -829,35 +820,7 @@ html.theme-millenial :focus-visible {
   display: block;
   width: 100%;
   height: auto;
-  min-height: 38vh;
-}
-
-/* Пена у самой кромки берега */
-.fx-foam {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 7vh;
-  pointer-events: none;
-  z-index: -1;
-  background:
-    radial-gradient(60% 130% at 16% 100%, rgba(255, 255, 255, 0.8), transparent 62%),
-    radial-gradient(50% 130% at 50% 100%, rgba(255, 255, 255, 0.62), transparent 62%),
-    radial-gradient(55% 130% at 86% 100%, rgba(255, 255, 255, 0.72), transparent 62%);
-}
-
-/* Блик солнца на воде */
-.fx-sunglare {
-  position: fixed;
-  top: -10%;
-  right: -5%;
-  width: 46vw;
-  height: 46vw;
-  border-radius: 9999px;
-  pointer-events: none;
-  z-index: -1;
-  background: radial-gradient(circle, rgba(255, 236, 179, 0.5) 0%, rgba(255, 236, 179, 0.14) 45%, transparent 70%);
+  min-height: 26vh;
 }
 
 /* Цветная лента факультетов поверх страницы в теме Wizard */
@@ -901,10 +864,10 @@ html.theme-millenial :focus-visible {
   height: 12px;
   margin: -6px 0 0 -6px;
   border-radius: 9999px;
-  border: 2px solid rgba(10, 162, 184, 0.55);
+  border: 1.5px solid rgba(15, 143, 163, 0.4);
   pointer-events: none;
   z-index: 60;
-  animation: fx-ripple 620ms ease-out forwards;
+  animation: fx-ripple 520ms ease-out forwards;
 }
 
 @keyframes fx-spark {

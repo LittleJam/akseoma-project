@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from './utils/supabaseClient';
 import { loadRemoteState, saveRemoteState } from './utils/supabaseStorage';
 import { DEFAULT_COLUMNS, WEEK_DAYS, STORAGE_KEYS } from './constants';
 import { DARK_THEMES, THEME_COLORS } from './themes';
+import { AUTH_KEY, FLAGS_KEY, DEFAULT_FLAGS, PAGE_FEATURES, canUse } from './auth';
 import { getWeekKey } from './utils/weeks';
 import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
@@ -18,6 +19,7 @@ import Notes from './components/Notes';
 import ChillTimer from './components/ChillTimer';
 import SettingsPage from './components/SettingsPage';
 import ThemeFx from './components/ThemeFx';
+import LoginScreen from './components/LoginScreen';
 
 export default function PersonalJira() {
   const [projects, setProjects] = useState([]);
@@ -30,6 +32,9 @@ export default function PersonalJira() {
   const [editingTask, setEditingTask] = useState(null);
   // На телефоне боковая панель выезжает поверх содержимого, на широком экране всегда на месте
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Кто вошёл и что разрешено обычному пользователю (админу — всё)
+  const [user, setUser] = useState(null);
+  const [featureFlags, setFeatureFlags] = useState(DEFAULT_FLAGS);
   const [newProjectName, setNewProjectName] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskColumn, setNewTaskColumn] = useState('idea');
@@ -187,6 +192,11 @@ export default function PersonalJira() {
         const savedCollapsedSubtasks = localStorage.getItem('jira-collapsed-subtasks');
         const savedDarkMode = localStorage.getItem('jira-darkMode');
         const savedTheme = localStorage.getItem('jira-theme');
+        const savedAuth = localStorage.getItem(AUTH_KEY);
+        const savedFlags = localStorage.getItem(FLAGS_KEY);
+
+        if (savedAuth) setUser(JSON.parse(savedAuth));
+        if (savedFlags) setFeatureFlags({ ...DEFAULT_FLAGS, ...JSON.parse(savedFlags) });
         const savedCurrentProject = localStorage.getItem('jira-currentProject');
         const savedCurrentPage = localStorage.getItem('jira-currentPage');
 
@@ -316,6 +326,12 @@ export default function PersonalJira() {
     saveProjectColumns({ ...projectColumns, [projectId]: newColumns });
   };
 
+  // Сохранение доступов: список общий для всех устройств, поэтому уезжает и в облако
+  useEffect(() => {
+    if (loading) return;
+    safeSetItem(FLAGS_KEY, JSON.stringify(featureFlags));
+  }, [featureFlags, loading]);
+
   // Сохранение темы
   useEffect(() => {
     localStorage.setItem('jira-theme', JSON.stringify(theme));
@@ -387,6 +403,7 @@ export default function PersonalJira() {
             saveNotes(foldWishlistIntoNotes(remote.wishlist, remote.notes || notes));
           }
           if (remote.collapsedSubtasks) saveCollapsedSubtasks(remote.collapsedSubtasks);
+          if (remote.settings?.featureFlags) setFeatureFlags({ ...DEFAULT_FLAGS, ...remote.settings.featureFlags });
           if (remote.settings?.theme) setTheme(remote.settings.theme);
           else if (remote.settings?.darkMode !== undefined) setTheme(remote.settings.darkMode ? 'dark' : 'light');
           if (remote.settings?.currentProject) setCurrentProject(remote.settings.currentProject);
@@ -418,7 +435,7 @@ export default function PersonalJira() {
           weeklyTasks,
           notes,
           collapsedSubtasks,
-          settings: { darkMode, theme, currentProject, currentPage }
+          settings: { darkMode, theme, featureFlags, currentProject, currentPage }
         });
         setSupabaseStatus('synced');
         setSupabaseError(null);
@@ -429,7 +446,7 @@ export default function PersonalJira() {
       }
     }, 500);
     return () => clearTimeout(supabaseSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, currentProject, currentPage, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, featureFlags, currentProject, currentPage, loading]);
 
   // Подключить (создать или выбрать существующий) JSON-файл для автосохранения
   const connectFile = async () => {
@@ -657,25 +674,30 @@ export default function PersonalJira() {
     }
   };
 
-  // Сохранить и закрыть редактор
-  const handleTaskSave = (updatedTask, skipClose) => {
+  // Сохранить и закрыть редактор. Третьим аргументом редактор передаёт выбранного
+  // родителя: тогда та же кнопка Save и правки применит, и задачу сделает подзадачей
+  const handleTaskSave = (updatedTask, skipClose, parentTaskId) => {
     const newTasks = { ...tasks };
+    const found = findTaskLocation(newTasks, updatedTask.id);
+    if (!found) return;
 
-    for (let column of getProjectColumns(currentProject)) {
-      if (newTasks[currentProject]?.[column.id]) {
-        const index = newTasks[currentProject][column.id].findIndex(
-          t => t.id === updatedTask.id
-        );
-        if (index !== -1) {
-          newTasks[currentProject][column.id][index] = updatedTask;
-          saveTasks(newTasks);
-          if (!skipClose) {
-            setEditingTask(null);
-            setHasUnsavedChanges(false);
-          }
-          return;
-        }
-      }
+    newTasks[currentProject][found.columnId] = newTasks[currentProject][found.columnId]
+      .map(t => (t.id === updatedTask.id ? updatedTask : t));
+
+    const converted = applyConvertToSubtask(newTasks, updatedTask.id, parentTaskId);
+
+    saveTasks(newTasks);
+
+    if (converted && collapsedSubtasks[updatedTask.id]) {
+      const newCollapsed = { ...collapsedSubtasks };
+      delete newCollapsed[updatedTask.id];
+      saveCollapsedSubtasks(newCollapsed);
+    }
+
+    // После переезда редактировать больше нечего — задача стала подзадачей
+    if (!skipClose || converted) {
+      setEditingTask(null);
+      setHasUnsavedChanges(false);
     }
   };
 
@@ -725,6 +747,81 @@ export default function PersonalJira() {
     saveTasks(newTasks);
     setEditingTask(null);
     setHasUnsavedChanges(false);
+  };
+
+  // Найти задачу по id в текущем проекте: колонка, позиция и сам объект
+  const findTaskLocation = (source, taskId) => {
+    for (const column of getProjectColumns(currentProject)) {
+      const list = source[currentProject]?.[column.id];
+      if (!list) continue;
+      const index = list.findIndex(t => t.id === taskId);
+      if (index !== -1) return { columnId: column.id, index, task: list[index] };
+    }
+    return null;
+  };
+
+  // Подзадача становится самостоятельной задачей и встаёт сразу под родителем
+  const promoteSubtaskToTask = (parentTaskId, subtaskId) => {
+    const newTasks = { ...tasks };
+    const parent = findTaskLocation(newTasks, parentTaskId);
+    if (!parent) return;
+
+    const subtask = (parent.task.subtasks || []).find(s => s.id === subtaskId);
+    if (!subtask) return;
+
+    parent.task.subtasks = (parent.task.subtasks || []).filter(s => s.id !== subtaskId);
+
+    const now = new Date();
+    const projectCode = getProjectCode(projects.find(p => p.id === currentProject)?.name);
+    const promoted = {
+      id: Date.now().toString(),
+      taskId: `${projectCode}-${getNextTaskNumber(newTasks, currentProject)}`,
+      title: subtask.title,
+      description: { content: '', editorState: null },
+      priority: parent.task.priority || 'medium',
+      images: [],
+      subtasks: [],
+      createdAt: now.toLocaleDateString('en-US'),
+      history: [
+        {
+          timestamp: now.toLocaleString('en-US'),
+          action: `Promoted from subtask of ${parent.task.taskId}`,
+          changes: { title: subtask.title }
+        }
+      ]
+    };
+
+    newTasks[currentProject][parent.columnId] = [
+      ...newTasks[currentProject][parent.columnId].slice(0, parent.index + 1),
+      promoted,
+      ...newTasks[currentProject][parent.columnId].slice(parent.index + 1)
+    ];
+
+    saveTasks(newTasks);
+  };
+
+  // Превратить задачу в подзадачу другой прямо внутри переданного набора задач.
+  // Отдельным действием это не сохраняется — вызывается из handleTaskSave, чтобы
+  // правки и переезд применились одним махом по кнопке Save
+  const applyConvertToSubtask = (source, taskId, parentTaskId) => {
+    if (!taskId || !parentTaskId || taskId === parentTaskId) return false;
+
+    const child = findTaskLocation(source, taskId);
+    const parent = findTaskLocation(source, parentTaskId);
+    if (!child || !parent) return false;
+
+    source[currentProject][child.columnId] = source[currentProject][child.columnId]
+      .filter(t => t.id !== taskId);
+
+    const stamp = Date.now();
+    parent.task.subtasks = [
+      ...(parent.task.subtasks || []),
+      { id: `${stamp}`, title: child.task.title, completed: false },
+      // Подзадачи бывшей задачи не теряются — становятся соседями по новому родителю
+      ...(child.task.subtasks || []).map((s, i) => ({ ...s, id: `${stamp}-${i}` }))
+    ];
+
+    return true;
   };
 
   // Переключить подзадачу прямо на борде
@@ -1014,8 +1111,39 @@ export default function PersonalJira() {
     setCurrentPage('kanban');
   };
 
+  const allowed = (feature) => canUse(feature, user, featureFlags);
+
+  const handleSignIn = (signedIn) => {
+    setUser(signedIn);
+    localStorage.setItem(AUTH_KEY, JSON.stringify(signedIn));
+  };
+
+  const handleSignOut = () => {
+    setUser(null);
+    setSidebarOpen(false);
+    localStorage.removeItem(AUTH_KEY);
+  };
+
+  // Если раздел закрыли, пока пользователь в нём сидел, уводим на первый доступный
+  useEffect(() => {
+    if (!user || loading) return;
+    if (!PAGE_FEATURES.includes(currentPage)) return;
+    if (canUse(currentPage, user, featureFlags)) return;
+    const fallback = PAGE_FEATURES.find(page => canUse(page, user, featureFlags));
+    setCurrentPage(fallback || 'settings');
+  }, [user, featureFlags, currentPage, loading]);
+
   if (loading) {
     return <div className={`flex items-center justify-center h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-800'}`}>Loading...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div data-app className="flex h-full bg-gray-50">
+        <ThemeFx theme={theme} />
+        <LoginScreen onSignIn={handleSignIn} darkMode={darkMode} />
+      </div>
+    );
   }
 
   return (
@@ -1049,6 +1177,9 @@ export default function PersonalJira() {
       <Sidebar
         darkMode={darkMode}
         theme={theme}
+        user={user}
+        allowed={allowed}
+        onSignOut={handleSignOut}
         fileSupported={fileSupported}
         fileConnected={fileConnected}
         fileHandle={fileHandle}
@@ -1097,6 +1228,10 @@ export default function PersonalJira() {
           currentProjectId={currentProject}
           getProjectColumns={getProjectColumns}
           onMoveToProject={moveTaskToProject}
+          // Кандидаты в родители — остальные задачи текущего проекта
+          projectTasks={getProjectColumns(currentProject)
+            .flatMap(column => (tasks[currentProject]?.[column.id] || []))
+            .filter(t => t.id !== editingTask.id)}
         />
       ) : currentPage === 'kanban' ? (
         <>
@@ -1116,6 +1251,7 @@ export default function PersonalJira() {
             reorderTasksInColumn={reorderTasksInColumn}
             sortColumnByPriority={sortColumnByPriority}
             toggleTaskSubtask={toggleTaskSubtask}
+            promoteSubtaskToTask={promoteSubtaskToTask}
             collapsedSubtasks={collapsedSubtasks}
             toggleSubtasksCollapsed={toggleSubtasksCollapsed}
             darkMode={darkMode}
@@ -1162,6 +1298,11 @@ export default function PersonalJira() {
           darkMode={darkMode}
           theme={theme}
           setTheme={setTheme}
+          user={user}
+          allowed={allowed}
+          featureFlags={featureFlags}
+          setFeatureFlags={setFeatureFlags}
+          onSignOut={handleSignOut}
           projects={projects}
           currentProject={currentProject}
           getProjectColumns={getProjectColumns}

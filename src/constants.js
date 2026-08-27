@@ -32,6 +32,7 @@ export const STORAGE_KEYS = [
   'jira-darkMode',
   'jira-theme',
   'jira-chill-music',
+  'jira-feature-flags',
   'jira-currentProject',
   'jira-currentPage'
 ];
