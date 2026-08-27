@@ -96,7 +96,7 @@ export default function Notes({
           </h2>
           <button
             onClick={addNote}
-            className={`flex items-center gap-1.5 text-sm px-2 py-1 sm:-mr-2 rounded press ${mutedText} ${iconHover}`}
+            className={`flex items-center gap-1.5 text-sm px-2 py-1 rounded press ${mutedText} ${iconHover}`}
           >
             <AddIcon size={16} /> New note
           </button>

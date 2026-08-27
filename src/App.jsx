@@ -324,6 +324,7 @@ export default function PersonalJira() {
     // Волшебство целиком живёт в CSS: класс на <html> перекрашивает весь сайт
     document.documentElement.classList.toggle('theme-wizard', theme === 'wizard');
     document.documentElement.classList.toggle('theme-surf', theme === 'surf');
+    document.documentElement.classList.toggle('theme-millenial', theme === 'millenial');
     // В установленном PWA этим красится строка состояния телефона
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[theme] || THEME_COLORS.light);
   }, [theme, darkMode]);
@@ -814,6 +815,14 @@ export default function PersonalJira() {
     }));
   };
 
+  // Отметить задачу как особенно важную
+  const toggleWeeklyTaskImportant = (weekKey, day, taskId) => {
+    updateWeek(weekKey, week => ({
+      ...week,
+      [day]: (week[day] || []).map(t => (t.id === taskId ? { ...t, important: !t.important } : t))
+    }));
+  };
+
   // Перенести задачу в другой день недели: из списка одного дня в конец другого
   const moveWeeklyTask = (weekKey, fromDay, toDay, taskId) => {
     if (fromDay === toDay) return;
@@ -1010,7 +1019,7 @@ export default function PersonalJira() {
   }
 
   return (
-    <div className="flex h-full bg-gray-50">
+    <div data-app className="flex h-full bg-gray-50">
       <ThemeFx theme={theme} />
       {storageError && <StorageErrorBanner />}
 
@@ -1122,6 +1131,7 @@ export default function PersonalJira() {
           toggleWeeklyTask={toggleWeeklyTask}
           editWeeklyTask={editWeeklyTask}
           moveWeeklyTask={moveWeeklyTask}
+          toggleWeeklyTaskImportant={toggleWeeklyTaskImportant}
           theme={theme}
           darkMode={darkMode}
           weekDays={weekDays}

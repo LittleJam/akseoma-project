@@ -68,7 +68,7 @@ export default function KanbanBoard({
           <div className="flex-1 min-h-0 overflow-auto px-3 sm:px-8 pb-4 sm:pb-8">
             <div className="flex gap-3 sm:gap-4 min-h-full">
               {columns.map(column => (
-                <div key={column.id} className="flex-1 min-w-[220px]">
+                <div key={column.id} className="flex-1 min-w-[200px] sm:min-w-[220px]">
                   <DropZone
                     column={column}
                     darkMode={darkMode}

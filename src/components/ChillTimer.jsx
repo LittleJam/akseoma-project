@@ -207,7 +207,8 @@ export default function ChillTimer({ darkMode, theme }) {
     <div className={`flex-1 flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <div className="flex flex-col items-center gap-6 sm:gap-8 px-4">
         <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{CHILL_BADGE[theme] || CHILL_BADGE.light} Chill</h2>
-        <div className={`text-5xl sm:text-7xl md:text-[9rem] leading-none font-mono font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+        {/* Размер цифр тянется за шириной экрана, поэтому таймер не вылезает ни на одном */}
+        <div className={`text-[clamp(2.75rem,13vw,9rem)] leading-none font-mono font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           {minutes}:{seconds}
         </div>
 

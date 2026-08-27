@@ -119,10 +119,12 @@ export default function SettingsPage({
           </div>
           <p className={`text-xs mt-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             {theme === 'wizard'
-              ? 'Wizard: the Prisoner of Azkaban night — misty blues, candlelight, a snitch and a bit of magic.'
+              ? 'Wizard: the Prisoner of Azkaban night — misty blues, candlelight and the house colours.'
               : theme === 'surf'
-                ? 'Surf: ocean palette, soft rounded shapes and lazy bubbles.'
-                : 'Wizard turns the site into the Harry Potter universe, Surf into an ocean morning.'}
+                ? 'Surf: an Indian ocean swell behind frosted panels.'
+                : theme === 'millenial'
+                  ? 'Millenial: Windows XP, 2001 — Luna blue, Tahoma and beveled buttons.'
+                  : 'Wizard is Hogwarts at night, Surf is the Indian ocean, Millenial is Windows XP.'}
           </p>
         </div>
 
@@ -209,7 +211,7 @@ export default function SettingsPage({
               {columns.map((column, index) => (
                 <div
                   key={column.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border flex-wrap ${borderClass}`}
+                  className={`flex items-center gap-2 sm:gap-3 p-3 rounded-lg border flex-wrap ${borderClass}`}
                 >
                   <div className="flex flex-col">
                     <button
@@ -232,10 +234,10 @@ export default function SettingsPage({
                     type="text"
                     value={column.title}
                     onChange={e => renameColumn(column.id, e.target.value)}
-                    className={`flex-1 min-w-[100px] px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
+                    className={`flex-1 min-w-[80px] px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
                   />
 
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
                     {Object.entries(COLUMN_COLORS).map(([key, value]) => (
                       <button
                         key={key}
@@ -269,7 +271,7 @@ export default function SettingsPage({
                   onChange={e => setNewColumnTitle(e.target.value)}
                   onKeyPress={e => e.key === 'Enter' && addColumn()}
                   placeholder="New column..."
-                  className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
+                  className={`flex-1 min-w-0 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
                 />
                 <button
                   onClick={addColumn}

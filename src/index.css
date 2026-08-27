@@ -319,22 +319,30 @@ html.theme-wizard .lift:hover {
 /* ═══ SURF ═══ Океанская палитра: небо, бирюза, песок и коралл.
    Тема светлая, поэтому переопределяем светлый набор утилит */
 html.theme-surf {
-  --sf-ink: #0d3b4c;          /* глубокая вода — основной текст */
-  --sf-ink-dim: #4b7f90;
-  --sf-ink-faint: #93b8c4;
-  --sf-aqua: #0aa2b8;         /* бирюза — акцент вместо зелёного */
-  --sf-aqua-deep: #07798c;
-  --sf-coral: #f4664a;
-  --sf-surface: rgba(255, 255, 255, 0.74);
-  --sf-surface-2: rgba(255, 255, 255, 0.92);
-  --sf-sand: rgba(253, 244, 226, 0.85);
-  --sf-line: rgba(10, 162, 184, 0.18);
+  --sf-ink: #063a4e;          /* глубокая вода — основной текст */
+  --sf-ink-dim: #3f7c8e;
+  --sf-ink-faint: #8ab6c2;
+  --sf-aqua: #0e9b95;         /* лагуна — акцент вместо зелёного */
+  --sf-aqua-deep: #0a726e;
+  --sf-coral: #f4693f;        /* закатный коралл — предупреждения и удаление */
+  --sf-surface: rgba(255, 255, 255, 0.93);
+  --sf-surface-2: rgba(255, 255, 255, 0.97);
+  --sf-sand: rgba(253, 240, 218, 0.92);
+  --sf-line: rgba(14, 155, 149, 0.22);
 }
 
 html.theme-surf body {
+  /* Рассвет над океаном: тёплое небо, бирюзовая лагуна и глубокая вода */
   background:
-    linear-gradient(180deg, #eef9fc 0%, #dcf1f6 42%, #c9e9f0 100%),
-    #eef9fc;
+    linear-gradient(180deg,
+      #fff6ea 0%,
+      #ffe7d2 9%,
+      #dff3ef 28%,
+      #97e2d8 48%,
+      #3cbcb6 66%,
+      #12849a 84%,
+      #084f6b 100%),
+    #fff6ea;
   color: var(--sf-ink);
   /* Скруглённые гротески: линии мягче, чем у системного шрифта */
   font-family: ui-rounded, 'SF Pro Rounded', 'Avenir Next Rounded', Avenir, 'Nunito',
@@ -342,13 +350,29 @@ html.theme-surf body {
   letter-spacing: 0.01em;
 }
 
+html.theme-surf .bg-white {
+  background-color: var(--sf-surface);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 20px rgba(8, 74, 97, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+}
+
+/* Полотно страницы — лёгкая вуаль поверх воды: волна видна, текст читается */
 html.theme-surf .bg-gray-50 {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.24) 42%,
+    rgba(255, 255, 255, 0.06) 68%,
+    rgba(255, 255, 255, 0) 82%
+  );
   background-color: transparent;
 }
 
-html.theme-surf .bg-white {
-  background-color: var(--sf-surface);
-  backdrop-filter: blur(3px);
+/* Крупный текст лежит прямо на фоне, поэтому получает мягкое свечение */
+html.theme-surf h1,
+html.theme-surf h2,
+html.theme-surf h3 {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 html.theme-surf .bg-gray-100,
@@ -479,32 +503,348 @@ html.theme-surf .press-icon:hover {
   filter: drop-shadow(0 2px 6px rgba(10, 162, 184, 0.35));
 }
 
-/* Волны Surf: три статичных слоя прибоя, ближний — с пенным гребнем */
-.fx-wave {
+/* ═══ MILLENIAL ═══ Windows XP, 2001: Luna-синий, бежевые панели, Tahoma,
+   выпуклые кнопки и утопленные поля ввода */
+html.theme-millenial {
+  --xp-blue: #245edb;         /* Luna — панели и главные кнопки */
+  --xp-blue-light: #3a93ff;
+  --xp-blue-dark: #1941a5;
+  --xp-face: #ece9d8;         /* бежевая поверхность окон */
+  --xp-face-edge: #aca899;
+  --xp-field-edge: #7f9db9;   /* рамка полей ввода */
+  --xp-ink: #10233f;
+  --xp-ink-dim: #4b5b6f;
+  --xp-red: #d24726;
+}
+
+html.theme-millenial body {
+  background: #5a9bd5;
+  color: var(--xp-ink);
+  font-family: Tahoma, Verdana, 'Segoe UI', 'DejaVu Sans', sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+html.theme-millenial #root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Полотно окна — бежевая панель XP, обои чуть просвечивают сквозь неё */
+html.theme-millenial .bg-gray-50 {
+  background-color: var(--xp-face);
+}
+
+html.theme-millenial .bg-white {
+  background-color: #ffffff;
+}
+
+html.theme-millenial .bg-gray-100 {
+  background-color: #f6f4ec;
+  box-shadow: inset 0 0 0 1px #d7d3c4;
+}
+
+html.theme-millenial .bg-gray-200 {
+  background-color: #dcd8c8;
+}
+
+html.theme-millenial .text-gray-700,
+html.theme-millenial .text-gray-800,
+html.theme-millenial .text-gray-900 {
+  color: var(--xp-ink);
+}
+
+html.theme-millenial .text-gray-400,
+html.theme-millenial .text-gray-500,
+html.theme-millenial .text-gray-600 {
+  color: var(--xp-ink-dim);
+}
+
+html.theme-millenial .text-green-600,
+html.theme-millenial .text-green-700,
+html.theme-millenial .text-green-800 {
+  color: var(--xp-blue);
+}
+
+html.theme-millenial .text-red-500,
+html.theme-millenial .text-red-600 {
+  color: var(--xp-red);
+}
+
+/* Углы у XP почти прямые */
+html.theme-millenial .rounded,
+html.theme-millenial .rounded-lg {
+  border-radius: 3px;
+}
+
+html.theme-millenial .rounded-xl {
+  border-radius: 4px;
+}
+
+html.theme-millenial .border-gray-200,
+html.theme-millenial .border-gray-300,
+html.theme-millenial .border-gray-400,
+html.theme-millenial .border-gray-800,
+html.theme-millenial .border-green-200 {
+  border-color: var(--xp-face-edge);
+}
+
+/* Кнопки: выпуклая бежевая пилюля, при наведении — синяя кайма */
+html.theme-millenial button[class*='border'] {
+  background: linear-gradient(180deg, #ffffff 0%, #f2f0e6 45%, #dcd8c8 100%);
+  border: 1px solid #8d8a7e;
+  color: var(--xp-ink);
+  box-shadow: inset 0 1px 0 #ffffff, inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+}
+
+html.theme-millenial button[class*='border']:hover {
+  border-color: var(--xp-blue-light);
+  background: linear-gradient(180deg, #ffffff 0%, #f6f4ea 45%, #e6e2d2 100%);
+}
+
+html.theme-millenial button[class*='border']:active {
+  background: linear-gradient(180deg, #dcd8c8 0%, #efece1 100%);
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Выбранный вариант — «вдавленная» кнопка */
+html.theme-millenial button[class*='border-green-600'] {
+  background: #dbe8fb;
+  border-color: #2b5fbe;
+  color: var(--xp-blue-dark);
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+/* Главное действие — синяя кнопка Luna */
+html.theme-millenial .bg-green-800,
+html.theme-millenial .bg-green-900,
+html.theme-millenial .animate-toast-in {
+  background: linear-gradient(180deg, var(--xp-blue-light) 0%, var(--xp-blue) 48%, var(--xp-blue-dark) 100%);
+  border: 1px solid #12336e;
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+html.theme-millenial .bg-red-600,
+html.theme-millenial .bg-red-500 {
+  background: linear-gradient(180deg, #e46a4c 0%, var(--xp-red) 100%);
+  border: 1px solid #8f2a12;
+  color: #ffffff;
+}
+
+html.theme-millenial .bg-green-50,
+html.theme-millenial .bg-green-100 {
+  background-color: #dbe8fb;
+}
+
+html.theme-millenial .text-green-100,
+html.theme-millenial .text-green-900 {
+  color: var(--xp-blue-dark);
+}
+
+/* Поля ввода утоплены внутрь, как в XP */
+html.theme-millenial input[type='text'],
+html.theme-millenial input[type='time'],
+html.theme-millenial input[type='date'],
+html.theme-millenial textarea,
+html.theme-millenial select {
+  background-color: #ffffff;
+  border: 1px solid var(--xp-field-edge);
+  border-radius: 2px;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.12);
+  color: var(--xp-ink);
+  font-family: Tahoma, Verdana, sans-serif;
+}
+
+html.theme-millenial input:focus,
+html.theme-millenial textarea:focus,
+html.theme-millenial select:focus {
+  border-color: var(--xp-blue);
+  box-shadow: inset 0 0 0 1px #a8c6f0;
+}
+
+html.theme-millenial .accent-green-700,
+html.theme-millenial input[type='checkbox'] {
+  accent-color: var(--xp-blue);
+}
+
+html.theme-millenial .ring-green-600 {
+  --tw-ring-color: var(--xp-blue);
+}
+
+html.theme-millenial [class*='hover\:bg-gray-']:hover,
+html.theme-millenial [class*='hover\:bg-green-']:hover {
+  background-color: #dbe8fb;
+}
+
+html.theme-millenial [class*='hover\:bg-red-']:hover {
+  background-color: #f7d9d1;
+}
+
+html.theme-millenial ::selection {
+  background: #316ac5;
+  color: #ffffff;
+}
+
+/* Боковая панель — синяя полоса Luna, как панель задач */
+html.theme-millenial [data-sidebar] {
+  background: linear-gradient(180deg, #4a95f5 0%, var(--xp-blue) 10%, var(--xp-blue-dark) 100%);
+  border-right: 2px solid #0d2f7a;
+  color: #ffffff;
+}
+
+html.theme-millenial [data-sidebar] .text-gray-400,
+html.theme-millenial [data-sidebar] .text-gray-500,
+html.theme-millenial [data-sidebar] .text-gray-600,
+html.theme-millenial [data-sidebar] .text-gray-700,
+html.theme-millenial [data-sidebar] .text-gray-800 {
+  color: #ffffff;
+}
+
+html.theme-millenial [data-sidebar] .border-gray-200 {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* Активный раздел — «нажатая» кнопка панели задач */
+html.theme-millenial [data-sidebar] .bg-green-100,
+html.theme-millenial [data-sidebar] .bg-green-900 {
+  background: rgba(255, 255, 255, 0.24);
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+html.theme-millenial [data-sidebar] .text-green-100,
+html.theme-millenial [data-sidebar] .text-green-900 {
+  color: #ffffff;
+}
+
+html.theme-millenial [data-sidebar] [class*='hover\:bg-gray-']:hover,
+html.theme-millenial [data-sidebar] [class*='hover\:bg-green-']:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+html.theme-millenial [data-sidebar] button[class*='border'] {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+/* Полосы прокрутки эпохи XP */
+html.theme-millenial ::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+html.theme-millenial ::-webkit-scrollbar-track {
+  background: #f1efe2;
+  border-left: 1px solid #d4d0c8;
+}
+
+html.theme-millenial ::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #d8e8fd 0%, #9dc0f5 45%, #5b8ee0 100%);
+  border: 1px solid #2b5fbe;
+  border-radius: 2px;
+}
+
+html.theme-millenial :focus-visible {
+  outline: 1px dotted var(--xp-ink);
+  outline-offset: 1px;
+}
+
+/* Всё приложение — окно Windows XP на рабочем столе: рамка, тень и заголовок.
+   На узком экране рамку убираем, чтобы не терять место */
+@media (min-width: 640px) {
+  html.theme-millenial [data-app] {
+    position: relative;
+    margin: 3vmin 4vmin;
+    height: calc(100% - 6vmin);
+    padding-top: 30px;
+    border: 1px solid #0b3c9b;
+    border-radius: 8px 8px 3px 3px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+  }
+
+  html.theme-millenial [data-app]::before {
+    content: 'Surf the Task';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    font: bold 13px Tahoma, Verdana, sans-serif;
+    color: #ffffff;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.4);
+    background: linear-gradient(180deg, #0058e6 0%, #3a93ff 8%, #0058e6 40%, #0053ee 88%, #005bff 96%, #003dd7 100%);
+    border-radius: 7px 7px 0 0;
+  }
+
+  /* Кнопки окна: свернуть, развернуть, закрыть — чистая бутафория */
+  html.theme-millenial [data-app]::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    width: 68px;
+    height: 20px;
+    border-radius: 3px;
+    background:
+      linear-gradient(180deg, #f08f74 0%, #d64f2a 100%) 48px 0 / 20px 20px no-repeat,
+      linear-gradient(180deg, #6ea8ff 0%, #2a63cf 100%) 24px 0 / 20px 20px no-repeat,
+      linear-gradient(180deg, #6ea8ff 0%, #2a63cf 100%) 0 0 / 20px 20px no-repeat;
+  }
+}
+
+/* Обои Bliss — рисуются компонентом ThemeFx */
+.fx-bliss {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 62% at 50% 122%, #6aa84f 0%, #4e8a3a 42%, transparent 72%),
+    linear-gradient(180deg, #2e6fc4 0%, #5a9bd5 36%, #a8d0ef 60%, #dcefff 72%, #86bd63 72.5%, #4e8a3a 100%);
+}
+
+.fx-cloud {
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 40% 45%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.55) 55%, transparent 72%);
+}
+
+/* Сцена с волной — один широкий SVG у нижней кромки (компонент ThemeFx) */
+.fx-ocean {
   position: fixed;
   left: 0;
+  right: 0;
   bottom: 0;
-  width: 200%;
+  z-index: -1;
   pointer-events: none;
-  z-index: 0;
-  background-repeat: repeat-x;
-  background-position: left bottom;
-  background-size: 50% 100%;
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 38vh;
 }
 
-.fx-wave-back {
-  height: 300px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 240' preserveAspectRatio='none'%3E%3Cpath d='M0 120C160 60 320 170 600 120s440-60 600 0v120H0z' fill='%230aa2b8' fill-opacity='0.26'/%3E%3C/svg%3E");
-}
-
-.fx-wave-mid {
-  height: 220px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 200' preserveAspectRatio='none'%3E%3Cpath d='M0 100C200 30 400 150 700 90s340-40 500 20v90H0z' fill='%23077c8c' fill-opacity='0.3'/%3E%3C/svg%3E");
-}
-
-.fx-wave-front {
-  height: 150px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 140' preserveAspectRatio='none'%3E%3Cpath d='M0 70C150 20 320 110 600 70s450-50 600 10v60H0z' fill='%23ffffff' fill-opacity='0.55'/%3E%3Cpath d='M0 70C150 20 320 110 600 70s450-50 600 10' stroke='%23ffffff' stroke-opacity='0.85' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+/* Пена у самой кромки берега */
+.fx-foam {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 7vh;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(60% 130% at 16% 100%, rgba(255, 255, 255, 0.8), transparent 62%),
+    radial-gradient(50% 130% at 50% 100%, rgba(255, 255, 255, 0.62), transparent 62%),
+    radial-gradient(55% 130% at 86% 100%, rgba(255, 255, 255, 0.72), transparent 62%);
 }
 
 /* Блик солнца на воде */
@@ -516,7 +856,7 @@ html.theme-surf .press-icon:hover {
   height: 46vw;
   border-radius: 9999px;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
   background: radial-gradient(circle, rgba(255, 236, 179, 0.5) 0%, rgba(255, 236, 179, 0.14) 45%, transparent 70%);
 }
 

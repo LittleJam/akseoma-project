@@ -43,7 +43,8 @@ export default function Sidebar({
 
   return (
     <div
-      className={`w-64 flex-shrink-0 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col overflow-y-auto
+      data-sidebar
+      className={`w-64 sm:w-56 lg:w-64 flex-shrink-0 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col overflow-y-auto
         fixed inset-y-0 left-0 z-50 pt-[env(safe-area-inset-top)] transition-transform duration-200 ease-out
         sm:static sm:z-auto sm:translate-x-0 sm:pt-0 sm:transition-none ${
         mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
@@ -196,7 +197,7 @@ export default function Sidebar({
                 onChange={e => setNewProjectName(e.target.value)}
                 onKeyPress={e => e.key === 'Enter' && createProject()}
                 placeholder="New project..."
-                className={`flex-1 px-2 py-2 text-sm border rounded focus:outline-none focus:border-green-500 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'}`}
+                className={`flex-1 min-w-0 px-2 py-2 text-sm border rounded focus:outline-none focus:border-green-500 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'}`}
               />
               <button
                 onClick={createProject}

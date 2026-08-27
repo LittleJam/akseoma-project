@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit2, X, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { themeIcon } from '../themes';
 import { getWeekStart, addWeeks, getWeekKey, getWeekDates, isSameDay } from '../utils/weeks';
 import { getQuoteForDate } from '../quotes';
 
-export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, darkMode, theme, weekDays }) {
+export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays }) {
   const AddIcon = themeIcon(theme, 'add');
   const RefreshIcon = themeIcon(theme, 'refresh');
   const [weekOffset, setWeekOffset] = useState(0);
@@ -105,6 +105,8 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
     resetDrag();
   };
 
+  const mutedIcon = darkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600';
+
   const navButtonClass = `p-1.5 rounded-lg border press ${
     darkMode
       ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
@@ -169,7 +171,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
       </div>
 
       <div className="flex-1 min-h-0 p-5 sm:p-10 pt-2 sm:pt-4 overflow-y-auto">
-        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-4 sm:grid-rows-2 gap-3 sm:gap-4 w-full">
+        <div className="grid grid-cols-1 min-[900px]:grid-cols-2 min-[1400px]:grid-cols-4 min-[1400px]:grid-rows-2 gap-3 sm:gap-4 w-full">
           {weekDays.map((day, i) => {
             const date = weekDates[i];
             const isToday = isSameDay(date, today);
@@ -192,14 +194,14 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                 }`}
               >
                 <div className="mb-4 flex-shrink-0">
-                  <div className={`text-xs font-medium uppercase tracking-wide ${
+                  <div className={`text-xs font-medium uppercase tracking-wide truncate ${
                     isToday
                       ? darkMode ? 'text-green-400' : 'text-green-700'
                       : darkMode ? 'text-gray-500' : 'text-gray-400'
                   }`}>
                     {day}
                   </div>
-                  <div className={`text-lg font-semibold ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                  <div className={`text-lg font-semibold truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                     {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </div>
                 </div>
@@ -215,17 +217,24 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                       onDragStart={e => handleTaskDragStart(e, day, task)}
                       onDragEnd={resetDrag}
                       title="Drag to another day"
-                      className={`flex items-center gap-2 py-1.5 group rounded transition duration-150 ${
+                      className={`flex items-start gap-1.5 py-1.5 min-w-0 group rounded transition duration-150 ${
                         isEditingThis ? '' : 'cursor-grab active:cursor-grabbing'
                       } ${
                         draggedTask?.taskId === task.id ? 'opacity-40' : ''
+                      } ${
+                        // Важная задача видна сразу: жёлтая полоса слева и тёплая подложка
+                        task.important
+                          ? darkMode
+                            ? 'bg-amber-400/10 border-l-[3px] border-amber-400 pl-1.5'
+                            : 'bg-amber-50 border-l-[3px] border-amber-400 pl-1.5'
+                          : ''
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={task.completed}
                         onChange={() => toggleWeeklyTask(weekKey, day, task.id)}
-                        className={`w-5 h-5 sm:w-4 sm:h-4 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
+                        className={`w-5 h-5 sm:w-4 sm:h-4 mt-0.5 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
                           task.completed ? 'animate-check-pop' : ''
                         }`}
                       />
@@ -252,6 +261,8 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                       ) : (
                         <span
                           className={`flex-1 min-w-0 text-sm break-words transition-colors duration-200 ${
+                            task.important && !task.completed ? 'font-semibold' : ''
+                          } ${
                             task.completed
                               ? darkMode ? 'line-through text-gray-500' : 'line-through text-gray-400'
                               : darkMode ? 'text-gray-200' : 'text-gray-700'
@@ -265,6 +276,19 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                           {task.title}
                         </span>
                       )}
+                      <button
+                        onClick={() => toggleWeeklyTaskImportant(weekKey, day, task.id)}
+                        title={task.important ? 'Not important' : 'Mark as important'}
+                        aria-label={task.important ? 'Not important' : 'Mark as important'}
+                        className={`p-1.5 sm:p-0.5 rounded press-icon flex-shrink-0 ${
+                          task.important
+                            ? 'opacity-100 text-amber-500'
+                            : `opacity-0 group-hover:opacity-100 ${mutedIcon}`
+                        }`}
+                      >
+                        <Star size={13} fill={task.important ? 'currentColor' : 'none'} />
+                      </button>
+
                       <button
                         onClick={() => startEditing(day, task)}
                         title="Edit task"
