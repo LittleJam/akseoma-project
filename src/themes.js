@@ -1,7 +1,8 @@
 import {
   Sun, Moon, Wand2, Waves, Castle, ScrollText, BookOpenText, Sparkles, Feather,
   Compass, CalendarDays, Shell, Palmtree, Anchor, Plus, Home, Calendar, StickyNote,
-  Coffee, Settings, RefreshCw, Bird, Fish, Monitor, FolderOpen, FileText, Music2, Wrench
+  Coffee, Settings, RefreshCw, Bird, Fish, Monitor, FolderOpen, FileText, Music2, Wrench,
+  PenLine, Notebook, NotebookPen, Pencil, Highlighter, Paperclip, SlidersHorizontal
 } from 'lucide-react';
 
 // Светлые темы держат обычную палитру Tailwind, тёмные — набор для darkMode.
@@ -13,7 +14,8 @@ export const THEME_OPTIONS = [
   { key: 'dark', label: 'Dark', Icon: Moon, hint: 'Dark theme' },
   { key: 'wizard', label: 'Wizard', Icon: Wand2, hint: 'Harry Potter — Prisoner of Azkaban' },
   { key: 'surf', label: 'Surf', Icon: Waves, hint: 'Indian ocean & surf' },
-  { key: 'millenial', label: 'Millenial', Icon: Monitor, hint: 'Windows XP, 2001' }
+  { key: 'millenial', label: 'Millenial', Icon: Monitor, hint: 'Windows XP, 2001' },
+  { key: 'handwriting', label: 'Handwriting', Icon: PenLine, hint: 'A paper notebook' }
 ];
 
 // Иконки описаны ролями («раздел с проектами»), а не картинками, поэтому тема
@@ -40,6 +42,16 @@ const THEME_ICONS = {
     refresh: Sparkles,
     mascot: Bird
   },
+  handwriting: {
+    projects: Notebook,
+    schedule: CalendarDays,
+    notes: NotebookPen,
+    chill: Coffee,
+    settings: Pencil,
+    add: Pencil,
+    refresh: Highlighter,
+    mascot: Paperclip
+  },
   millenial: {
     projects: FolderOpen,
     schedule: CalendarDays,
@@ -55,7 +67,8 @@ const THEME_ICONS = {
     schedule: CalendarDays,
     notes: Shell,
     chill: Palmtree,
-    settings: Anchor,
+    // Якорь читался как «морская тема», а не как настройки — ползунки понятнее
+    settings: SlidersHorizontal,
     add: Plus,
     refresh: Waves,
     mascot: Fish
@@ -71,7 +84,8 @@ export const THEME_COLORS = {
   dark: '#111827',
   wizard: '#0a1418',
   surf: '#eaf7fb',
-  millenial: '#245edb'
+  millenial: '#245edb',
+  handwriting: '#faf6ec'
 };
 
 // Заголовок вкладки Chill — маленькая деталь, но именно она задаёт настроение странице
@@ -80,5 +94,6 @@ export const CHILL_BADGE = {
   dark: '🌿',
   wizard: '🕯️',
   surf: '🌊',
-  millenial: '💿'
+  millenial: '💿',
+  handwriting: '✏️'
 };

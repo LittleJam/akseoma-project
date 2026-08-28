@@ -85,3 +85,26 @@ export const NOTE_MODES = [
   { key: 'todo', label: 'Checklist' },
   { key: 'bullet', label: 'Bullets' }
 ];
+
+// Лейблы задач. Цвет выбирается по самому тексту, поэтому один и тот же лейбл
+// всегда выглядит одинаково и не нужно ничего хранить отдельно
+export const LABEL_COLORS = [
+  { light: 'bg-blue-100 text-blue-800 border-blue-200', dark: 'bg-blue-500/15 text-blue-300 border-blue-500/30' },
+  { light: 'bg-purple-100 text-purple-800 border-purple-200', dark: 'bg-purple-500/15 text-purple-300 border-purple-500/30' },
+  { light: 'bg-amber-100 text-amber-800 border-amber-200', dark: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+  { light: 'bg-teal-100 text-teal-800 border-teal-200', dark: 'bg-teal-500/15 text-teal-300 border-teal-500/30' },
+  { light: 'bg-pink-100 text-pink-800 border-pink-200', dark: 'bg-pink-500/15 text-pink-300 border-pink-500/30' },
+  { light: 'bg-indigo-100 text-indigo-800 border-indigo-200', dark: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' },
+  { light: 'bg-lime-100 text-lime-800 border-lime-200', dark: 'bg-lime-500/15 text-lime-300 border-lime-500/30' },
+  { light: 'bg-rose-100 text-rose-800 border-rose-200', dark: 'bg-rose-500/15 text-rose-300 border-rose-500/30' }
+];
+
+export const getLabelColor = (label, darkMode) => {
+  let hash = 0;
+  for (let i = 0; i < label.length; i += 1) hash = (hash * 31 + label.charCodeAt(i)) % 9973;
+  const palette = LABEL_COLORS[hash % LABEL_COLORS.length];
+  return darkMode ? palette.dark : palette.light;
+};
+
+// Приводим лейбл к единому виду, чтобы «Bug» и «bug » не расходились
+export const normalizeLabel = (label) => label.trim().replace(/\s+/g, ' ').slice(0, 24);

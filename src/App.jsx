@@ -75,6 +75,34 @@ export default function PersonalJira() {
 
   // Раздел Wishlist убран — заметки умеют чек-листы, и это было вторым способом делать одно и то же.
   // Старые пункты не выбрасываем, а складываем в заметку-чеклист
+  // Первый запуск — не пустая доска: сразу даём два привычных списка
+  const createStarterNotes = () => {
+    const stamp = Date.now();
+    const now = new Date().toLocaleString('en-US');
+    return [
+      {
+        id: `shopping-${stamp}`,
+        title: 'Shopping list',
+        content: '',
+        mode: 'todo',
+        color: 'green',
+        items: [],
+        images: [],
+        updatedAt: now
+      },
+      {
+        id: `wishlist-${stamp}`,
+        title: 'Wishlist',
+        content: '',
+        mode: 'todo',
+        color: 'pink',
+        items: [],
+        images: [],
+        updatedAt: now
+      }
+    ];
+  };
+
   const foldWishlistIntoNotes = (wishlistItems, notesList) => {
     if (!Array.isArray(wishlistItems) || wishlistItems.length === 0) return notesList || [];
 
@@ -251,7 +279,9 @@ export default function PersonalJira() {
 
         const loadedNotes = savedNotes ? JSON.parse(savedNotes) : [];
         const savedWishlistItems = savedWishlist ? JSON.parse(savedWishlist) : [];
-        const notesWithWishlist = foldWishlistIntoNotes(savedWishlistItems, loadedNotes);
+        const foldedNotes = foldWishlistIntoNotes(savedWishlistItems, loadedNotes);
+        // Заметок нет и раньше не было — значит пользователь здесь впервые
+        const notesWithWishlist = foldedNotes.length || savedNotes ? foldedNotes : createStarterNotes();
         setNotes(notesWithWishlist);
         localStorage.setItem('jira-notes', JSON.stringify(notesWithWishlist));
         // Ключ убираем, иначе на следующем запуске появилась бы вторая копия заметки
@@ -341,6 +371,9 @@ export default function PersonalJira() {
     document.documentElement.classList.toggle('theme-wizard', theme === 'wizard');
     document.documentElement.classList.toggle('theme-surf', theme === 'surf');
     document.documentElement.classList.toggle('theme-millenial', theme === 'millenial');
+    document.documentElement.classList.toggle('theme-handwriting', theme === 'handwriting');
+    // Родные списки в выпадашках должны быть тёмными в тёмной теме
+    document.documentElement.classList.toggle('theme-dark', theme === 'dark');
     // В установленном PWA этим красится строка состояния телефона
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[theme] || THEME_COLORS.light);
   }, [theme, darkMode]);
@@ -861,19 +894,22 @@ export default function PersonalJira() {
 
   // Отсортировать задачи в столбике по приоритету (высокий → низкий)
   const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
-  const sortColumnByPriority = (columnId) => {
-    const newTasks = { ...tasks };
-    const columnTasks = newTasks[currentProject]?.[columnId];
-    if (!columnTasks) return;
+  // Сортировка всего борда по важности: одна кнопка на доске, одно сохранение
+  const sortBoardByPriority = () => {
+    const board = tasks[currentProject];
+    if (!board) return;
 
-    newTasks[currentProject] = {
-      ...newTasks[currentProject],
-      [columnId]: [...columnTasks].sort(
-        (a, b) => (PRIORITY_ORDER[a.priority] ?? 99) - (PRIORITY_ORDER[b.priority] ?? 99)
-      )
-    };
+    const sorted = {};
+    for (const column of getProjectColumns(currentProject)) {
+      const columnTasks = board[column.id];
+      sorted[column.id] = columnTasks
+        ? [...columnTasks].sort(
+            (a, b) => (PRIORITY_ORDER[a.priority] ?? 99) - (PRIORITY_ORDER[b.priority] ?? 99)
+          )
+        : columnTasks;
+    }
 
-    saveTasks(newTasks);
+    saveTasks({ ...tasks, [currentProject]: { ...board, ...sorted } });
   };
 
   // Все операции с расписанием адресуются к конкретной неделе (weekKey — дата её понедельника)
@@ -1232,6 +1268,12 @@ export default function PersonalJira() {
           projectTasks={getProjectColumns(currentProject)
             .flatMap(column => (tasks[currentProject]?.[column.id] || []))
             .filter(t => t.id !== editingTask.id)}
+          // Лейблы, уже встречавшиеся в проекте — для подсказок
+          knownLabels={[...new Set(
+            getProjectColumns(currentProject)
+              .flatMap(column => (tasks[currentProject]?.[column.id] || []))
+              .flatMap(t => t.labels || [])
+          )].sort()}
         />
       ) : currentPage === 'kanban' ? (
         <>
@@ -1249,7 +1291,7 @@ export default function PersonalJira() {
             setEditingTask={setEditingTask}
             moveTask={moveTask}
             reorderTasksInColumn={reorderTasksInColumn}
-            sortColumnByPriority={sortColumnByPriority}
+            sortBoardByPriority={sortBoardByPriority}
             toggleTaskSubtask={toggleTaskSubtask}
             promoteSubtaskToTask={promoteSubtaskToTask}
             collapsedSubtasks={collapsedSubtasks}

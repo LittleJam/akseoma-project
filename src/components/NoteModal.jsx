@@ -150,7 +150,7 @@ export default function NoteModal({
               onChange={e => updateNoteItem(note.id, item.id, { text: e.target.value })}
               className={`flex-1 min-w-0 text-sm py-0.5 bg-transparent focus:outline-none transition-colors duration-200 ${
                 item.checked
-                  ? darkMode ? 'line-through text-gray-500' : 'line-through text-gray-400'
+                  ? darkMode ? 'text-gray-500' : 'text-gray-400'
                   : darkMode ? 'text-gray-200' : 'text-gray-700'
               }`}
             />

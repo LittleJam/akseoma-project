@@ -6,7 +6,7 @@ const BURST_SIZE = 8;
 // и короткий отклик на клик. Фон намеренно неподвижен — ничего не летает и не мерцает
 export default function ThemeFx({ theme }) {
   const layerRef = useRef(null);
-  const active = theme === 'wizard' || theme === 'surf' || theme === 'millenial';
+  const active = theme === 'wizard' || theme === 'surf' || theme === 'millenial' || theme === 'handwriting';
 
   const reducedMotion = useMemo(
     () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
@@ -21,7 +21,7 @@ export default function ThemeFx({ theme }) {
       const layer = layerRef.current;
       if (!layer) return;
 
-      if (theme === 'millenial') return;
+      if (theme === 'millenial' || theme === 'handwriting') return;
 
       if (theme === 'surf') {
         const ripple = document.createElement('span');
@@ -82,6 +82,8 @@ export default function ThemeFx({ theme }) {
             />
           </svg>
         )}
+
+        {theme === 'handwriting' && <span className="fx-paper" />}
 
         {theme === 'millenial' && (
           <>

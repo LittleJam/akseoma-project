@@ -193,17 +193,18 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                   dragOverDay === day && draggedTask?.day !== day ? 'ring-2 ring-green-600 scale-[1.01]' : ''
                 }`}
               >
-                <div className="mb-4 flex-shrink-0">
-                  <div className={`text-xs font-medium uppercase tracking-wide truncate ${
+                {/* День недели и дата — одной строкой */}
+                <div className="mb-4 flex-shrink-0 flex items-baseline gap-2 min-w-0">
+                  <span className={`text-lg font-semibold truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                    {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  <span className={`text-xs font-medium uppercase tracking-wide truncate ${
                     isToday
                       ? darkMode ? 'text-green-400' : 'text-green-700'
                       : darkMode ? 'text-gray-500' : 'text-gray-400'
                   }`}>
                     {day}
-                  </div>
-                  <div className={`text-lg font-semibold truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-                    {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </div>
+                  </span>
                 </div>
 
                 <div className="space-y-1 mb-3 flex-1 min-h-0 overflow-y-auto">
@@ -263,8 +264,9 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                           className={`flex-1 min-w-0 text-sm break-words transition-colors duration-200 ${
                             task.important && !task.completed ? 'font-semibold' : ''
                           } ${
+                            // Выполненная задача просто гаснет: галочки достаточно
                             task.completed
-                              ? darkMode ? 'line-through text-gray-500' : 'line-through text-gray-400'
+                              ? darkMode ? 'text-gray-500' : 'text-gray-400'
                               : darkMode ? 'text-gray-200' : 'text-gray-700'
                           }`}
                         >

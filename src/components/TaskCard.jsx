@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Trash2, ChevronDown } from 'lucide-react';
+import { getLabelColor } from '../constants';
 
-export default function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, darkMode, taskNumber, deleteTask, hasSubtasks, subtasksCollapsed, onToggleSubtasks }) {
+export default function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, darkMode, taskNumber, deleteTask, hasSubtasks, subtasksCollapsed, onToggleSubtasks, showLabels, onLabelClick }) {
   const [isDragging, setIsDragging] = useState(false);
 
   const cardBg = darkMode
@@ -15,7 +16,17 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
     low: { label: 'Low', dot: darkMode ? 'bg-gray-600' : 'bg-gray-300' }
   };
   const priority = PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.low;
-  const descriptionText = typeof task.description === 'string' ? task.description : task.description?.content;
+  // Описание хранится как HTML — для превью на карточке оставляем чистый текст
+  const descriptionHtml = typeof task.description === 'string' ? task.description : task.description?.content;
+  const descriptionText = (descriptionHtml || '')
+    .replace(/<br\s*\/?>(\s*)/gi, ' ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   const handleDragStart = (e) => {
     setIsDragging(true);
@@ -105,6 +116,27 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
           )}
         </div>
         <h4 className={`font-medium text-sm ${textColor} break-words`}>{task.title}</h4>
+
+        {/* Лейблы показываем, только когда их включили значком на борде */}
+        {showLabels && (task.labels || []).length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {task.labels.map(label => (
+              <button
+                key={label}
+                type="button"
+                // Клик по лейблу фильтрует борд и не открывает саму задачу
+                onClick={e => {
+                  e.stopPropagation();
+                  onLabelClick?.(label);
+                }}
+                title={`Filter by ${label}`}
+                className={`px-1.5 py-0.5 text-[10px] leading-tight rounded-full border press ${getLabelColor(label, darkMode)}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       {descriptionText && descriptionText.trim() && (
         <p className={`text-xs truncate mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>

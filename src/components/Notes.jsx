@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, GripVertical, EyeOff } from 'lucide-react';
+import { X, EyeOff } from 'lucide-react';
 import { NOTE_COLORS } from '../constants';
 import { compressImage } from '../utils/imageCompression';
 import { themeIcon } from '../themes';
@@ -27,8 +27,6 @@ export default function Notes({
   theme
 }) {
   const AddIcon = themeIcon(theme, 'add');
-  // id заметки, за которую сейчас «взялись» — draggable включается только при захвате за ручку
-  const [handleGrabbedId, setHandleGrabbedId] = useState(null);
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
@@ -79,7 +77,6 @@ export default function Notes({
 
   const resetDrag = () => {
     setFileOverId(null);
-    setHandleGrabbedId(null);
     setDragIndex(null);
     setDragOverIndex(null);
   };
@@ -121,7 +118,8 @@ export default function Notes({
               return (
                 <div
                   key={note.id}
-                  draggable={handleGrabbedId === note.id}
+                  // Тащить можно за любое место карточки; обычный клик по-прежнему открывает заметку
+                  draggable
                   onDragStart={e => handleDragStart(e, index)}
                   onDragEnd={resetDrag}
                   onDragOver={e => handleDragOver(e, index, note.id)}
@@ -138,16 +136,6 @@ export default function Notes({
                   }`}
                 >
                   <div className="flex items-center gap-1 mb-1">
-                    <span
-                      onMouseDown={() => setHandleGrabbedId(note.id)}
-                      onMouseUp={() => setHandleGrabbedId(null)}
-                      onClick={e => e.stopPropagation()}
-                      title="Drag to reorder"
-                      className={`-ml-1 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition flex-shrink-0 ${mutedText} ${iconHover}`}
-                    >
-                      <GripVertical size={14} />
-                    </span>
-
                     {note.title ? (
                       <h3 className={`flex-1 min-w-0 text-sm font-medium truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                         {note.title}
@@ -208,7 +196,7 @@ export default function Notes({
                             )}
                             <span className={`flex-1 min-w-0 text-sm truncate transition-colors duration-200 ${
                               item.checked
-                                ? darkMode ? 'line-through text-gray-500' : 'line-through text-gray-400'
+                                ? darkMode ? 'text-gray-500' : 'text-gray-400'
                                 : darkMode ? 'text-gray-300' : 'text-gray-600'
                             }`}>
                               {item.text}

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { ArrowDownWideNarrow } from 'lucide-react';
 import TaskCard from './TaskCard';
 import SubtaskCard from './SubtaskCard';
 import { COLUMN_COLORS } from '../constants';
@@ -8,10 +7,11 @@ export default function DropZone({
   column,
   darkMode,
   tasks,
+  showLabels,
+  onLabelClick,
   setEditingTask,
   moveTask,
   reorderTasksInColumn,
-  sortColumnByPriority,
   toggleTaskSubtask,
   promoteSubtaskToTask,
   collapsedSubtasks,
@@ -61,15 +61,6 @@ export default function DropZone({
         <h3 className={`text-xs font-medium uppercase tracking-wide flex-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
           {column.title} ({tasks.length})
         </h3>
-        {tasks.length > 1 && (
-          <button
-            onClick={() => sortColumnByPriority(column.id)}
-            title="Sort by priority"
-            className={`p-1 rounded flex-shrink-0 press-icon ${darkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
-          >
-            <ArrowDownWideNarrow size={14} />
-          </button>
-        )}
       </div>
       <div className="space-y-3 min-h-[100px] px-4 pb-4 pt-3 flex-1 rounded-b-lg">
         {tasks.map((task, index) => {
@@ -87,6 +78,8 @@ export default function DropZone({
                 darkMode={darkMode}
                 taskNumber={getTaskNumber(task.id)}
                 deleteTask={deleteTask}
+                showLabels={showLabels}
+                onLabelClick={onLabelClick}
                 hasSubtasks={hasSubtasks}
                 subtasksCollapsed={isCollapsed}
                 onToggleSubtasks={() => toggleSubtasksCollapsed(task.id)}

@@ -84,6 +84,28 @@ export default function Sidebar({
         reconnectFile={reconnectFile}
       />
 
+      {/* Кто вошёл и выход */}
+      {user && (
+        <div className={`px-4 py-3 flex items-center gap-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="flex-1 min-w-0">
+            <div className={`text-sm font-medium truncate ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+              {user.name}
+            </div>
+            <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              {user.role === 'admin' ? 'Admin' : 'User'}
+            </div>
+          </div>
+          <button
+            onClick={onSignOut}
+            title="Sign out"
+            aria-label="Sign out"
+            className={`p-2 rounded-lg press-icon flex-shrink-0 ${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Навигация */}
       <div className="p-4 space-y-2 border-b border-gray-300">
         {allowed('kanban') && (
@@ -197,28 +219,6 @@ export default function Sidebar({
         </button>
         )}
       </div>
-
-      {/* Кто вошёл и выход */}
-      {user && (
-        <div className={`px-4 py-3 flex items-center gap-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex-1 min-w-0">
-            <div className={`text-sm font-medium truncate ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-              {user.name}
-            </div>
-            <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-              {user.role === 'admin' ? 'Admin' : 'User'}
-            </div>
-          </div>
-          <button
-            onClick={onSignOut}
-            title="Sign out"
-            aria-label="Sign out"
-            className={`p-2 rounded-lg press-icon flex-shrink-0 ${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            <LogOut size={16} />
-          </button>
-        </div>
-      )}
 
       <div className="flex-1 overflow-y-auto p-4">
         {currentPage === 'kanban' && (

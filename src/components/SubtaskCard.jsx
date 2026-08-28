@@ -19,7 +19,7 @@ export default function SubtaskCard({ subtask, index, parentDisplayId, onToggle,
 
       <span className={`text-xs flex-1 min-w-0 break-words transition-colors duration-200 ${
         subtask.completed
-          ? darkMode ? 'line-through text-gray-500' : 'line-through text-gray-400'
+          ? darkMode ? 'text-gray-500' : 'text-gray-400'
           : darkMode ? 'text-gray-300' : 'text-gray-600'
       }`}>
         {/* Номер идёт в одной строке с текстом — так подзадача не рвётся в узкой колонке */}

@@ -3,6 +3,7 @@ import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, LogOut, ShieldCheck } from
 import { COLUMN_COLORS } from '../constants';
 import { THEME_OPTIONS } from '../themes';
 import { FEATURES, DEFAULT_FLAGS } from '../auth';
+import Select from './Select';
 
 export default function SettingsPage({
   darkMode,
@@ -129,7 +130,8 @@ export default function SettingsPage({
               Applies to everyone except administrators — they always see everything.
             </p>
 
-            <div className="space-y-1">
+            {/* В несколько колонок: список короткий, но занимал всю ширину */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-1">
               {FEATURES.map(feature => {
                 const enabled = { ...DEFAULT_FLAGS, ...featureFlags }[feature.key] !== false;
                 return (
@@ -191,7 +193,9 @@ export default function SettingsPage({
                 ? 'Surf: an Indian ocean swell behind frosted panels.'
                 : theme === 'millenial'
                   ? 'Millenial: Windows XP, 2001 — Luna blue, Tahoma and beveled buttons.'
-                  : 'Wizard is Hogwarts at night, Surf is the Indian ocean, Millenial is Windows XP.'}
+                  : theme === 'handwriting'
+                    ? 'Handwriting: a paper notebook — ruled sheet, ink and hand-drawn frames.'
+                    : 'Wizard is Hogwarts at night, Surf is the ocean, Millenial is Windows XP, Handwriting is a notebook.'}
           </p>
         </div>
         )}
@@ -266,15 +270,14 @@ export default function SettingsPage({
 
           <div className="mb-4">
             <label className={`block text-sm font-medium ${labelClass} mb-2`}>Project</label>
-            <select
+            <Select
               value={selectedProjectId || ''}
               onChange={e => setSelectedProjectId(e.target.value)}
-              className={`w-full px-4 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
-            >
-              {projects.map(project => (
-                <option key={project.id} value={project.id}>{project.name}</option>
-              ))}
-            </select>
+              options={projects.map(project => ({ value: project.id, label: project.name }))}
+              darkMode={darkMode}
+              ariaLabel="Project"
+              className={`px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+            />
           </div>
 
           {selectedProject && (

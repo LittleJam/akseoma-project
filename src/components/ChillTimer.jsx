@@ -9,8 +9,7 @@ const DURATION = 15 * 60;
 const TRACKS = [
   { id: '9kzE8isXlQY', label: 'Lo-fi 1' },
   { id: 'JdqL89ZZwFw', label: 'Lo-fi 2' },
-  { id: 'K0Vo1mkllMI', label: 'Lo-fi 3' },
-  { id: 'HRCfnvxpYP8', label: 'Lo-fi 4' }
+  { id: 'HRCfnvxpYP8', label: 'Lo-fi 3' }
 ];
 
 const MUSIC_KEY = 'jira-chill-music';

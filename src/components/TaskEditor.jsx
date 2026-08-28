@@ -1,17 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, X, Image as ImageIcon, Plus, ArrowRightLeft, ChevronDown } from 'lucide-react';
+import {
+  Trash2, X, Image as ImageIcon, Plus, ArrowRightLeft, ChevronDown, Tag,
+  Bold, Italic, Underline, Code, Palette
+} from 'lucide-react';
+import { getLabelColor, normalizeLabel } from '../constants';
+import Select from './Select';
 import { compressImage } from '../utils/imageCompression';
 
+// Палитра текста: 25 оттенков, по пять в ряд — хватает и на акценты, и на полутона
 const TEXT_COLORS = [
-  { hex: '#000000', name: 'Black' },
-  { hex: '#6b7280', name: 'Gray' },
-  { hex: '#ef4444', name: 'Red' },
-  { hex: '#f59e0b', name: 'Orange' },
-  { hex: '#16a34a', name: 'Green' },
-  { hex: '#2563eb', name: 'Blue' },
-  { hex: '#7c3aed', name: 'Purple' },
-  { hex: '#db2777', name: 'Pink' }
+  '#000000', '#374151', '#6b7280', '#9ca3af', '#d1d5db',
+  '#7f1d1d', '#b91c1c', '#ef4444', '#f87171', '#fecaca',
+  '#7c2d12', '#c2410c', '#f59e0b', '#fbbf24', '#fde68a',
+  '#14532d', '#15803d', '#16a34a', '#4ade80', '#bbf7d0',
+  '#1e3a8a', '#2563eb', '#7c3aed', '#db2777', '#f472b6'
 ];
+
+// Описание хранится как HTML. Старые задачи лежат простым текстом — переносим их
+const toEditorHtml = (value) => {
+  const text = typeof value === 'string' ? value : (value?.content || '');
+  if (!text) return '';
+  if (/<[a-z][\s\S]*>/i.test(text)) return text;
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+};
 
 const getDescriptionText = (description) =>
   typeof description === 'string' ? description : (description?.content || '');
@@ -27,14 +42,18 @@ export default function TaskEditor({
   currentProjectId,
   getProjectColumns,
   projectTasks = [],
+  knownLabels = [],
   onMoveToProject
 }) {
   const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(getDescriptionText(task.description));
+  const [description, setDescription] = useState(toEditorHtml(task.description));
   const [priority, setPriority] = useState(task.priority);
   const [images, setImages] = useState(task.images || []);
   const [subtasks, setSubtasks] = useState(task.subtasks || []);
   const [parentTaskId, setParentTaskId] = useState('');
+  const editorRef = useRef(null);
+  const [labels, setLabels] = useState(task.labels || []);
+  const [newLabel, setNewLabel] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [editingSubtaskId, setEditingSubtaskId] = useState(null);
   const [editingSubtaskText, setEditingSubtaskText] = useState('');
@@ -43,13 +62,6 @@ export default function TaskEditor({
   const [targetColumnId, setTargetColumnId] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [textFormat, setTextFormat] = useState(task.description?.editorState || {
-    fontSize: '16px',
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    textDecoration: 'none',
-    color: '#000000'
-  });
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const colorPickerRef = useRef(null);
 
@@ -68,14 +80,48 @@ export default function TaskEditor({
   useEffect(() => {
     const hasChanges =
       title !== task.title ||
-      description !== getDescriptionText(task.description) ||
+      description !== toEditorHtml(task.description) ||
       priority !== task.priority ||
       JSON.stringify(images) !== JSON.stringify(task.images || []) ||
       JSON.stringify(subtasks) !== JSON.stringify(task.subtasks || []) ||
+      JSON.stringify(labels) !== JSON.stringify(task.labels || []) ||
       Boolean(parentTaskId);
 
     onUnsavedChange(hasChanges);
-  }, [title, description, priority, images, subtasks, parentTaskId, task, onUnsavedChange]);
+  }, [title, description, priority, images, subtasks, labels, parentTaskId, task, onUnsavedChange]);
+
+  // Содержимое редактора кладём в него один раз: дальше им управляет сам браузер,
+  // иначе курсор прыгал бы в начало на каждом нажатии
+  useEffect(() => {
+    if (editorRef.current) editorRef.current.innerHTML = toEditorHtml(task.description);
+    setDescription(toEditorHtml(task.description));
+  }, [task.id]);
+
+  // Все кнопки панели работают с выделением, а не со всем описанием сразу
+  const runCommand = (command, value = null) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    try {
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand(command, false, value);
+    } catch (error) {
+      console.error('Formatting error:', error);
+    }
+    setDescription(editor.innerHTML);
+  };
+
+  const addLabel = (value) => {
+    const label = normalizeLabel(value || newLabel);
+    if (!label || labels.includes(label)) {
+      setNewLabel('');
+      return;
+    }
+    setLabels([...labels, label]);
+    setNewLabel('');
+  };
+
+  const removeLabel = (label) => setLabels(labels.filter(l => l !== label));
 
   const addSubtask = () => {
     if (!newSubtaskTitle.trim()) return;
@@ -180,9 +226,10 @@ export default function TaskEditor({
     const changes = {};
     if (title !== task.title) changes.title = title;
     if (priority !== task.priority) changes.priority = priority;
-    if (description !== getDescriptionText(task.description)) changes.description = 'Description changed';
+    if (description !== toEditorHtml(task.description)) changes.description = 'Description changed';
     if (JSON.stringify(images) !== JSON.stringify(task.images || [])) changes.images = `Images: ${images.length}`;
     if (JSON.stringify(subtasks) !== JSON.stringify(task.subtasks || [])) changes.subtasks = `Subtasks: ${subtasks.length}`;
+    if (JSON.stringify(labels) !== JSON.stringify(task.labels || [])) changes.labels = labels.length ? labels.join(', ') : 'No labels';
 
     let newHistory = task.history || [];
     if (Object.keys(changes).length > 0) {
@@ -197,10 +244,11 @@ export default function TaskEditor({
       {
         ...task,
         title,
-        description: { content: description, editorState: textFormat },
+        description: { content: description, editorState: null },
         priority,
         images,
         subtasks,
+        labels,
         history: newHistory
       },
       false,
@@ -244,77 +292,114 @@ export default function TaskEditor({
             <div>
               <label className={`block text-sm font-medium ${labelClass} mb-2`}>Description</label>
               <div className={`border ${borderClass} rounded-lg p-3 space-y-3 ${inputBgClass}`}>
-                {/* Formatting toolbar */}
-                <div className={`flex items-center gap-3 flex-wrap pb-3 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                  <select
-                    value={textFormat.fontSize}
-                    onChange={e => setTextFormat({ ...textFormat, fontSize: e.target.value })}
+                {/* Панель форматирования: всё применяется к выделенному тексту */}
+                <div className={`flex items-center gap-1 flex-wrap pb-3 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+                  <Select
+                    value=""
+                    onChange={e => e.target.value && runCommand('formatBlock', e.target.value)}
+                    options={[
+                      { value: '', label: 'Style' },
+                      { value: '<p>', label: 'Normal text' },
+                      { value: '<h2>', label: 'Heading' },
+                      { value: '<h3>', label: 'Subheading' },
+                      { value: '<blockquote>', label: 'Quote' },
+                      { value: '<pre>', label: 'Code block' }
+                    ]}
+                    darkMode={darkMode}
+                    placeholder="Style"
+                    ariaLabel="Text style"
+                    wrapperClassName="w-36"
                     className={`px-2 py-1 text-sm rounded-lg ${darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
-                  >
-                    <option value="12px">12px</option>
-                    <option value="14px">14px</option>
-                    <option value="16px">16px</option>
-                    <option value="18px">18px</option>
-                    <option value="20px">20px</option>
-                    <option value="24px">24px</option>
-                  </select>
+                  />
+
+                  <Select
+                    value=""
+                    onChange={e => e.target.value && runCommand('fontSize', e.target.value)}
+                    options={[
+                      { value: '', label: 'Size' },
+                      { value: '2', label: 'Small' },
+                      { value: '3', label: 'Normal' },
+                      { value: '5', label: 'Large' },
+                      { value: '6', label: 'Huge' }
+                    ]}
+                    darkMode={darkMode}
+                    placeholder="Size"
+                    ariaLabel="Font size"
+                    wrapperClassName="w-28"
+                    className={`px-2 py-1 text-sm rounded-lg ${darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
+                  />
+
+                  {[
+                    { command: 'bold', Icon: Bold, title: 'Bold (⌘B)' },
+                    { command: 'italic', Icon: Italic, title: 'Italic (⌘I)' },
+                    { command: 'underline', Icon: Underline, title: 'Underline (⌘U)' }
+                  ].map(({ command, Icon, title }) => (
+                    <button
+                      key={command}
+                      type="button"
+                      title={title}
+                      aria-label={title}
+                      onClick={() => runCommand(command)}
+                      className={`p-1.5 rounded-lg press ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-100 hover:bg-gray-200'}`}
+                    >
+                      <Icon size={14} />
+                    </button>
+                  ))}
+
+                  <Select
+                    value=""
+                    onChange={e => e.target.value && runCommand(e.target.value)}
+                    options={[
+                      { value: '', label: 'List' },
+                      { value: 'insertUnorderedList', label: 'Bulleted list' },
+                      { value: 'insertOrderedList', label: 'Numbered list' }
+                    ]}
+                    darkMode={darkMode}
+                    placeholder="List"
+                    ariaLabel="List type"
+                    wrapperClassName="w-32"
+                    className={`px-2 py-1 text-sm rounded-lg ${darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
+                  />
 
                   <button
-                    title="Bold"
-                    onClick={() => setTextFormat({ ...textFormat, fontWeight: textFormat.fontWeight === 'bold' ? 'normal' : 'bold' })}
-                    className={`px-3 py-1 text-sm rounded-lg font-bold press ${textFormat.fontWeight === 'bold' ? 'bg-green-800 text-white' : darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
+                    type="button"
+                    title="Inline code"
+                    aria-label="Inline code"
+                    onClick={() => runCommand('fontName', 'monospace')}
+                    className={`p-1.5 rounded-lg press ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-100 hover:bg-gray-200'}`}
                   >
-                    B
-                  </button>
-
-                  <button
-                    title="Italic"
-                    onClick={() => setTextFormat({ ...textFormat, fontStyle: textFormat.fontStyle === 'italic' ? 'normal' : 'italic' })}
-                    className={`px-3 py-1 text-sm rounded-lg italic press ${textFormat.fontStyle === 'italic' ? 'bg-green-800 text-white' : darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
-                  >
-                    I
-                  </button>
-
-                  <button
-                    title="Underline"
-                    onClick={() => setTextFormat({ ...textFormat, textDecoration: textFormat.textDecoration === 'underline' ? 'none' : 'underline' })}
-                    className={`px-3 py-1 text-sm rounded-lg underline press ${textFormat.textDecoration === 'underline' ? 'bg-green-800 text-white' : darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
-                  >
-                    U
+                    <Code size={14} />
                   </button>
 
                   <div className="relative" ref={colorPickerRef}>
                     <button
                       type="button"
                       onClick={() => setColorPickerOpen(prev => !prev)}
-                      title={`Text color: ${TEXT_COLORS.find(c => c.hex === textFormat.color)?.name || textFormat.color}`}
-                      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm press ${darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
+                      title="Text color"
+                      aria-label="Text color"
+                      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-sm press ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-100 hover:bg-gray-200'}`}
                     >
-                      <span
-                        className={`w-4 h-4 rounded border ${darkMode ? 'border-gray-400' : 'border-gray-400'}`}
-                        style={{ backgroundColor: textFormat.color }}
-                      />
-                      <ChevronDown size={12} className={darkMode ? 'text-gray-300' : 'text-gray-500'} />
+                      <Palette size={14} />
+                      <ChevronDown size={11} className="opacity-60" />
                     </button>
 
                     {colorPickerOpen && (
-                      <div className={`absolute z-20 top-full mt-1 left-0 p-2 rounded-lg border shadow-lg origin-top-left animate-pop-in ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                      <div className={`absolute z-20 top-full mt-1 left-0 w-[188px] p-2 rounded-lg border shadow-lg origin-top-left animate-pop-in ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
                         <div className={`text-xs mb-2 px-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Text color</div>
-                        <div className="flex items-center gap-1.5">
-                          {TEXT_COLORS.map(c => (
+                        {/* 25 оттенков по пять в ряд */}
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {TEXT_COLORS.map(hex => (
                             <button
-                              key={c.hex}
+                              key={hex}
                               type="button"
                               onClick={() => {
-                                setTextFormat({ ...textFormat, color: c.hex });
+                                runCommand('foreColor', hex);
                                 setColorPickerOpen(false);
                               }}
-                              title={c.name}
-                              style={{ backgroundColor: c.hex }}
-                              className={`w-6 h-6 rounded-full flex-shrink-0 transition duration-150 hover:scale-110 active:scale-90 ${
-                                textFormat.color === c.hex
-                                  ? `ring-2 ring-offset-2 ${darkMode ? 'ring-gray-300 ring-offset-gray-700' : 'ring-gray-500 ring-offset-white'}`
-                                  : 'opacity-60 hover:opacity-100'
+                              title={hex}
+                              style={{ backgroundColor: hex }}
+                              className={`w-6 h-6 rounded-full flex-shrink-0 border transition duration-150 hover:scale-110 active:scale-90 ${
+                                darkMode ? 'border-gray-600' : 'border-gray-200'
                               }`}
                             />
                           ))}
@@ -325,20 +410,18 @@ export default function TaskEditor({
 
                 </div>
 
-                {/* Text field */}
-                <textarea
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  placeholder="Add description..."
-                  rows={6}
-                  style={{
-                    fontSize: textFormat.fontSize,
-                    fontWeight: textFormat.fontWeight,
-                    fontStyle: textFormat.fontStyle,
-                    textDecoration: textFormat.textDecoration,
-                    color: textFormat.color
-                  }}
-                  className={`w-full p-3 border ${borderClass} rounded-lg focus:outline-none resize-none ${inputBgClass}`}
+                {/* Само поле: обычный редактируемый блок, поэтому форматируется выделение */}
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  role="textbox"
+                  aria-multiline="true"
+                  aria-label="Description"
+                  data-placeholder="Add description..."
+                  onInput={e => setDescription(e.currentTarget.innerHTML)}
+                  onBlur={e => setDescription(e.currentTarget.innerHTML)}
+                  className={`task-description w-full min-h-[9rem] p-3 border ${borderClass} rounded-lg focus:outline-none overflow-y-auto ${inputBgClass}`}
                 />
               </div>
             </div>
@@ -346,15 +429,73 @@ export default function TaskEditor({
             {/* Priority */}
             <div>
               <label className={`block text-sm font-medium ${labelClass} mb-2`}>Priority</label>
-              <select
+              <Select
                 value={priority}
                 onChange={e => setPriority(e.target.value)}
-                className={`w-full px-4 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'high', label: 'High' }
+                ]}
+                darkMode={darkMode}
+                ariaLabel="Priority"
+                className={`px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+              />
+            </div>
+
+            {/* Labels */}
+            <div>
+              <label className={`flex items-center gap-2 text-sm font-medium ${labelClass} mb-2`}>
+                <Tag size={14} /> Labels
+              </label>
+
+              {labels.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {labels.map(label => (
+                    <span
+                      key={label}
+                      className={`inline-flex items-center gap-1 pl-2 pr-1 py-0.5 text-xs rounded-full border ${getLabelColor(label, darkMode)}`}
+                    >
+                      {label}
+                      <button
+                        onClick={() => removeLabel(label)}
+                        title={`Remove ${label}`}
+                        aria-label={`Remove ${label}`}
+                        className="p-0.5 rounded-full press-icon"
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  list="task-labels"
+                  value={newLabel}
+                  onChange={e => setNewLabel(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && addLabel()}
+                  placeholder="Add label..."
+                  className={`flex-1 min-w-0 px-3 py-2 text-sm border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
+                />
+                {/* Подсказываем лейблы, которые уже есть в проекте */}
+                <datalist id="task-labels">
+                  {knownLabels.filter(l => !labels.includes(l)).map(l => (
+                    <option key={l} value={l} />
+                  ))}
+                </datalist>
+                <button
+                  onClick={() => addLabel()}
+                  disabled={!newLabel.trim()}
+                  title="Add label"
+                  aria-label="Add label"
+                  className={`px-3 py-2 rounded-lg flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${darkMode ? 'bg-gray-700 text-gray-100 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
             </div>
 
             {/* Subtasks */}
@@ -388,7 +529,7 @@ export default function TaskEditor({
                             onClick={() => startEditingSubtask(subtask)}
                             className={`flex-1 text-sm cursor-text ${
                               subtask.completed
-                                ? darkMode ? 'line-through text-gray-500' : 'line-through text-gray-400'
+                                ? darkMode ? 'text-gray-500' : 'text-gray-400'
                                 : darkMode ? 'text-gray-200' : 'text-gray-700'
                             }`}
                           >
@@ -429,27 +570,29 @@ export default function TaskEditor({
               <div>
                 <label className={`block text-sm font-medium ${labelClass} mb-2`}>Move to project</label>
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <select
+                  <Select
                     value={targetProjectId}
                     onChange={e => handleTargetProjectChange(e.target.value)}
-                    className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
-                  >
-                    <option value="">Select project...</option>
-                    {otherProjects.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
+                    options={[
+                      { value: '', label: 'Select project...' },
+                      ...otherProjects.map(p => ({ value: p.id, label: p.name }))
+                    ]}
+                    darkMode={darkMode}
+                    ariaLabel="Target project"
+                    wrapperClassName="flex-1 min-w-0"
+                    className={`px-3 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                  />
                   <div className="flex gap-2">
                     {targetProjectId && (
-                      <select
+                      <Select
                         value={targetColumnId}
                         onChange={e => setTargetColumnId(e.target.value)}
-                        className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
-                      >
-                        {getProjectColumns(targetProjectId).map(col => (
-                          <option key={col.id} value={col.id}>{col.title}</option>
-                        ))}
-                      </select>
+                        options={getProjectColumns(targetProjectId).map(col => ({ value: col.id, label: col.title }))}
+                        darkMode={darkMode}
+                        ariaLabel="Target column"
+                        wrapperClassName="flex-1 min-w-0"
+                        className={`px-3 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                      />
                     )}
                     <button
                       onClick={handleMoveToProject}
@@ -467,18 +610,22 @@ export default function TaskEditor({
             {projectTasks.length > 0 && (
               <div>
                 <label className={`block text-sm font-medium ${labelClass} mb-2`}>Make it a subtask</label>
-                <select
+                <Select
                   value={parentTaskId}
                   onChange={e => setParentTaskId(e.target.value)}
-                  className={`w-full min-w-0 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
-                >
-                  <option value="">Keep it a task</option>
-                  {projectTasks.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.taskId ? `${t.taskId} · ` : ''}{t.title}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '', label: 'Keep it a task' },
+                    ...projectTasks.map(t => ({
+                      value: t.id,
+                      label: `${t.taskId ? `${t.taskId} · ` : ''}${t.title}`
+                    }))
+                  ]}
+                  darkMode={darkMode}
+                  searchable
+                  searchPlaceholder="Search tasks..."
+                  ariaLabel="Parent task"
+                  className={`px-3 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                />
                 <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                   {parentTaskId
                     ? 'On save the task becomes a subtask of the selected one; its own subtasks move along with it.'
@@ -561,29 +708,36 @@ export default function TaskEditor({
           </div>
 
           {/* Action buttons (always visible) */}
-          <div className={`flex gap-3 p-4 sm:p-6 sm:pt-4 flex-shrink-0 border-t ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
-            <button
-              onClick={handleSave}
-              disabled={isUploading}
-              className="flex-1 px-6 py-2 bg-green-800 text-white rounded-lg hover:bg-green-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed press"
-            >
-              {isUploading ? 'Please wait...' : 'Save'}
-            </button>
-            <button
-              onClick={onClose}
-              className={`px-6 py-2 border ${borderClass} rounded-lg font-medium ${darkMode ? 'text-gray-100 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'}`}
-            >
-              Cancel
-            </button>
+          <div className={`flex items-center gap-3 p-4 sm:p-6 sm:pt-4 flex-shrink-0 border-t ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
+            {/* Удаление стоит отдельно слева, обычные действия — справа */}
             <button
               onClick={() => {
                 if (confirm('Delete this task?')) {
                   onDelete(task.id);
                 }
               }}
-              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              title="Delete task"
+              aria-label="Delete task"
+              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 press"
             >
               <Trash2 size={18} />
+            </button>
+
+            <div className="flex-1" />
+
+            <button
+              onClick={onClose}
+              className={`min-w-[110px] px-6 py-2 border ${borderClass} rounded-lg font-medium press ${darkMode ? 'text-gray-100 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isUploading}
+              // Рамка прозрачная, чтобы кнопка совпадала по высоте с Cancel
+              className="min-w-[110px] px-6 py-2 border border-transparent bg-green-800 text-white rounded-lg hover:bg-green-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed press"
+            >
+              {isUploading ? 'Please wait...' : 'Save'}
             </button>
           </div>
         </div>
