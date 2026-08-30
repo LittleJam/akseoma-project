@@ -3,6 +3,7 @@ import { Edit2, X, ChevronLeft, ChevronRight, Star, Clock } from 'lucide-react';
 import { themeIcon } from '../themes';
 import { getWeekStart, addWeeks, getWeekKey, getWeekDates, isSameDay } from '../utils/weeks';
 import { getQuoteForDate } from '../quotes';
+import PageShell from './PageShell';
 
 export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays }) {
   const AddIcon = themeIcon(theme, 'add');
@@ -168,77 +169,71 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
 
   const mutedIcon = darkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600';
 
-  const navButtonClass = `p-1.5 rounded-lg border press ${
+  const navButtonClass = `h-control w-control flex items-center justify-center rounded-lg border press ${
     darkMode
       ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
       : 'border-gray-200 text-gray-600 hover:bg-gray-100'
   }`;
 
+  // Листание недель — действия страницы, поэтому уезжают в шапку каркаса рядом с заголовком
+  const weekNav = (
+    <>
+      <button
+        onClick={() => setWeekOffset(prev => prev - 1)}
+        title="Previous week"
+        aria-label="Previous week"
+        className={navButtonClass}
+      >
+        <ChevronLeft size={16} />
+      </button>
+
+      {weekOffset !== 0 && (
+        <button
+          onClick={() => setWeekOffset(0)}
+          className={`h-control px-3 text-caption font-medium rounded-lg border press ${
+            darkMode
+              ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
+              : 'border-gray-200 text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          Today
+        </button>
+      )}
+
+      <button
+        onClick={() => setWeekOffset(prev => prev + 1)}
+        title="Next week"
+        aria-label="Next week"
+        className={navButtonClass}
+      >
+        <ChevronRight size={16} />
+      </button>
+    </>
+  );
+
+  // Фраза дня — не действие, а украшение, поэтому отдельной строкой под заголовком
+  const quoteLine = (
+    <div className="flex items-center gap-2 min-w-0 group/quote">
+      <p className={`text-body sm:text-base leading-relaxed ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+        <span className="italic">“{quote.text}”</span>
+        <span className="ml-1.5">— {quote.source}</span>
+      </p>
+      <button
+        onClick={() => setQuoteOffset(prev => prev + 1)}
+        title="Another quote"
+        aria-label="Another quote"
+        className={`h-control-sm w-control-sm flex items-center justify-center rounded opacity-0 group-hover/quote:opacity-100 press-icon flex-shrink-0 ${
+          darkMode ? 'text-gray-600 hover:text-gray-400' : 'text-gray-300 hover:text-gray-500'
+        }`}
+      >
+        <RefreshIcon size={14} />
+      </button>
+    </div>
+  );
+
   return (
-    <div className={`flex-1 flex flex-col overflow-hidden ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="px-4 sm:px-8 pt-4 sm:pt-6 pb-1 sm:pb-2 flex-shrink-0">
-        {/* Заголовок в том же месте, что и на других вкладках, — при переходе
-            между страницами взгляд не перескакивает */}
-        <h2 className={`text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-          Schedule
-        </h2>
-
-        {/* Фраза дня и переключение недель — одной строкой: слева читаем, справа листаем */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 min-w-0 group/quote">
-            <p className={`text-sm sm:text-base leading-relaxed ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-              <span className="italic">“{quote.text}”</span>
-              <span className="ml-1.5">— {quote.source}</span>
-            </p>
-            <button
-              onClick={() => setQuoteOffset(prev => prev + 1)}
-              title="Another quote"
-              aria-label="Another quote"
-              className={`p-1.5 sm:p-1 rounded opacity-0 group-hover/quote:opacity-100 press-icon flex-shrink-0 ${
-                darkMode ? 'text-gray-600 hover:text-gray-400' : 'text-gray-300 hover:text-gray-500'
-              }`}
-            >
-              <RefreshIcon size={14} />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={() => setWeekOffset(prev => prev - 1)}
-              title="Previous week"
-              aria-label="Previous week"
-              className={navButtonClass}
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            {weekOffset !== 0 && (
-              <button
-                onClick={() => setWeekOffset(0)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg border press ${
-                  darkMode
-                    ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                    : 'border-gray-200 text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Today
-              </button>
-            )}
-
-            <button
-              onClick={() => setWeekOffset(prev => prev + 1)}
-              title="Next week"
-              aria-label="Next week"
-              className={navButtonClass}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 min-h-0 px-4 sm:px-8 pb-4 sm:pb-8 pt-2 sm:pt-4 overflow-y-auto">
-        <div className="grid grid-cols-1 min-[900px]:grid-cols-2 min-[1400px]:grid-cols-4 min-[1400px]:grid-rows-2 gap-3 sm:gap-4 w-full">
+    <PageShell darkMode={darkMode} title="Schedule" actions={weekNav} subheader={quoteLine}>
+      <div className="grid grid-cols-1 cards:grid-cols-2 wide:grid-cols-4 wide:grid-rows-2 gap-3 sm:gap-4 w-full">
           {weekDays.map((day, i) => {
             const date = weekDates[i];
             const isToday = isSameDay(date, today);
@@ -252,7 +247,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                   setDragOverDay(prev => (prev === day ? null : prev));
                 }}
                 onDrop={e => handleDayDrop(e, day)}
-                className={`rounded-lg p-3 sm:p-4 flex flex-col h-[315px] min-h-0 min-w-0 border transition duration-150 ${
+                className={`rounded-lg p-3 sm:p-4 flex flex-col h-day-card min-h-0 min-w-0 border transition duration-150 ${
                   isToday
                     ? darkMode ? 'border-green-700 bg-green-950/40' : 'border-green-200 bg-green-50'
                     : darkMode ? 'border-gray-800 bg-gray-800/60' : 'border-gray-200 bg-white'
@@ -446,8 +441,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
               </div>
             );
           })}
-        </div>
       </div>
-    </div>
+    </PageShell>
   );
 }
