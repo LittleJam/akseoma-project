@@ -1,19 +1,25 @@
 // Сервис-воркер приложения: офлайн-оболочка и кеш статики.
 // Версию менять при изменении логики — старые кеши подчищаются на активации.
-const VERSION = 'stt-v2';
+const VERSION = 'stt-v3';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/wave.svg', '/icon-192.png', '/icon-512.png'];
+// Пути относительные: воркер лежит рядом с приложением, а оно может быть
+// как в корне домена, так и в подпапке GitHub Pages
+// Абсолютные адреса оболочки — для кеша нужны именно они
+const SHELL_URL = new URL('./index.html', self.location).href;
+const SHELL_ROOT = new URL('./', self.location).href;
+
+const SHELL = ['./', './index.html', './manifest.webmanifest', './wave.svg', './icon-192.png', './icon-512.png'];
 
 // Рукописные шрифты темы Handwriting: без них тема теряет смысл, поэтому кладём
 // их в кеш заранее, а не при первом показе — иначе офлайн покажет запасной шрифт
 const FONTS = [
-  '/fonts/neucha-latin.woff2',
-  '/fonts/neucha-cyrillic.woff2',
-  '/fonts/caveat-latin.woff2',
-  '/fonts/caveat-latin-ext.woff2',
-  '/fonts/caveat-cyrillic.woff2'
+  './fonts/neucha-latin.woff2',
+  './fonts/neucha-cyrillic.woff2',
+  './fonts/caveat-latin.woff2',
+  './fonts/caveat-latin-ext.woff2',
+  './fonts/caveat-cyrillic.woff2'
 ];
 
 self.addEventListener('install', (event) => {
@@ -53,10 +59,10 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then(response => {
           const copy = response.clone();
-          caches.open(SHELL_CACHE).then(cache => cache.put('/index.html', copy));
+          caches.open(SHELL_CACHE).then(cache => cache.put(SHELL_URL, copy));
           return response;
         })
-        .catch(() => caches.match('/index.html').then(cached => cached || caches.match('/')))
+        .catch(() => caches.match(SHELL_URL).then(cached => cached || caches.match(SHELL_ROOT)))
     );
     return;
   }

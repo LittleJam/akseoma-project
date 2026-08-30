@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Volume2, VolumeX, SkipForward } from 'lucide-react';
 import { CHILL_BADGE, themeIcon } from '../themes';
+import PageShell from './PageShell';
 
 const DURATION = 15 * 60;
 
@@ -193,7 +194,7 @@ export default function ChillTimer({ darkMode, theme }) {
   const seconds = (secondsLeft % 60).toString().padStart(2, '0');
 
   return (
-    <div className={`relative overflow-hidden flex-1 flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <PageShell darkMode={darkMode} variant="focus">
       {/* Квадрат дыхания: таймер и кнопки внутри него, поэтому значок обходит их
           по периметру и ни с чем не пересекается. Вся анимация — в CSS,
           так что перерисовок нет */}
@@ -201,7 +202,7 @@ export default function ChillTimer({ darkMode, theme }) {
         <span className="chill-marker" aria-hidden="true">
           <BreathMarker />
         </span>
-        <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{CHILL_BADGE[theme] || CHILL_BADGE.light} Chill</h2>
+        <h2 className={`text-title-lg ${darkMode ? 'text-white' : 'text-gray-800'}`}>{CHILL_BADGE[theme] || CHILL_BADGE.light} Chill</h2>
         {/* Размер цифр считается от стороны квадрата — см. .chill-time */}
         <div className={`chill-time leading-none font-mono font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           {minutes}:{seconds}
@@ -253,6 +254,6 @@ export default function ChillTimer({ darkMode, theme }) {
       <div className="absolute w-px h-px overflow-hidden opacity-0 pointer-events-none -z-10" aria-hidden="true">
         <div ref={playerMountRef} />
       </div>
-    </div>
+    </PageShell>
   );
 }

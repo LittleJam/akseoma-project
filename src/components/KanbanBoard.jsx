@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Tag, X, ArrowDownWideNarrow, Heart } from 'lucide-react';
 import DropZone from './DropZone';
 import { getLabelColor } from '../constants';
+import PageShell from './PageShell';
 
 export default function KanbanBoard({
   currentProject,
@@ -75,17 +76,13 @@ export default function KanbanBoard({
   };
 
   return (
-    <div className={`flex-1 flex flex-col overflow-hidden ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      {currentProject && (
-        <>
-          <div className="px-4 sm:px-8 pt-4 sm:pt-6 flex-shrink-0">
-            <h2 className={`text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              {projects.find(p => p.id === currentProject)?.name}
-            </h2>
-
-            {/* Добавление и фильтры одной строкой. Она есть всегда: без неё
-                в пустом проекте не с чего было бы начать */}
-            <div className="flex items-center gap-2 flex-wrap mb-4 sm:mb-6">
+    <PageShell
+      darkMode={darkMode}
+      title={projects.find(p => p.id === currentProject)?.name || ''}
+      subheader={currentProject && (
+            /* Добавление и фильтры одной строкой. Она есть всегда: без неё
+               в пустом проекте не с чего было бы начать */
+            <div className="flex items-center gap-2 flex-wrap">
               {composing ? (
                 <input
                   type="text"
@@ -99,7 +96,7 @@ export default function KanbanBoard({
                   autoFocus
                   placeholder={`New task in ${columns[0]?.title || ''}...`}
                   aria-label="New task title"
-                  className={`h-9 w-80 sm:w-[26rem] max-w-full px-4 text-sm rounded-full border focus:outline-none focus:border-green-500 ${
+                  className={`h-control w-80 sm:w-[26rem] max-w-full px-4 text-body rounded-lg border focus:outline-none focus:border-green-500 ${
                     darkMode
                       ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
                       : 'bg-white border-gray-300 placeholder-gray-400'
@@ -109,7 +106,7 @@ export default function KanbanBoard({
                 <button
                   onClick={() => setComposing(true)}
                   title={`Add a task to ${columns[0]?.title || ''}`}
-                  className="h-9 flex items-center gap-1.5 pl-3 pr-4 text-sm font-medium rounded-full bg-green-800 text-white hover:bg-green-900 press"
+                  className="h-control flex items-center gap-1.5 pl-3 pr-4 text-body font-medium rounded-lg bg-green-800 text-white hover:bg-green-900 press"
                 >
                   <Plus size={16} /> Task
                 </button>
@@ -120,7 +117,7 @@ export default function KanbanBoard({
                 <button
                   onClick={sortBoardByPriority}
                   title="Sort all columns by priority"
-                  className={`h-9 flex items-center gap-1.5 px-3.5 text-xs rounded-full border press ${
+                  className={`h-control flex items-center gap-1.5 px-3.5 text-xs rounded-full border press ${
                     darkMode
                       ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
                       : 'border-gray-200 text-gray-600 hover:bg-gray-100'
@@ -136,7 +133,7 @@ export default function KanbanBoard({
                   onClick={() => setOnlyLiked(prev => !prev)}
                   title={onlyLiked ? 'Show all tasks' : 'Show only liked tasks'}
                   aria-pressed={onlyLiked}
-                  className={`h-9 flex items-center gap-1.5 px-3.5 text-xs rounded-full border press ${
+                  className={`h-control flex items-center gap-1.5 px-3.5 text-xs rounded-full border press ${
                     onlyLiked
                       ? 'border-rose-500 text-rose-500'
                       : darkMode
@@ -159,7 +156,7 @@ export default function KanbanBoard({
                   }}
                   title={showLabels ? 'Hide labels' : 'Show labels'}
                   aria-label={showLabels ? 'Hide labels' : 'Show labels'}
-                  className={`h-9 flex items-center gap-1.5 px-3.5 text-xs rounded-full border press ${
+                  className={`h-control flex items-center gap-1.5 px-3.5 text-xs rounded-full border press ${
                     showLabels
                       ? darkMode
                         ? 'border-green-700 text-green-400'
@@ -180,7 +177,7 @@ export default function KanbanBoard({
                   <button
                     key={label}
                     onClick={() => toggleLabel(label)}
-                    className={`h-9 px-3 text-xs rounded-full border press ${getLabelColor(label, darkMode)} ${
+                    className={`h-control px-3 text-xs rounded-full border press ${getLabelColor(label, darkMode)} ${
                       active ? 'ring-2 ring-green-600' : 'opacity-60 hover:opacity-100'
                     }`}
                   >
@@ -192,18 +189,18 @@ export default function KanbanBoard({
               {showLabels && activeLabels.length > 0 && (
                 <button
                   onClick={() => setActiveLabels([])}
-                  className={`h-9 flex items-center gap-1 px-2.5 text-xs rounded-full press ${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
+                  className={`h-control flex items-center gap-1 px-2.5 text-xs rounded-full press ${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
                 >
                   <X size={12} /> Clear
                 </button>
               )}
             </div>
-          </div>
-
+      )}
+    >
           {/* Борд прокручивается целиком, все колонки разом. По горизонтали
               колонки жмутся до читаемого минимума и только потом появляется
               прокрутка — на 1280px пять колонок ещё помещаются */}
-          <div className="flex-1 min-h-0 overflow-auto px-4 sm:px-8 pb-4 sm:pb-8">
+          {currentProject && (
             <div className="flex gap-3 sm:gap-4 min-h-full">
               {columns.map(column => (
                 <div key={column.id} className="flex-1 min-w-[170px] sm:min-w-[180px]">
@@ -229,9 +226,7 @@ export default function KanbanBoard({
                 </div>
               ))}
             </div>
-          </div>
-        </>
-      )}
-    </div>
+          )}
+    </PageShell>
   );
 }

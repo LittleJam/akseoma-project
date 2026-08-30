@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X } from 'lucide-react';
-import { getProjectCode } from './utils/projectCode';
+import { getProjectCode, uniqueSlug, withSlugs } from './utils/projectCode';
 import { idbGet, idbSet, writeStateToFile } from './utils/fileStorage';
 import { isSupabaseConfigured } from './utils/supabaseClient';
 import { loadRemoteState, saveRemoteState } from './utils/supabaseStorage';
 import { DEFAULT_COLUMNS, WEEK_DAYS, STORAGE_KEYS } from './constants';
 import { DARK_THEMES, THEME_COLORS } from './themes';
+import { parseLocation, navigate, onRouteChange } from './utils/router';
 import { AUTH_KEY, FLAGS_KEY, DEFAULT_FLAGS, PAGE_FEATURES, canUse } from './auth';
 import { getWeekKey } from './utils/weeks';
 import StorageErrorBanner from './components/StorageErrorBanner';
@@ -59,6 +60,8 @@ export default function PersonalJira() {
   const [supabaseStatus, setSupabaseStatus] = useState('idle');
   const [supabaseError, setSupabaseError] = useState(null);
   const remoteFetchDone = useRef(false);
+  // Первый проход синхронизации адреса не должен создавать запись в истории
+  const routeSynced = useRef(false);
   const supabaseSaveTimeout = useRef(null);
 
   const weekDays = WEEK_DAYS;
@@ -230,25 +233,38 @@ export default function PersonalJira() {
         const savedCurrentProject = localStorage.getItem('jira-currentProject');
         const savedCurrentPage = localStorage.getItem('jira-currentPage');
 
+        // Адрес главнее сохранённого значения. Пусто в адресе — значит зашли
+        // по иконке PWA (её start_url ведёт в корень), тогда берём последнее место
+        const route = parseLocation();
+
         let proj = [];
         if (savedProjects) {
-          proj = JSON.parse(savedProjects);
+          // withSlugs досоздаёт адрес проектам, заведённым до его появления
+          proj = withSlugs(JSON.parse(savedProjects));
           setProjects(proj);
+          localStorage.setItem('jira-projects', JSON.stringify(proj));
         } else {
-          const defaultProject = { id: 'default', name: 'PROJECT' };
+          const defaultProject = { id: 'default', name: 'PROJECT', slug: 'project' };
           proj = [defaultProject];
           setProjects(proj);
           localStorage.setItem('jira-projects', JSON.stringify(proj));
         }
 
-        // Восстановить последний открытый проект, если он существует
-        if (savedCurrentProject && proj.find(p => p.id === savedCurrentProject)) {
+        // Проект из ссылки главнее сохранённого. Проекта из ссылки может уже
+        // не быть — тогда молча открываем последний использованный, а адрес
+        // поправится сам следующим эффектом
+        const fromUrl = route.projectSlug && proj.find(p => p.slug === route.projectSlug);
+        if (fromUrl) {
+          setCurrentProject(fromUrl.id);
+        } else if (savedCurrentProject && proj.find(p => p.id === savedCurrentProject)) {
           setCurrentProject(savedCurrentProject);
         } else {
           setCurrentProject(proj[0]?.id);
         }
 
-        if (savedCurrentPage) {
+        if (route.page) {
+          setCurrentPage(route.page);
+        } else if (savedCurrentPage) {
           setCurrentPage(savedCurrentPage === 'wishlist' ? 'notes' : savedCurrentPage);
         }
 
@@ -393,10 +409,32 @@ export default function PersonalJira() {
     }
   }, [currentProject]);
 
-  // Сохранение текущей страницы
+  // Сохранение текущей страницы. Значение остаётся как «где я был в прошлый
+  // раз» — им пользуется только заход по иконке PWA, у которой раздела в адресе нет
   useEffect(() => {
     localStorage.setItem('jira-currentPage', currentPage);
   }, [currentPage]);
+
+  // Состояние → адрес. Пока данные грузятся, адрес не трогаем: иначе первый же
+  // проход затрёт раздел из ссылки, по которой пришли.
+  // Первая синхронизация — replace (просто дописываем раздел в адрес входа),
+  // дальше push: без записей в истории «назад» на Android закрывает приложение,
+  // а не возвращает на предыдущий раздел
+  useEffect(() => {
+    if (loading) return;
+    const slug = projects.find(p => p.id === currentProject)?.slug;
+    navigate(currentPage, slug, { replace: !routeSynced.current });
+    routeSynced.current = true;
+  }, [currentPage, currentProject, projects, loading]);
+
+  // Адрес → состояние: «назад» и «вперёд» в браузере, а в установленном PWA —
+  // системная кнопка «назад» на Android и свайп от края на iOS
+  useEffect(() => onRouteChange(() => {
+    const route = parseLocation();
+    if (route.page) setCurrentPage(route.page);
+    const target = route.projectSlug && projects.find(p => p.slug === route.projectSlug);
+    if (target) setCurrentProject(target.id);
+  }), [projects]);
 
   // Восстановление дескриптора файла автосохранения при загрузке
   useEffect(() => {
@@ -434,7 +472,7 @@ export default function PersonalJira() {
       try {
         const remote = await loadRemoteState();
         if (remote) {
-          if (remote.projects) saveProjects(remote.projects);
+          if (remote.projects) saveProjects(withSlugs(remote.projects));
           if (remote.tasks) {
             saveTasks(renumberTasksByCreationOrder(remote.tasks, remote.projects || projects));
           }
@@ -448,17 +486,17 @@ export default function PersonalJira() {
           if (remote.settings?.projectLikes) setProjectLikes(remote.settings.projectLikes);
           if (remote.settings?.theme) setTheme(remote.settings.theme);
           else if (remote.settings?.darkMode !== undefined) setTheme(remote.settings.darkMode ? 'dark' : 'light');
-          if (remote.settings?.currentProject) setCurrentProject(remote.settings.currentProject);
-          if (remote.settings?.currentPage) setCurrentPage(remote.settings.currentPage);
         }
         setSupabaseStatus('synced');
         setSupabaseError(null);
+        // Отправку в облако разрешаем только после успешного скачивания.
+        // Раньше флаг ставился в finally, то есть и при ошибке: запуск без сети
+        // открывал отправку, и пустое локальное состояние затирало актуальное
+        remoteFetchDone.current = true;
       } catch (err) {
         console.error('Supabase load error:', err);
         setSupabaseStatus('error');
         setSupabaseError(err.message);
-      } finally {
-        remoteFetchDone.current = true;
       }
     })();
   }, [loading]);
@@ -477,7 +515,9 @@ export default function PersonalJira() {
           weeklyTasks,
           notes,
           collapsedSubtasks,
-          settings: { darkMode, theme, featureFlags, projectLikes, currentProject, currentPage }
+          // currentProject/currentPage сюда не кладём: раздел и проект — дело
+          // конкретного устройства, синхронизировать их значит дёргать чужой экран
+          settings: { darkMode, theme, featureFlags, projectLikes }
         });
         setSupabaseStatus('synced');
         setSupabaseError(null);
@@ -488,7 +528,7 @@ export default function PersonalJira() {
       }
     }, 500);
     return () => clearTimeout(supabaseSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, featureFlags, projectLikes, currentProject, currentPage, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, featureFlags, projectLikes, loading]);
 
   // Подключить (создать или выбрать существующий) JSON-файл для автосохранения
   const connectFile = async () => {
@@ -596,7 +636,8 @@ export default function PersonalJira() {
 
     const newProject = {
       id: Date.now().toString(),
-      name: newProjectName
+      name: newProjectName,
+      slug: uniqueSlug(newProjectName, projects.map(p => p.slug).filter(Boolean))
     };
 
     const updatedProjects = [...projects, newProject];
@@ -1289,7 +1330,7 @@ export default function PersonalJira() {
 
       {/* Основное содержимое. На телефоне сверху остаётся место под кнопку меню */}
       <div className="flex-1 min-w-0 flex flex-col pt-12 sm:pt-0">
-      {editingTask && currentPage === 'kanban' ? (
+      {editingTask && currentPage === 'kanban' && (
         <TaskEditor
           task={editingTask}
           onSave={handleTaskSave}
@@ -1315,7 +1356,9 @@ export default function PersonalJira() {
               .flatMap(t => t.labels || [])
           )].sort()}
         />
-      ) : currentPage === 'kanban' ? (
+      )}
+
+      {currentPage === 'kanban' ? (
         <>
           {taskAddedNotification && <TaskAddedNotification />}
           <KanbanBoard
