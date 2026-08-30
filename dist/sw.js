@@ -1,16 +1,26 @@
 // Сервис-воркер приложения: офлайн-оболочка и кеш статики.
 // Версию менять при изменении логики — старые кеши подчищаются на активации.
-const VERSION = 'stt-v1';
+const VERSION = 'stt-v2';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/wave.svg', '/icon-192.png', '/icon-512.png'];
 
+// Рукописные шрифты темы Handwriting: без них тема теряет смысл, поэтому кладём
+// их в кеш заранее, а не при первом показе — иначе офлайн покажет запасной шрифт
+const FONTS = [
+  '/fonts/neucha-latin.woff2',
+  '/fonts/neucha-cyrillic.woff2',
+  '/fonts/caveat-latin.woff2',
+  '/fonts/caveat-latin-ext.woff2',
+  '/fonts/caveat-cyrillic.woff2'
+];
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE)
       // Отдельные промахи (например, ещё не собранная иконка) не должны валить установку
-      .then(cache => Promise.allSettled(SHELL.map(url => cache.add(url))))
+      .then(cache => Promise.allSettled([...SHELL, ...FONTS].map(url => cache.add(url))))
       .then(() => self.skipWaiting())
   );
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Volume2, VolumeX, SkipForward } from 'lucide-react';
-import { CHILL_BADGE } from '../themes';
+import { CHILL_BADGE, themeIcon } from '../themes';
 
 const DURATION = 15 * 60;
 
@@ -20,7 +20,6 @@ export default function ChillTimer({ darkMode, theme }) {
   const [running, setRunning] = useState(false);
   const [musicOn, setMusicOn] = useState(true);
   const [musicReady, setMusicReady] = useState(false);
-  const [trackTitle, setTrackTitle] = useState('');
 
   // Какой трек играть, решаем ещё до первого рендера: если прошлый сеанс дослушали
   // до конца или с тех пор наступил новый день — сдвигаемся на следующий
@@ -78,15 +77,6 @@ export default function ChillTimer({ darkMode, theme }) {
   useEffect(() => {
     let cancelled = false;
 
-    const readTitle = () => {
-      try {
-        const title = playerRef.current?.getVideoData?.().title;
-        if (title && !cancelled) setTrackTitle(title);
-      } catch (error) {
-        console.error('YouTube title error:', error);
-      }
-    };
-
     const createPlayer = () => {
       if (cancelled || playerRef.current || !playerMountRef.current) return;
       const startId = TRACKS[loadedTrackRef.current].id;
@@ -104,7 +94,6 @@ export default function ChillTimer({ darkMode, theme }) {
           onReady: () => {
             if (cancelled) return;
             setMusicReady(true);
-            readTitle();
           },
           // Ролики в плейлисте разной длины, поэтому зацикливаем вручную:
           // штатный loop работает только для одного и того же видео
@@ -117,7 +106,6 @@ export default function ChillTimer({ darkMode, theme }) {
                 console.error('YouTube loop error:', error);
               }
             }
-            readTitle();
           }
         }
       });
@@ -156,7 +144,6 @@ export default function ChillTimer({ darkMode, theme }) {
   useEffect(() => {
     if (!musicReady || !playerRef.current || loadedTrackRef.current === trackIndex) return;
     loadedTrackRef.current = trackIndex;
-    setTrackTitle('');
     try {
       if (running && musicOn) {
         playerRef.current.loadVideoById(TRACKS[trackIndex].id);
@@ -198,20 +185,30 @@ export default function ChillTimer({ darkMode, theme }) {
     setRunning(prev => !prev);
   };
 
+  // По периметру квадрата ходит талисман темы: сова в Wizard, рыба в Surf,
+  // скрепка в Handwriting — тот же значок, что тема ставит везде
+  const BreathMarker = themeIcon(theme, 'mascot');
+
   const minutes = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
   const seconds = (secondsLeft % 60).toString().padStart(2, '0');
-  const trackName = trackTitle || TRACKS[trackIndex].label;
 
   return (
-    <div className={`flex-1 flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="flex flex-col items-center gap-6 sm:gap-8 px-4">
+    <div className={`relative overflow-hidden flex-1 flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Квадрат дыхания: таймер и кнопки внутри него, поэтому значок обходит их
+          по периметру и ни с чем не пересекается. Вся анимация — в CSS,
+          так что перерисовок нет */}
+      <div className={`chill-square flex-col gap-4 sm:gap-6 px-4 ${darkMode ? 'is-dark' : ''} ${running ? 'is-running' : ''}`}>
+        <span className="chill-marker" aria-hidden="true">
+          <BreathMarker />
+        </span>
         <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{CHILL_BADGE[theme] || CHILL_BADGE.light} Chill</h2>
-        {/* Размер цифр тянется за шириной экрана, поэтому таймер не вылезает ни на одном */}
-        <div className={`text-[clamp(2.75rem,13vw,9rem)] leading-none font-mono font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+        {/* Размер цифр считается от стороны квадрата — см. .chill-time */}
+        <div className={`chill-time leading-none font-mono font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           {minutes}:{seconds}
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Старт крупнее и выше, музыка — второстепенное, поэтому мельче и под ним */}
+        <div className="flex flex-col items-center gap-3 sm:gap-4">
           <button
             onClick={toggleTimer}
             className={`p-5 bg-green-800 text-white rounded-full hover:bg-green-900 flex items-center justify-center press ${
@@ -222,43 +219,33 @@ export default function ChillTimer({ darkMode, theme }) {
             {running ? <Pause size={24} /> : <Play size={24} />}
           </button>
 
-          <button
-            onClick={() => setMusicOn(prev => !prev)}
-            title={musicOn ? 'Turn music off' : 'Turn music on'}
-            aria-label={musicOn ? 'Turn music off' : 'Turn music on'}
-            className={`p-3 rounded-full border press ${
-              darkMode
-                ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                : 'border-gray-200 text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            {musicOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMusicOn(prev => !prev)}
+              title={musicOn ? 'Turn music off' : 'Turn music on'}
+              aria-label={musicOn ? 'Turn music off' : 'Turn music on'}
+              className={`p-2.5 rounded-full border press ${
+                darkMode
+                  ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
+                  : 'border-gray-200 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              {musicOn ? <Volume2 size={15} /> : <VolumeX size={15} />}
+            </button>
 
-          <button
-            onClick={nextTrack}
-            title="Next track"
-            aria-label="Next track"
-            className={`p-3 rounded-full border press ${
-              darkMode
-                ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                : 'border-gray-200 text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            <SkipForward size={18} />
-          </button>
-        </div>
-
-        <div className="flex flex-col items-center gap-1">
-          <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            {musicOn ? (running ? 'Lo-fi playing' : 'Lo-fi starts with the timer') : 'Music off'}
-          </p>
-          <p
-            className={`text-xs max-w-[260px] sm:max-w-sm truncate ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}
-            title={trackName}
-          >
-            {trackIndex + 1}/{TRACKS.length} · {trackName}
-          </p>
+            <button
+              onClick={nextTrack}
+              title="Next track"
+              aria-label="Next track"
+              className={`p-2.5 rounded-full border press ${
+                darkMode
+                  ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
+                  : 'border-gray-200 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <SkipForward size={15} />
+            </button>
+          </div>
         </div>
       </div>
 

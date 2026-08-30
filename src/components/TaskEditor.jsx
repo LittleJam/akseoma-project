@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Trash2, X, Image as ImageIcon, Plus, ArrowRightLeft, ChevronDown, Tag,
+  Trash2, X, Image as ImageIcon, ArrowRightLeft, Tag,
   Bold, Italic, Underline, Code, Palette
 } from 'lucide-react';
 import { getLabelColor, normalizeLabel } from '../constants';
@@ -64,6 +64,11 @@ export default function TaskEditor({
   const [isUploading, setIsUploading] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const colorPickerRef = useRef(null);
+  // Список уже существующих лейблов проекта: выбрать из него быстрее и надёжнее,
+  // чем вспоминать и набирать заново — иначе плодятся «BUG» и «Bug»
+  const [labelListOpen, setLabelListOpen] = useState(false);
+  const [labelActiveIndex, setLabelActiveIndex] = useState(-1);
+  const labelInputRef = useRef(null);
 
   useEffect(() => {
     if (!colorPickerOpen) return;
@@ -122,6 +127,60 @@ export default function TaskEditor({
   };
 
   const removeLabel = (label) => setLabels(labels.filter(l => l !== label));
+
+  // Один рост и одна поверхность на все контролы панели форматирования: и списки,
+  // и кнопки-иконки. Иконки одного кегля, кнопки — квадраты, поэтому ряд ровный
+  const toolbarSurface = darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-100 hover:bg-gray-200';
+  const toolbarSelectClass = `h-8 px-2.5 text-sm rounded-lg ${toolbarSurface}`;
+  const toolbarButtonClass = `h-8 w-8 flex items-center justify-center rounded-lg press ${toolbarSurface}`;
+  const TOOLBAR_ICON = 15;
+
+  // Показываем то, чего на задаче ещё нет, и сужаем список по мере набора
+  const labelQuery = newLabel.trim().toLowerCase();
+  const labelSuggestions = knownLabels
+    .filter(l => !labels.includes(l))
+    .filter(l => !labelQuery || l.toLowerCase().includes(labelQuery));
+
+  const pickLabel = (label) => {
+    addLabel(label);
+    setLabelActiveIndex(-1);
+    // Фокус остаётся в поле: обычно лейблов вешают несколько подряд
+    labelInputRef.current?.focus();
+  };
+
+  const handleLabelKeyDown = (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!labelSuggestions.length) return;
+      e.preventDefault();
+      setLabelListOpen(true);
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      setLabelActiveIndex(prev => {
+        const next = prev + step;
+        if (next < 0) return labelSuggestions.length - 1;
+        if (next >= labelSuggestions.length) return 0;
+        return next;
+      });
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Выбранная стрелками подсказка важнее набранного текста
+      pickLabel(labelActiveIndex >= 0 ? labelSuggestions[labelActiveIndex] : newLabel);
+      return;
+    }
+    if (e.key === 'Escape') {
+      setLabelListOpen(false);
+      setLabelActiveIndex(-1);
+    }
+  };
+
+  // Фокус ушёл из поля вместе со списком — дописываем набранное и закрываем
+  const handleLabelBlur = (e) => {
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    addLabel();
+    setLabelListOpen(false);
+    setLabelActiveIndex(-1);
+  };
 
   const addSubtask = () => {
     if (!newSubtaskTitle.trim()) return;
@@ -292,8 +351,9 @@ export default function TaskEditor({
             <div>
               <label className={`block text-sm font-medium ${labelClass} mb-2`}>Description</label>
               <div className={`border ${borderClass} rounded-lg p-3 space-y-3 ${inputBgClass}`}>
-                {/* Панель форматирования: всё применяется к выделенному тексту */}
-                <div className={`flex items-center gap-1 flex-wrap pb-3 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+                {/* Панель форматирования: всё применяется к выделенному тексту.
+                    Контролы одного роста и стиля, поэтому ряд не «пляшет» */}
+                <div className={`flex items-center gap-1.5 flex-wrap pb-3 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
                   <Select
                     value=""
                     onChange={e => e.target.value && runCommand('formatBlock', e.target.value)}
@@ -309,7 +369,7 @@ export default function TaskEditor({
                     placeholder="Style"
                     ariaLabel="Text style"
                     wrapperClassName="w-36"
-                    className={`px-2 py-1 text-sm rounded-lg ${darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
+                    className={toolbarSelectClass}
                   />
 
                   <Select
@@ -326,7 +386,7 @@ export default function TaskEditor({
                     placeholder="Size"
                     ariaLabel="Font size"
                     wrapperClassName="w-28"
-                    className={`px-2 py-1 text-sm rounded-lg ${darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
+                    className={toolbarSelectClass}
                   />
 
                   {[
@@ -339,10 +399,12 @@ export default function TaskEditor({
                       type="button"
                       title={title}
                       aria-label={title}
+                      // Не отдаём фокус кнопке: выделение остаётся в поле, а панель — на экране
+                      onMouseDown={e => e.preventDefault()}
                       onClick={() => runCommand(command)}
-                      className={`p-1.5 rounded-lg press ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      className={toolbarButtonClass}
                     >
-                      <Icon size={14} />
+                      <Icon size={TOOLBAR_ICON} />
                     </button>
                   ))}
 
@@ -358,29 +420,32 @@ export default function TaskEditor({
                     placeholder="List"
                     ariaLabel="List type"
                     wrapperClassName="w-32"
-                    className={`px-2 py-1 text-sm rounded-lg ${darkMode ? 'bg-gray-600' : 'bg-gray-100'}`}
+                    className={toolbarSelectClass}
                   />
 
                   <button
                     type="button"
                     title="Inline code"
                     aria-label="Inline code"
+                    onMouseDown={e => e.preventDefault()}
                     onClick={() => runCommand('fontName', 'monospace')}
-                    className={`p-1.5 rounded-lg press ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-100 hover:bg-gray-200'}`}
+                    className={toolbarButtonClass}
                   >
-                    <Code size={14} />
+                    <Code size={TOOLBAR_ICON} />
                   </button>
 
                   <div className="relative" ref={colorPickerRef}>
                     <button
                       type="button"
+                      onMouseDown={e => e.preventDefault()}
                       onClick={() => setColorPickerOpen(prev => !prev)}
                       title="Text color"
                       aria-label="Text color"
-                      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-sm press ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      aria-haspopup="true"
+                      aria-expanded={colorPickerOpen}
+                      className={toolbarButtonClass}
                     >
-                      <Palette size={14} />
-                      <ChevronDown size={11} className="opacity-60" />
+                      <Palette size={TOOLBAR_ICON} />
                     </button>
 
                     {colorPickerOpen && (
@@ -392,6 +457,7 @@ export default function TaskEditor({
                             <button
                               key={hex}
                               type="button"
+                              onMouseDown={e => e.preventDefault()}
                               onClick={() => {
                                 runCommand('foreColor', hex);
                                 setColorPickerOpen(false);
@@ -470,31 +536,48 @@ export default function TaskEditor({
                 </div>
               )}
 
-              <div className="flex gap-2">
+              {/* Лейбл добавляется сам: по Enter, по выбору из списка и при уходе
+                  из поля — отдельная кнопка для этого не нужна */}
+              <div className="relative" onBlur={handleLabelBlur}>
                 <input
+                  ref={labelInputRef}
                   type="text"
-                  list="task-labels"
                   value={newLabel}
-                  onChange={e => setNewLabel(e.target.value)}
-                  onKeyPress={e => e.key === 'Enter' && addLabel()}
+                  onChange={e => {
+                    setNewLabel(e.target.value);
+                    setLabelListOpen(true);
+                    setLabelActiveIndex(-1);
+                  }}
+                  onFocus={() => setLabelListOpen(true)}
+                  onKeyDown={handleLabelKeyDown}
                   placeholder="Add label..."
-                  className={`flex-1 min-w-0 px-3 py-2 text-sm border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
+                  role="combobox"
+                  aria-expanded={labelListOpen && labelSuggestions.length > 0}
+                  aria-autocomplete="list"
+                  className={`w-full px-3 py-2 text-sm border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
                 />
-                {/* Подсказываем лейблы, которые уже есть в проекте */}
-                <datalist id="task-labels">
-                  {knownLabels.filter(l => !labels.includes(l)).map(l => (
-                    <option key={l} value={l} />
-                  ))}
-                </datalist>
-                <button
-                  onClick={() => addLabel()}
-                  disabled={!newLabel.trim()}
-                  title="Add label"
-                  aria-label="Add label"
-                  className={`px-3 py-2 rounded-lg flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${darkMode ? 'bg-gray-700 text-gray-100 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                >
-                  <Plus size={16} />
-                </button>
+
+                {labelListOpen && labelSuggestions.length > 0 && (
+                  <div className={`absolute z-20 top-full mt-1 left-0 right-0 max-h-48 overflow-y-auto p-1 rounded-lg border shadow-lg origin-top animate-pop-in ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                    {labelSuggestions.map((label, i) => (
+                      <button
+                        key={label}
+                        type="button"
+                        // Фокус не уводим: список остаётся открытым, можно взять ещё один
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => pickLabel(label)}
+                        onMouseEnter={() => setLabelActiveIndex(i)}
+                        className={`w-full flex items-center text-left px-2 py-1.5 rounded-md ${
+                          i === labelActiveIndex ? (darkMode ? 'bg-gray-600' : 'bg-gray-100') : ''
+                        }`}
+                      >
+                        <span className={`px-1.5 py-0.5 text-xs rounded-full border ${getLabelColor(label, darkMode)}`}>
+                          {label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -546,22 +629,20 @@ export default function TaskEditor({
                     ))}
                   </div>
                 )}
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newSubtaskTitle}
-                    onChange={e => setNewSubtaskTitle(e.target.value)}
-                    onKeyPress={e => e.key === 'Enter' && addSubtask()}
-                    placeholder="Add subtask..."
-                    className={`flex-1 px-2 py-1.5 text-sm border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
-                  />
-                  <button
-                    onClick={addSubtask}
-                    className={`p-1.5 rounded-lg ${darkMode ? 'text-green-500 hover:bg-gray-600' : 'text-green-700 hover:bg-gray-100'}`}
-                  >
-                    <Plus size={16} />
-                  </button>
-                </div>
+                {/* Подзадача добавляется сама: по Enter — чтобы сразу писать следующую,
+                    и при уходе из поля — чтобы набранное не пропало вместе с кнопкой */}
+                <input
+                  type="text"
+                  value={newSubtaskTitle}
+                  onChange={e => setNewSubtaskTitle(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') addSubtask();
+                    if (e.key === 'Escape') setNewSubtaskTitle('');
+                  }}
+                  onBlur={addSubtask}
+                  placeholder="Add subtask..."
+                  className={`w-full px-2 py-1.5 text-sm border ${borderClass} rounded-lg focus:outline-none focus:border-green-500 ${inputBgClass}`}
+                />
               </div>
             </div>
 

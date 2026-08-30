@@ -47,6 +47,7 @@ export const FEATURES = [
   { key: 'weekly', label: 'Schedule', hint: 'Weekly plan' },
   { key: 'notes', label: 'Notes', hint: 'Notes with images' },
   { key: 'chill', label: 'Chill', hint: 'Timer with lo-fi' },
+  { key: 'likes', label: 'Likes on tasks', hint: 'Hearts on board cards, switched on per project' },
   { key: 'themes', label: 'Themes', hint: 'Switching the site theme' },
   { key: 'sync', label: 'Sync settings', hint: 'Cloud and file autosave controls' },
   { key: 'reset', label: 'Reset data', hint: 'Wiping all site data' }
@@ -57,6 +58,7 @@ export const DEFAULT_FLAGS = {
   weekly: true,
   notes: true,
   chill: true,
+  likes: true,
   themes: true,
   sync: false,
   reset: false

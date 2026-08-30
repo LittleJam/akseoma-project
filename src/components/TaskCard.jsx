@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
-import { Trash2, ChevronDown } from 'lucide-react';
+import { Trash2, ChevronDown, Heart } from 'lucide-react';
 import { getLabelColor } from '../constants';
 
-export default function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, darkMode, taskNumber, deleteTask, hasSubtasks, subtasksCollapsed, onToggleSubtasks, showLabels, onLabelClick }) {
+export default function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, darkMode, taskNumber, deleteTask, hasSubtasks, subtasksCollapsed, onToggleSubtasks, showLabels, onLabelClick, likesEnabled, currentUsername, onToggleLike }) {
   const [isDragging, setIsDragging] = useState(false);
+
+  // Лайки храним списком пользователей: сердце залито, если отметил ты сам,
+  // а число рядом показывает, сколько всего набралось
+  const likes = task.likes || [];
+  const likedByMe = currentUsername ? likes.includes(currentUsername) : false;
 
   const cardBg = darkMode
     ? 'bg-gray-900 border border-gray-700 hover:border-gray-600'
     : 'bg-white border border-gray-200 hover:border-gray-300';
   const textColor = darkMode ? 'text-gray-100' : 'text-gray-800';
-  // Точка вместо залитого чипа: словом выделяем только high — цвет должен значить «внимание»
+  // Приоритет показываем одной точкой и только ей: цвет уже говорит всё,
+  // а слово «High» рядом с красной точкой было вторым именем той же вещи
   const PRIORITY_STYLES = {
     high: { label: 'High', dot: 'bg-red-500' },
     medium: { label: 'Medium', dot: 'bg-amber-500' },
@@ -66,6 +72,11 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
     onToggleSubtasks();
   };
 
+  const handleLikeClick = (e) => {
+    e.stopPropagation();
+    onToggleLike?.();
+  };
+
   return (
     <div
       draggable
@@ -79,6 +90,28 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
       onClick={() => setEditingTask(task)}
     >
       <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
+        {/* Уже отмеченное сердце видно всегда, пустое — только при наведении:
+            иначе на борде появился бы частокол одинаковых серых значков */}
+        {likesEnabled && (
+          <button
+            onClick={handleLikeClick}
+            title={likedByMe ? 'Remove like' : 'Like'}
+            aria-label={likedByMe ? 'Remove like' : 'Like'}
+            aria-pressed={likedByMe}
+            className={`flex items-center gap-0.5 px-1 py-1 rounded press ${
+              likes.length > 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            } ${
+              likedByMe
+                ? 'text-rose-500'
+                : darkMode ? 'text-gray-500 hover:text-rose-400' : 'text-gray-400 hover:text-rose-500'
+            }`}
+          >
+            <Heart size={13} fill={likedByMe ? 'currentColor' : 'none'} />
+            {likes.length > 0 && (
+              <span className="text-[10px] font-medium leading-none">{likes.length}</span>
+            )}
+          </button>
+        )}
         {hasSubtasks && (
           <button
             onClick={handleToggleSubtasksClick}
@@ -109,11 +142,9 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
           </span>
           <span
             title={`Priority: ${priority.label}`}
+            aria-label={`Priority: ${priority.label}`}
             className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${priority.dot}`}
           />
-          {task.priority === 'high' && (
-            <span className="text-[10px] font-medium uppercase tracking-wide text-red-500">High</span>
-          )}
         </div>
         <h4 className={`font-medium text-sm ${textColor} break-words`}>{task.title}</h4>
 

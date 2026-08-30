@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, LogOut, ShieldCheck } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, LogOut, ShieldCheck, Heart } from 'lucide-react';
 import { COLUMN_COLORS } from '../constants';
 import { THEME_OPTIONS } from '../themes';
 import { FEATURES, DEFAULT_FLAGS } from '../auth';
@@ -13,6 +13,8 @@ export default function SettingsPage({
   allowed = () => true,
   featureFlags = DEFAULT_FLAGS,
   setFeatureFlags,
+  projectLikes = {},
+  setProjectLikes,
   onSignOut,
   projects,
   currentProject,
@@ -94,7 +96,7 @@ export default function SettingsPage({
 
   return (
     <div className={`flex-1 overflow-auto ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="max-w-3xl mx-auto p-3 sm:p-8 space-y-6">
+      <div className="max-w-3xl p-4 sm:px-8 sm:pb-8 sm:pt-6 space-y-6">
         <h2 className={`text-xl sm:text-2xl font-semibold ${textClass}`}>Settings</h2>
 
         {/* Кто вошёл */}
@@ -258,6 +260,45 @@ export default function SettingsPage({
               )}
             </div>
           </div>
+        </div>
+        )}
+
+        {/* Лайки: общий доступ даёт фича-тогл выше, а здесь выбирают,
+            в каких именно проектах сердечки появятся на карточках */}
+        {allowed('kanban') && allowed('likes') && setProjectLikes && (
+        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
+          <h3 className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wide mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            <Heart size={14} /> Likes on tasks
+          </h3>
+          <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            Switch on per project — a heart appears on the board cards of that project.
+          </p>
+
+          {projects.length === 0 ? (
+            <p className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>No projects yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+              {projects.map(project => {
+                const enabled = !!projectLikes[project.id];
+                return (
+                  <label
+                    key={project.id}
+                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer ${
+                      darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      onChange={() => setProjectLikes({ ...projectLikes, [project.id]: !enabled })}
+                      className="w-5 h-5 sm:w-4 sm:h-4 cursor-pointer flex-shrink-0 accent-green-700"
+                    />
+                    <span className={`min-w-0 truncate text-sm font-medium ${labelClass}`}>{project.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </div>
         )}
 

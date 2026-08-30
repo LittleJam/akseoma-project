@@ -86,7 +86,7 @@ export default function Notes({
 
   return (
     <div className={`flex-1 overflow-auto ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="max-w-5xl mx-auto p-4 sm:p-8">
+      <div className="p-4 sm:px-8 sm:pb-8 sm:pt-6">
         <div className={`flex items-center justify-between mb-6 pb-3 border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
           <h2 className={`text-xl sm:text-2xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
             Notes
@@ -104,7 +104,9 @@ export default function Notes({
             No notes yet — add your first one
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          // Карточки квадратные, поэтому на широком экране добавляем колонки,
+          // а не растягиваем плитки: иначе три штуки раздуваются на пол-экрана
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[1600px]:grid-cols-5 gap-3">
             {notes.map((note, index) => {
               const isDragging = dragIndex === index;
               const isDropTarget = dragOverIndex === index && dragIndex !== null && dragIndex !== index;

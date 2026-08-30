@@ -35,9 +35,9 @@ export default function PersonalJira() {
   // Кто вошёл и что разрешено обычному пользователю (админу — всё)
   const [user, setUser] = useState(null);
   const [featureFlags, setFeatureFlags] = useState(DEFAULT_FLAGS);
+  // Лайки включаются по каждому проекту отдельно: { [projectId]: true }
+  const [projectLikes, setProjectLikes] = useState({});
   const [newProjectName, setNewProjectName] = useState('');
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskColumn, setNewTaskColumn] = useState('idea');
   const [loading, setLoading] = useState(true);
   // Тема сайта: light | dark | wizard | surf. Компоненты по-прежнему знают только
   // про darkMode — тёмная она или светлая, — а характер темы накручивается сверху в CSS
@@ -222,9 +222,11 @@ export default function PersonalJira() {
         const savedTheme = localStorage.getItem('jira-theme');
         const savedAuth = localStorage.getItem(AUTH_KEY);
         const savedFlags = localStorage.getItem(FLAGS_KEY);
+        const savedProjectLikes = localStorage.getItem('jira-project-likes');
 
         if (savedAuth) setUser(JSON.parse(savedAuth));
         if (savedFlags) setFeatureFlags({ ...DEFAULT_FLAGS, ...JSON.parse(savedFlags) });
+        if (savedProjectLikes) setProjectLikes(JSON.parse(savedProjectLikes));
         const savedCurrentProject = localStorage.getItem('jira-currentProject');
         const savedCurrentPage = localStorage.getItem('jira-currentPage');
 
@@ -362,6 +364,12 @@ export default function PersonalJira() {
     safeSetItem(FLAGS_KEY, JSON.stringify(featureFlags));
   }, [featureFlags, loading]);
 
+  // Где включены лайки — настройка проекта, а не устройства, поэтому тоже в облако
+  useEffect(() => {
+    if (loading) return;
+    safeSetItem('jira-project-likes', JSON.stringify(projectLikes));
+  }, [projectLikes, loading]);
+
   // Сохранение темы
   useEffect(() => {
     localStorage.setItem('jira-theme', JSON.stringify(theme));
@@ -437,6 +445,7 @@ export default function PersonalJira() {
           }
           if (remote.collapsedSubtasks) saveCollapsedSubtasks(remote.collapsedSubtasks);
           if (remote.settings?.featureFlags) setFeatureFlags({ ...DEFAULT_FLAGS, ...remote.settings.featureFlags });
+          if (remote.settings?.projectLikes) setProjectLikes(remote.settings.projectLikes);
           if (remote.settings?.theme) setTheme(remote.settings.theme);
           else if (remote.settings?.darkMode !== undefined) setTheme(remote.settings.darkMode ? 'dark' : 'light');
           if (remote.settings?.currentProject) setCurrentProject(remote.settings.currentProject);
@@ -468,7 +477,7 @@ export default function PersonalJira() {
           weeklyTasks,
           notes,
           collapsedSubtasks,
-          settings: { darkMode, theme, featureFlags, currentProject, currentPage }
+          settings: { darkMode, theme, featureFlags, projectLikes, currentProject, currentPage }
         });
         setSupabaseStatus('synced');
         setSupabaseError(null);
@@ -479,7 +488,7 @@ export default function PersonalJira() {
       }
     }, 500);
     return () => clearTimeout(supabaseSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, featureFlags, currentProject, currentPage, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, featureFlags, projectLikes, currentProject, currentPage, loading]);
 
   // Подключить (создать или выбрать существующий) JSON-файл для автосохранения
   const connectFile = async () => {
@@ -539,15 +548,6 @@ export default function PersonalJira() {
     setFileConnected(false);
     setFileName('');
   };
-
-  // Обновлять выбранную колонку по умолчанию при смене проекта
-  useEffect(() => {
-    if (!currentProject) return;
-    const cols = getProjectColumns(currentProject);
-    if (!cols.find(c => c.id === newTaskColumn)) {
-      setNewTaskColumn(cols[0]?.id);
-    }
-  }, [currentProject, projectColumns]);
 
   // Функция для получения номера задачи (для отображения если нет taskId)
   const getTaskNumber = (taskId) => {
@@ -640,9 +640,11 @@ export default function PersonalJira() {
     saveProjectColumns(newProjectColumns);
   };
 
-  // Создать задачу
-  const createTask = () => {
-    if (!newTaskTitle.trim() || !currentProject) return;
+  // Создать задачу. Колонка приходит оттуда, куда нажали, — на борде задачу
+  // добавляют прямо в нужном столбце, поэтому выбирать её отдельно не нужно
+  const createTask = (title, columnId) => {
+    const taskTitle = (title || '').trim();
+    if (!taskTitle || !currentProject || !columnId) return;
 
     const now = new Date();
     const project = projects.find(p => p.id === currentProject);
@@ -652,7 +654,7 @@ export default function PersonalJira() {
     const newTask = {
       id: Date.now().toString(),
       taskId: taskId,
-      title: newTaskTitle,
+      title: taskTitle,
       description: { content: '', editorState: null },
       priority: 'medium',
       images: [],
@@ -661,7 +663,7 @@ export default function PersonalJira() {
         {
           timestamp: now.toLocaleString('en-US'),
           action: 'Task created',
-          changes: { title: newTaskTitle }
+          changes: { title: taskTitle }
         }
       ]
     };
@@ -670,13 +672,12 @@ export default function PersonalJira() {
     if (!newTasks[currentProject]) {
       newTasks[currentProject] = {};
     }
-    if (!newTasks[currentProject][newTaskColumn]) {
-      newTasks[currentProject][newTaskColumn] = [];
+    if (!newTasks[currentProject][columnId]) {
+      newTasks[currentProject][columnId] = [];
     }
 
-    newTasks[currentProject][newTaskColumn].push(newTask);
+    newTasks[currentProject][columnId].push(newTask);
     saveTasks(newTasks);
-    setNewTaskTitle('');
     setTaskAddedNotification(true);
     setTimeout(() => setTaskAddedNotification(false), 2000);
   };
@@ -868,6 +869,28 @@ export default function PersonalJira() {
     saveTasks(newTasks);
   };
 
+  // Лайк — от имени вошедшего: храним список пользователей, чтобы двое
+  // не перебивали отметку друг друга и было видно, ставил ли ты сам
+  const toggleTaskLike = (taskId, columnId) => {
+    const username = user?.username;
+    if (!username) return;
+
+    const newTasks = { ...tasks };
+    const columnTasks = newTasks[currentProject]?.[columnId];
+    if (!columnTasks) return;
+
+    newTasks[currentProject] = { ...newTasks[currentProject] };
+    newTasks[currentProject][columnId] = columnTasks.map(task => {
+      if (task.id !== taskId) return task;
+      const likes = task.likes || [];
+      return {
+        ...task,
+        likes: likes.includes(username) ? likes.filter(u => u !== username) : [...likes, username]
+      };
+    });
+    saveTasks(newTasks);
+  };
+
   // Свернуть/развернуть подзадачи задачи на борде (состояние запоминается между сессиями)
   const toggleSubtasksCollapsed = (taskId) => {
     const newCollapsed = { ...collapsedSubtasks };
@@ -956,16 +979,33 @@ export default function PersonalJira() {
     }));
   };
 
-  // Перенести задачу в другой день недели: из списка одного дня в конец другого
-  const moveWeeklyTask = (weekKey, fromDay, toDay, taskId) => {
-    if (fromDay === toDay) return;
+  // Перенести задачу: и в другой день, и на другое место внутри своего дня.
+  // insertAt — позиция в списке дня-приёмника, каким его видит пользователь;
+  // null означает «в конец», как при переносе броском на пустое место карточки
+  const moveWeeklyTask = (weekKey, fromDay, toDay, taskId, insertAt = null) => {
     updateWeek(weekKey, week => {
-      const task = (week[fromDay] || []).find(t => t.id === taskId);
-      if (!task) return null;
+      const source = week[fromDay] || [];
+      const from = source.findIndex(t => t.id === taskId);
+      if (from === -1) return null;
+      const task = source[from];
+
+      if (fromDay === toDay) {
+        const rest = source.filter(t => t.id !== taskId);
+        // Задачу сначала вынимаем, поэтому всё, что было правее её, сдвинулось влево
+        const target = insertAt === null ? rest.length : insertAt > from ? insertAt - 1 : insertAt;
+        const at = Math.max(0, Math.min(target, rest.length));
+        if (at === from) return null;
+        rest.splice(at, 0, task);
+        return { ...week, [toDay]: rest };
+      }
+
+      const target = [...(week[toDay] || [])];
+      const at = insertAt === null ? target.length : Math.max(0, Math.min(insertAt, target.length));
+      target.splice(at, 0, task);
       return {
         ...week,
-        [fromDay]: (week[fromDay] || []).filter(t => t.id !== taskId),
-        [toDay]: [...(week[toDay] || []), task]
+        [fromDay]: source.filter(t => t.id !== taskId),
+        [toDay]: target
       };
     });
   };
@@ -1283,11 +1323,10 @@ export default function PersonalJira() {
             projects={projects}
             tasks={tasks}
             columns={getProjectColumns(currentProject)}
-            newTaskTitle={newTaskTitle}
-            setNewTaskTitle={setNewTaskTitle}
-            newTaskColumn={newTaskColumn}
-            setNewTaskColumn={setNewTaskColumn}
             createTask={createTask}
+            likesEnabled={allowed('likes') && !!projectLikes[currentProject]}
+            currentUsername={user?.username}
+            toggleTaskLike={toggleTaskLike}
             setEditingTask={setEditingTask}
             moveTask={moveTask}
             reorderTasksInColumn={reorderTasksInColumn}
@@ -1344,6 +1383,8 @@ export default function PersonalJira() {
           allowed={allowed}
           featureFlags={featureFlags}
           setFeatureFlags={setFeatureFlags}
+          projectLikes={projectLikes}
+          setProjectLikes={setProjectLikes}
           onSignOut={handleSignOut}
           projects={projects}
           currentProject={currentProject}

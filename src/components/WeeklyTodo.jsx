@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, X, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import { Edit2, X, ChevronLeft, ChevronRight, Star, Clock } from 'lucide-react';
 import { themeIcon } from '../themes';
 import { getWeekStart, addWeeks, getWeekKey, getWeekDates, isSameDay } from '../utils/weeks';
 import { getQuoteForDate } from '../quotes';
@@ -14,12 +14,17 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
   const [dayStamp, setDayStamp] = useState(() => new Date().toDateString());
   const [newTasks, setNewTasks] = useState({});
   const [newTimes, setNewTimes] = useState({});
+  // Время нужно не каждой задаче, поэтому поле появляется по клику на часы:
+  // пустое «--:--» в каждой карточке дня читалось как сломанные данные
+  const [timeOpen, setTimeOpen] = useState({});
   const [editingItem, setEditingItem] = useState(null); // { day, taskId }
   const [editingText, setEditingText] = useState('');
   const [editingTime, setEditingTime] = useState('');
   // Что тащим и над каким днём держим — подсветка дня-приёмника
   const [draggedTask, setDraggedTask] = useState(null); // { day, taskId }
   const [dragOverDay, setDragOverDay] = useState(null);
+  // Куда именно ляжет задача внутри дня: линия между строками { day, index }
+  const [dropAt, setDropAt] = useState(null);
 
   const today = new Date();
   const weekStart = addWeeks(getWeekStart(today), weekOffset);
@@ -42,8 +47,10 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
     setEditingTime('');
     setNewTasks({});
     setNewTimes({});
+    setTimeOpen({});
     setDraggedTask(null);
     setDragOverDay(null);
+    setDropAt(null);
   }, [weekKey]);
 
   const handleAddTask = (day) => {
@@ -51,7 +58,17 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
       addWeeklyTask(weekKey, day, newTasks[day], newTimes[day] || '');
       setNewTasks({ ...newTasks, [day]: '' });
       setNewTimes({ ...newTimes, [day]: '' });
+      setTimeOpen({ ...timeOpen, [day]: false });
     }
+  };
+
+  // Закрываем часы — забываем и время: иначе задача уедет со скрытым значением
+  const toggleTimeField = (day) => {
+    setTimeOpen(prev => {
+      const next = !prev[day];
+      if (!next) setNewTimes(times => ({ ...times, [day]: '' }));
+      return { ...prev, [day]: next };
+    });
   };
 
   const startEditing = (day, task) => {
@@ -64,9 +81,21 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
     if (editingItem && editingText.trim()) {
       editWeeklyTask(weekKey, editingItem.day, editingItem.taskId, editingText, editingTime);
     }
+    cancelEditing();
+  };
+
+  const cancelEditing = () => {
     setEditingItem(null);
     setEditingText('');
     setEditingTime('');
+  };
+
+  // Правку закрываем, только когда фокус ушёл из строки целиком. Переход с текста
+  // на поле времени — это всё ещё правка той же задачи: иначе до времени
+  // не добраться, редактор закрывался бы на первом же клике по нему
+  const handleEditBlur = (e) => {
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    saveEditing();
   };
 
   const handleTaskDragStart = (e, day, task) => {
@@ -78,6 +107,19 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
   const resetDrag = () => {
     setDraggedTask(null);
     setDragOverDay(null);
+    setDropAt(null);
+  };
+
+  // Откуда тащат — источник правды в dataTransfer: состояние может ещё не
+  // обновиться, да и тащить могли из другой вкладки
+  const readDragPayload = (e) => {
+    try {
+      const raw = e.dataTransfer.getData('weeklytask');
+      if (raw) return JSON.parse(raw);
+    } catch {
+      // оставляем то, что запомнили на старте перетаскивания
+    }
+    return draggedTask;
   };
 
   const handleDayDragOver = (e, day) => {
@@ -87,18 +129,37 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverDay(day);
+    setDropAt(null);
   };
 
+  // Наведение на строку: верхняя половина — встать перед ней, нижняя — после.
+  // Событие не пускаем дальше, иначе день сразу сотрёт линию как «пустое место»
+  const handleTaskDragOver = (e, day, index) => {
+    if (!draggedTask && !e.dataTransfer.types.includes('weeklytask')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    const box = e.currentTarget.getBoundingClientRect();
+    setDragOverDay(day);
+    setDropAt({ day, index: e.clientY < box.top + box.height / 2 ? index : index + 1 });
+  };
+
+  const handleTaskDrop = (e, day, index) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const payload = readDragPayload(e);
+    if (payload) {
+      const box = e.currentTarget.getBoundingClientRect();
+      const at = e.clientY < box.top + box.height / 2 ? index : index + 1;
+      moveWeeklyTask(weekKey, payload.day, day, payload.taskId, at);
+    }
+    resetDrag();
+  };
+
+  // Бросок на свободное место карточки дня — просто в конец списка
   const handleDayDrop = (e, day) => {
     e.preventDefault();
-    let payload = draggedTask;
-    // Данные из dataTransfer надёжнее состояния: перетаскивать могли из другой вкладки
-    try {
-      const raw = e.dataTransfer.getData('weeklytask');
-      if (raw) payload = JSON.parse(raw);
-    } catch {
-      // оставляем то, что запомнили на старте перетаскивания
-    }
+    const payload = readDragPayload(e);
     if (payload && payload.day !== day) {
       moveWeeklyTask(weekKey, payload.day, day, payload.taskId);
     }
@@ -115,9 +176,33 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
 
   return (
     <div className={`flex-1 flex flex-col overflow-hidden ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="px-5 sm:px-10 pt-8 sm:pt-14 pb-1 sm:pb-2 flex-shrink-0">
-        <div className="flex items-center justify-end gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
+      <div className="px-4 sm:px-8 pt-4 sm:pt-6 pb-1 sm:pb-2 flex-shrink-0">
+        {/* Заголовок в том же месте, что и на других вкладках, — при переходе
+            между страницами взгляд не перескакивает */}
+        <h2 className={`text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+          Schedule
+        </h2>
+
+        {/* Фраза дня и переключение недель — одной строкой: слева читаем, справа листаем */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 min-w-0 group/quote">
+            <p className={`text-sm sm:text-base leading-relaxed ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              <span className="italic">“{quote.text}”</span>
+              <span className="ml-1.5">— {quote.source}</span>
+            </p>
+            <button
+              onClick={() => setQuoteOffset(prev => prev + 1)}
+              title="Another quote"
+              aria-label="Another quote"
+              className={`p-1.5 sm:p-1 rounded opacity-0 group-hover/quote:opacity-100 press-icon flex-shrink-0 ${
+                darkMode ? 'text-gray-600 hover:text-gray-400' : 'text-gray-300 hover:text-gray-500'
+              }`}
+            >
+              <RefreshIcon size={14} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={() => setWeekOffset(prev => prev - 1)}
               title="Previous week"
@@ -150,27 +235,9 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
             </button>
           </div>
         </div>
-
-        {/* Фраза дня над расписанием */}
-        <div className="flex items-start gap-2 mt-4 group/quote">
-          <p className={`text-xs leading-relaxed ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            <span className="italic">“{quote.text}”</span>
-            <span className="ml-1.5">— {quote.source}</span>
-          </p>
-          <button
-            onClick={() => setQuoteOffset(prev => prev + 1)}
-            title="Another quote"
-            aria-label="Another quote"
-            className={`p-1.5 sm:p-0.5 rounded opacity-0 group-hover/quote:opacity-100 press-icon flex-shrink-0 ${
-              darkMode ? 'text-gray-600 hover:text-gray-400' : 'text-gray-300 hover:text-gray-500'
-            }`}
-          >
-            <RefreshIcon size={12} />
-          </button>
-        </div>
       </div>
 
-      <div className="flex-1 min-h-0 p-5 sm:p-10 pt-2 sm:pt-4 overflow-y-auto">
+      <div className="flex-1 min-h-0 px-4 sm:px-8 pb-4 sm:pb-8 pt-2 sm:pt-4 overflow-y-auto">
         <div className="grid grid-cols-1 min-[900px]:grid-cols-2 min-[1400px]:grid-cols-4 min-[1400px]:grid-rows-2 gap-3 sm:gap-4 w-full">
           {weekDays.map((day, i) => {
             const date = weekDates[i];
@@ -208,8 +275,9 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                 </div>
 
                 <div className="space-y-1 mb-3 flex-1 min-h-0 overflow-y-auto">
-                  {weekTasks[day]?.map(task => {
+                  {weekTasks[day]?.map((task, taskIndex) => {
                     const isEditingThis = editingItem?.day === day && editingItem?.taskId === task.id;
+                    const isLastTask = taskIndex === weekTasks[day].length - 1;
                     return (
                     <div
                       key={task.id}
@@ -217,8 +285,10 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                       draggable={!isEditingThis}
                       onDragStart={e => handleTaskDragStart(e, day, task)}
                       onDragEnd={resetDrag}
-                      title="Drag to another day"
-                      className={`flex items-start gap-1.5 py-1.5 min-w-0 group rounded transition duration-150 ${
+                      onDragOver={e => handleTaskDragOver(e, day, taskIndex)}
+                      onDrop={e => handleTaskDrop(e, day, taskIndex)}
+                      title="Drag to reorder or to another day"
+                      className={`relative flex items-start gap-1.5 py-1.5 min-w-0 group rounded transition duration-150 ${
                         isEditingThis ? '' : 'cursor-grab active:cursor-grabbing'
                       } ${
                         draggedTask?.taskId === task.id ? 'opacity-40' : ''
@@ -231,6 +301,13 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                           : ''
                       }`}
                     >
+                      {/* Линия показывает, куда именно встанет задача */}
+                      {dropAt?.day === day && dropAt.index === taskIndex && (
+                        <span className="absolute -top-px left-0 right-0 h-0.5 rounded-full bg-green-600 pointer-events-none" />
+                      )}
+                      {dropAt?.day === day && isLastTask && dropAt.index === taskIndex + 1 && (
+                        <span className="absolute -bottom-px left-0 right-0 h-0.5 rounded-full bg-green-600 pointer-events-none" />
+                      )}
                       <input
                         type="checkbox"
                         checked={task.completed}
@@ -240,25 +317,31 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                         }`}
                       />
                       {isEditingThis ? (
-                        <>
+                        <div
+                          className="flex-1 min-w-0 flex items-center gap-1.5"
+                          onBlur={handleEditBlur}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') saveEditing();
+                            if (e.key === 'Escape') cancelEditing();
+                          }}
+                        >
                           <input
                             type="time"
                             value={editingTime}
                             onChange={e => setEditingTime(e.target.value)}
-                            onBlur={saveEditing}
-                            onKeyPress={e => e.key === 'Enter' && saveEditing()}
+                            title="Task time"
+                            aria-label="Task time"
                             className={`px-1 py-0.5 rounded text-xs flex-shrink-0 w-[70px] ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
                           />
                           <input
                             type="text"
                             value={editingText}
                             onChange={e => setEditingText(e.target.value)}
-                            onBlur={saveEditing}
-                            onKeyPress={e => e.key === 'Enter' && saveEditing()}
                             autoFocus
+                            aria-label="Task title"
                             className={`flex-1 min-w-0 px-1 py-0.5 rounded text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
                           />
-                        </>
+                        </div>
                       ) : (
                         <span
                           className={`flex-1 min-w-0 text-sm break-words transition-colors duration-200 ${
@@ -313,17 +396,41 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                 </div>
 
                 <div className={`flex items-center gap-2 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <input
-                    type="time"
-                    value={newTimes[day] || ''}
-                    onChange={e => setNewTimes({ ...newTimes, [day]: e.target.value })}
-                    className={`text-xs py-1 bg-transparent focus:outline-none flex-shrink-0 w-[62px] ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}
-                  />
+                  {/* Часы открывают поле времени и сами становятся отметкой, что оно открыто */}
+                  <button
+                    onClick={() => toggleTimeField(day)}
+                    title={timeOpen[day] ? 'Without time' : 'Set time'}
+                    aria-label={timeOpen[day] ? 'Without time' : 'Set time'}
+                    aria-pressed={!!timeOpen[day]}
+                    className={`p-1 flex-shrink-0 rounded press-icon ${
+                      timeOpen[day]
+                        ? darkMode ? 'text-green-400' : 'text-green-700'
+                        : darkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    <Clock size={14} />
+                  </button>
+
+                  {timeOpen[day] && (
+                    <input
+                      type="time"
+                      value={newTimes[day] || ''}
+                      onChange={e => setNewTimes({ ...newTimes, [day]: e.target.value })}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleAddTask(day);
+                        if (e.key === 'Escape') toggleTimeField(day);
+                      }}
+                      autoFocus
+                      aria-label="Task time"
+                      className={`text-xs py-1 bg-transparent focus:outline-none flex-shrink-0 w-[62px] ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}
+                    />
+                  )}
+
                   <input
                     type="text"
                     value={newTasks[day] || ''}
                     onChange={e => setNewTasks({ ...newTasks, [day]: e.target.value })}
-                    onKeyPress={e => e.key === 'Enter' && handleAddTask(day)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddTask(day)}
                     placeholder="Add task..."
                     className={`flex-1 min-w-0 text-sm py-1 bg-transparent focus:outline-none ${darkMode ? 'text-white placeholder-gray-500' : 'placeholder-gray-400'}`}
                   />

@@ -554,6 +554,63 @@ html.theme-dark {
   color-scheme: dark;
 }
 
+/* Рукописные шрифты темы Handwriting лежат в /public/fonts — свои файлы, а не
+   загрузка со стороны: сервис-воркер кеширует только свой домен, значит тема
+   остаётся рукописной и офлайн. Подключаются лениво: пока тема не включена,
+   ни один глиф этими семействами не рисуется и браузер файлы не качает.
+   Neucha — основной почерк: разборчивый, прямой, с полной кириллицей.
+   Caveat — тот же почерк «с росчерком», только для крупных заголовков */
+@font-face {
+  font-family: 'Neucha';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/neucha-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Neucha';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/neucha-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/caveat-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/caveat-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/caveat-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /* ═══ HANDWRITING ═══ Бумажный блокнот: тёплый лист в линейку, чернила вместо
    краски и рамки, будто нарисованные от руки. Минимализм тот же: один акцент,
    никаких теней и заливок сверх необходимого */
@@ -571,13 +628,17 @@ html.theme-handwriting {
 html.theme-handwriting body {
   background: var(--hw-paper);
   color: var(--hw-ink);
-  /* Системные рукописные шрифты: без загрузки из сети, значит работает и офлайн.
-     Первыми идут самые разборчивые — тема должна читаться, а не разгадываться */
-  font-family: 'Chalkboard SE', 'Segoe Print', 'Ink Free', 'Noteworthy', 'Comic Sans MS',
-    'Bradley Hand', cursive;
+  /* Neucha — настоящий почерк, но прямой и с ровным ритмом букв: тема должна
+     читаться, а не разгадываться. Системные рукописные шрифты остались
+     запасным вариантом на случай, если файл не подгрузился */
+  font-family: 'Neucha', 'Chalkboard SE', 'Segoe Print', 'Ink Free', 'Noteworthy',
+    'Comic Sans MS', 'Bradley Hand', cursive;
+  /* Кегль тот же, что был у системных шрифтов: у Neucha строчная буква ровно
+     той же высоты (0.50 от кегля, как у Chalkboard SE), поэтому размеры и
+     переносы во всём приложении остались на месте, а строка стала даже уже */
   font-size: 15px;
   line-height: 1.55;
-  letter-spacing: 0.005em;
+  letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -589,6 +650,22 @@ html.theme-handwriting .text-\[11px\] {
 
 html.theme-handwriting .text-xs {
   font-size: 13px;
+}
+
+/* Заголовки пишем «с росчерком» — тот же почерк, только размашистее.
+   У Caveat строчная буква низкая (0.36 от кегля против 0.50 у Neucha), поэтому
+   равняем не кегль, а её высоту: заголовок остаётся заголовком в любом размере,
+   а сам размер по-прежнему задают классы Tailwind. Браузер постарше правило
+   пропустит — заголовок просто будет чуть мельче. Заголовки карточек (h4)
+   не трогаем: их много и они мелкие, там важнее разборчивость */
+html.theme-handwriting h1,
+html.theme-handwriting h2,
+html.theme-handwriting h3 {
+  font-family: 'Caveat', 'Neucha', 'Bradley Hand', cursive;
+  font-weight: 700;
+  font-size-adjust: 0.5;
+  letter-spacing: 0.005em;
+  line-height: 1.25;
 }
 
 /* Полотно страницы прозрачное — сквозь него видна линейка листа */
@@ -1137,4 +1214,141 @@ html.theme-millenial :focus-visible {
 @keyframes fx-ripple {
   0% { transform: scale(0.4); opacity: 0.9; }
   100% { transform: scale(4.5); opacity: 0; }
+}
+
+/* ═══ КОЛОНКИ ДОСКИ ═══ Заголовок колонки прибит к верху и всегда должен
+   читаться. Поверхность самой колонки у большинства тем полупрозрачная — сквозь
+   неё видно фон страницы, и это задумано, — поэтому заголовку нужен свой
+   непрозрачный цвет. Тон подобран так, чтобы совпадать с колонкой на глаз */
+.column-header {
+  background-color: var(--column-header);
+  box-shadow: inset 0 -1px 0 var(--column-header-line);
+}
+
+:root {
+  --column-header: #f3f4f6;                       /* gray-100 */
+  --column-header-line: rgba(17, 24, 39, 0.06);
+}
+
+html.theme-dark {
+  --column-header: #1f2937;                       /* gray-800 */
+  --column-header-line: rgba(255, 255, 255, 0.06);
+}
+
+html.theme-wizard {
+  --column-header: #101d1f;                       /* --wz-surface, но без прозрачности */
+  --column-header-line: rgba(197, 199, 196, 0.14);
+}
+
+html.theme-surf {
+  --column-header: var(--sf-sand);
+  --column-header-line: var(--sf-line);
+}
+
+html.theme-millenial {
+  --column-header: #f6f4ec;
+  --column-header-line: #d7d3c4;
+}
+
+html.theme-handwriting {
+  /* тот же тон, что даёт 5% чернил поверх листа, только сплошной */
+  --column-header: #f0ece4;
+  --column-header-line: var(--hw-rule);
+}
+
+/* ═══ CHILL ═══ Квадрат дыхания на четыре счёта: значок обходит периметр, и
+   каждая сторона — своя фаза (вдох, задержка, выдох, задержка). Счёт идёт
+   по три четверти секунды, то есть сторона проходится за три секунды,
+   а весь круг — за двенадцать. Таймер и кнопки живут внутри
+   квадрата, так что анимация идёт вокруг них и ничему не мешает: размер цифр
+   считается от стороны квадрата, значит они не дорастут до его рамки ни на
+   каком экране. Системное «уменьшить движение» гасит анимацию глобальным
+   правилом в @layer base — квадрат остаётся, точка замирает в углу */
+.chill-square {
+  --chill-side: min(82vmin, 36rem);
+  --chill-marker: calc(var(--chill-side) * 0.062);
+  --chill-breath: 22, 101, 52;   /* акцент темы: перекрывается ниже */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--chill-side);
+  height: var(--chill-side);
+  border: 1px solid rgba(var(--chill-breath), 0.22);
+  border-radius: 4px;
+}
+
+/* Значок темы обходит периметр по часовой стрелке из левого верхнего угла:
+   у каждой темы он свой — сова, рыба, скрепка. Отсчёт идёт от внутреннего края
+   рамки, поэтому путь короче на её толщину. Значок держится прямо, не крутится */
+.chill-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--chill-marker);
+  height: var(--chill-marker);
+  margin: calc(var(--chill-marker) / -2) 0 0 calc(var(--chill-marker) / -2);
+  color: rgba(var(--chill-breath), 0.9);
+  pointer-events: none;
+  animation: chill-square 12s linear infinite;
+  /* Дыхание идёт вместе с таймером: на паузе значок замирает там, где стоял,
+     и с того же места продолжает, когда таймер снова запустили */
+  animation-play-state: paused;
+}
+
+.chill-square.is-running .chill-marker {
+  animation-play-state: running;
+}
+
+.chill-marker svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Цифры считаем от стороны квадрата, а не от ширины экрана: «15:00» — это пять
+   знаков моноширинного шрифта. Доля меньше стороны с запасом — квадрат должен
+   дышать вокруг таймера, а не облегать его */
+.chill-time {
+  font-size: calc(var(--chill-side) * 0.16);
+}
+
+.chill-square.is-dark {
+  --chill-breath: 134, 239, 172;
+}
+
+html.theme-wizard .chill-square {
+  --chill-breath: 238, 186, 48;
+}
+
+html.theme-surf .chill-square {
+  --chill-breath: 15, 143, 163;
+}
+
+/* В Millenial полотно страницы бежевое, поэтому квадрат рисуем синим Luna —
+   белый на бежевом почти не виден */
+html.theme-millenial .chill-square {
+  --chill-breath: 36, 94, 219;
+}
+
+html.theme-handwriting .chill-square {
+  --chill-breath: 43, 58, 85;
+}
+
+@keyframes chill-square {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(calc(var(--chill-side) - 2px), 0);
+  }
+  50% {
+    transform: translate(calc(var(--chill-side) - 2px), calc(var(--chill-side) - 2px));
+  }
+  75% {
+    transform: translate(0, calc(var(--chill-side) - 2px));
+  }
+  100% {
+    transform: translate(0, 0);
+  }
 }
