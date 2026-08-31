@@ -107,9 +107,14 @@ export default function KanbanBoard({
       ) : (projects.find(p => p.id === currentProject)?.name || '')}
       flushTop
       subheader={currentProject && (
-            /* Добавление и фильтры одной строкой. Она есть всегда: без неё
-               в пустом проекте не с чего было бы начать */
-            <div className="flex items-center gap-2 flex-wrap">
+            /* Добавление и фильтры. На десктопе — одна строка с переносом, она
+               есть всегда: без неё в пустом проекте не с чего было бы начать.
+               На телефоне строки две, поле ввода в своей. В общей оно ужималось
+               каждый раз, когда появлялась кнопка или разворачивались лейблы:
+               flex-1 отдаёт им место у себя. Обёртки строк на десктопе снимает
+               sm:contents — там раскладка ровно прежняя */
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
+              <div className="flex items-center gap-2 sm:contents">
               <input
                 type="text"
                 value={draft}
@@ -138,19 +143,24 @@ export default function KanbanBoard({
                     ширину у поля, ради которого строка и существует */}
                 <Plus size={16} /> <span className="hidden sm:inline">Task</span>
               </button>
+              </div>
 
+              <div className="flex items-center gap-2 flex-wrap sm:contents">
               {/* Одна кнопка сортирует по важности сразу все колонки */}
               {projectTasks.length > 1 && (
                 <button
                   onClick={sortBoardByPriority}
                   title="Sort all columns by priority"
-                  className={`h-control flex items-center gap-1.5 px-3.5 text-xs rounded-full border press ${
+                  aria-label="Sort all columns by priority"
+                  /* На телефоне от кнопок фильтров остаются значки: подписи
+                     занимали строку, которой и так впритык */
+                  className={`h-control flex items-center gap-1.5 px-3 sm:px-3.5 text-xs rounded-full border press ${
                     darkMode
                       ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
                       : 'border-gray-200 text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  <ArrowDownWideNarrow size={13} /> Priority
+                  <ArrowDownWideNarrow size={13} /> <span className="hidden sm:inline">Priority</span>
                 </button>
               )}
 
@@ -160,7 +170,8 @@ export default function KanbanBoard({
                   onClick={() => setOnlyLiked(prev => !prev)}
                   title={onlyLiked ? 'Show all tasks' : 'Show only liked tasks'}
                   aria-pressed={onlyLiked}
-                  className={`h-control flex items-center gap-1.5 px-3.5 text-xs rounded-full border press ${
+                  aria-label={onlyLiked ? 'Show all tasks' : 'Show only liked tasks'}
+                  className={`h-control flex items-center gap-1.5 px-3 sm:px-3.5 text-xs rounded-full border press ${
                     onlyLiked
                       ? 'border-rose-500 text-rose-500'
                       : darkMode
@@ -168,7 +179,7 @@ export default function KanbanBoard({
                         : 'border-gray-200 text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  <Heart size={13} fill={onlyLiked ? 'currentColor' : 'none'} /> Likes
+                  <Heart size={13} fill={onlyLiked ? 'currentColor' : 'none'} /> <span className="hidden sm:inline">Likes</span>
                 </button>
               )}
 
@@ -183,7 +194,7 @@ export default function KanbanBoard({
                   }}
                   title={showLabels ? 'Hide labels' : 'Show labels'}
                   aria-label={showLabels ? 'Hide labels' : 'Show labels'}
-                  className={`h-control flex items-center gap-1.5 px-3.5 text-xs rounded-full border press ${
+                  className={`h-control flex items-center gap-1.5 px-3 sm:px-3.5 text-xs rounded-full border press ${
                     showLabels
                       ? darkMode
                         ? 'border-green-700 text-green-400'
@@ -193,8 +204,10 @@ export default function KanbanBoard({
                         : 'border-gray-200 text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  <Tag size={13} /> Labels
-                  {activeLabels.length > 0 && ` (${activeLabels.length})`}
+                  {/* Счётчик остаётся и на телефоне: он единственный признак,
+                      что борд отфильтрован, когда подписи нет */}
+                  <Tag size={13} /> <span className="hidden sm:inline">Labels</span>
+                  {activeLabels.length > 0 && <span>({activeLabels.length})</span>}
                 </button>
               )}
 
@@ -221,6 +234,7 @@ export default function KanbanBoard({
                   <X size={12} /> Clear
                 </button>
               )}
+              </div>
             </div>
       )}
     >
