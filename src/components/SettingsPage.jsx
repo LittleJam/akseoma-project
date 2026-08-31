@@ -4,6 +4,7 @@ import { COLUMN_COLORS } from '../constants';
 import { THEME_OPTIONS } from '../themes';
 import { FEATURES, DEFAULT_FLAGS } from '../auth';
 import Select from './Select';
+import PageShell from './PageShell';
 
 export default function SettingsPage({
   darkMode,
@@ -95,13 +96,12 @@ export default function SettingsPage({
   };
 
   return (
-    <div className={`flex-1 overflow-auto ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="max-w-3xl p-4 sm:px-8 sm:pb-8 sm:pt-6 space-y-6">
-        <h2 className={`text-xl sm:text-2xl font-semibold ${textClass}`}>Settings</h2>
+    <PageShell darkMode={darkMode} title="Settings" width="prose">
+      <div className="space-y-6">
 
         {/* Кто вошёл */}
         <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-          <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+          <h3 className={`text-section uppercase mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Account
           </h3>
           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -125,7 +125,7 @@ export default function SettingsPage({
         {/* Доступы: видит и меняет только админ */}
         {user?.role === 'admin' && setFeatureFlags && (
           <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-            <h3 className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wide mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            <h3 className={`flex items-center gap-2 text-section uppercase mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
               <ShieldCheck size={14} /> Features for users
             </h3>
             <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
@@ -133,7 +133,7 @@ export default function SettingsPage({
             </p>
 
             {/* В несколько колонок: список короткий, но занимал всю ширину */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
               {FEATURES.map(feature => {
                 const enabled = { ...DEFAULT_FLAGS, ...featureFlags }[feature.key] !== false;
                 return (
@@ -163,7 +163,7 @@ export default function SettingsPage({
         {/* Theme */}
         {allowed('themes') && (
         <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-          <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+          <h3 className={`text-section uppercase mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Theme
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -205,7 +205,7 @@ export default function SettingsPage({
         {/* Sync — полная картина здесь; в сайдбаре остаются только проблемы */}
         {allowed('sync') && (
         <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-          <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+          <h3 className={`text-section uppercase mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Sync
           </h3>
 
@@ -267,7 +267,7 @@ export default function SettingsPage({
             в каких именно проектах сердечки появятся на карточках */}
         {allowed('kanban') && allowed('likes') && setProjectLikes && (
         <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-          <h3 className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wide mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+          <h3 className={`flex items-center gap-2 text-section uppercase mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             <Heart size={14} /> Likes on tasks
           </h3>
           <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
@@ -305,7 +305,7 @@ export default function SettingsPage({
         {/* Project columns */}
         {allowed('kanban') && (
         <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-          <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+          <h3 className={`text-section uppercase mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Project columns
           </h3>
 
@@ -403,7 +403,7 @@ export default function SettingsPage({
         {/* Reset */}
         {allowed('reset') && (
         <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-          <h3 className={`text-xs font-medium uppercase tracking-wide mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+          <h3 className={`text-section uppercase mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Reset
           </h3>
 
@@ -449,6 +449,6 @@ export default function SettingsPage({
         </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

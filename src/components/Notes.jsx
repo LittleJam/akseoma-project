@@ -4,6 +4,7 @@ import { NOTE_COLORS } from '../constants';
 import { compressImage } from '../utils/imageCompression';
 import { themeIcon } from '../themes';
 import NoteModal from './NoteModal';
+import PageShell from './PageShell';
 
 const PREVIEW_ITEMS = 6;
 const PREVIEW_IMAGES = 3;
@@ -84,21 +85,23 @@ export default function Notes({
   const mutedText = darkMode ? 'text-gray-500' : 'text-gray-400';
   const iconHover = darkMode ? 'hover:text-gray-300' : 'hover:text-gray-600';
 
-  return (
-    <div className={`flex-1 overflow-auto ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="p-4 sm:px-8 sm:pb-8 sm:pt-6">
-        <div className={`flex items-center justify-between mb-6 pb-3 border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
-          <h2 className={`text-xl sm:text-2xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-            Notes
-          </h2>
-          <button
-            onClick={addNote}
-            className={`flex items-center gap-1.5 text-sm px-2 py-1 rounded press ${mutedText} ${iconHover}`}
-          >
-            <AddIcon size={16} /> New note
-          </button>
-        </div>
+  // «Новая заметка» — действие страницы, поэтому уходит в шапку каркаса
+  const newNoteButton = (
+    <button
+      onClick={addNote}
+      className={`h-control flex items-center gap-1.5 px-3 text-body rounded-lg border press ${
+        darkMode
+          ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
+          : 'border-gray-200 text-gray-600 hover:bg-gray-100'
+      }`}
+    >
+      <AddIcon size={16} /> New note
+    </button>
+  );
 
+  return (
+    <>
+      <PageShell darkMode={darkMode} title="Notes" actions={newNoteButton}>
         {notes.length === 0 ? (
           <p className={`text-sm text-center py-12 ${mutedText}`}>
             No notes yet — add your first one
@@ -106,7 +109,7 @@ export default function Notes({
         ) : (
           // Карточки квадратные, поэтому на широком экране добавляем колонки,
           // а не растягиваем плитки: иначе три штуки раздуваются на пол-экрана
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[1600px]:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 wide:grid-cols-4 ultra:grid-cols-5 gap-3">
             {notes.map((note, index) => {
               const isDragging = dragIndex === index;
               const isDropTarget = dragOverIndex === index && dragIndex !== null && dragIndex !== index;
@@ -240,7 +243,7 @@ export default function Notes({
             })}
           </div>
         )}
-      </div>
+      </PageShell>
 
       {expandedNote && (
         <NoteModal
@@ -260,6 +263,6 @@ export default function Notes({
           darkMode={darkMode}
         />
       )}
-    </div>
+    </>
   );
 }

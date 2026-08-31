@@ -6,6 +6,7 @@ import {
 import { getLabelColor, normalizeLabel } from '../constants';
 import Select from './Select';
 import { compressImage } from '../utils/imageCompression';
+import Modal from './Modal';
 
 // Палитра текста: 25 оттенков, по пять в ряд — хватает и на акценты, и на полутона
 const TEXT_COLORS = [
@@ -316,10 +317,15 @@ export default function TaskEditor({
     );
   };
 
+  // Редактор — окно поверх доски, а не отдельная страница: доска остаётся видна
+  // за фоном, закрытие возвращает ровно туда, откуда открыли
   return (
-    <div className={`flex-1 flex flex-col overflow-hidden ${bgClass}`}>
-      <div className="flex-1 flex flex-col overflow-hidden max-w-4xl w-full mx-auto p-3 sm:p-8">
-        <div className={`flex-1 flex flex-col overflow-hidden rounded-lg border ${cardBorderClass}`}>
+    <Modal
+      size="lg"
+      onClose={onClose}
+      closeOnBackdrop={false}
+      panelClassName={`max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] overflow-hidden rounded-lg border shadow-xl ${bgClass} ${cardBorderClass}`}
+    >
           {/* Header */}
           <div className={`flex items-center justify-between p-4 sm:p-6 sm:pb-4 flex-shrink-0 border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
             <div>
@@ -821,8 +827,6 @@ export default function TaskEditor({
               {isUploading ? 'Please wait...' : 'Save'}
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

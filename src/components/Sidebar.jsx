@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Plus, Edit2, X, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
 import { themeIcon } from '../themes';
 import FileSyncStatus from './FileSyncStatus';
@@ -35,6 +35,40 @@ export default function Sidebar({
   createProject
 }) {
   const [projectsCollapsed, setProjectsCollapsed] = useState(false);
+  // Поле нового проекта открывается кнопкой и закрывается сразу после ввода:
+  // проекты заводят редко, и постоянно занятая строка в списке только мешает
+  const [addingProject, setAddingProject] = useState(false);
+  const brandRef = useRef(null);
+
+  // Название приложения — логотип: оно должно читаться целиком в любой теме.
+  // Шрифты у тем разные и «широкие» из них не влезают в сайдбар, поэтому
+  // ширину меряем и, если не хватило, ужимаем масштабом. Обрезать нельзя.
+  useLayoutEffect(() => {
+    const title = brandRef.current;
+    if (!title) return;
+
+    const fit = () => {
+      const room = title.parentElement?.clientWidth || 0;
+      // scrollWidth — натуральная ширина: transform на разметку не влияет
+      const natural = title.scrollWidth;
+      // +1px запаса: scrollWidth округляет, и по краю буква иногда режется
+      const scale = room && natural + 1 > room ? room / (natural + 1) : 1;
+      title.style.transform = scale < 1 ? `scale(${scale})` : '';
+    };
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(title.parentElement);
+    // Веб-шрифт темы приезжает позже первой отрисовки и меняет ширину
+    document.fonts?.ready.then(fit).catch(() => {});
+    return () => observer.disconnect();
+  }, [theme]);
+
+  // Ушли с борда — незаконченное поле проекта закрываем, иначе оно ждёт
+  // возвращения с набранным текстом
+  useEffect(() => {
+    if (currentPage !== 'kanban') setAddingProject(false);
+  }, [currentPage]);
 
   // Иконки разделов задаёт тема: в Wizard это замок и свиток, в Surf — компас и ракушка
   const ProjectsIcon = themeIcon(theme, 'projects');
@@ -53,8 +87,16 @@ export default function Sidebar({
         mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
       }`}
     >
-      <div className={`p-4 sm:p-6 pl-14 sm:pl-6 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between gap-2`}>
-        <h1 className={`text-lg sm:text-2xl font-bold truncate ${darkMode ? 'text-white' : 'text-gray-800'}`}>Surf the Task</h1>
+      {/* Высота задана токеном, а не паддингами: на ней держится общий рубеж шапок */}
+      <div className={`h-[var(--brand-h)] flex-shrink-0 px-4 pl-14 sm:pl-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between gap-2`}>
+        <div className="flex-1 min-w-0">
+          <h1
+            ref={brandRef}
+            className={`text-xl sm:text-[1.75rem] leading-tight font-bold whitespace-nowrap origin-left ${darkMode ? 'text-white' : 'text-gray-800'}`}
+          >
+            Surf the Task
+          </h1>
+        </div>
         <button
           onClick={() => setCurrentPage('settings')}
           className={`p-2 rounded-lg press ${
@@ -68,25 +110,9 @@ export default function Sidebar({
         </button>
       </div>
 
-      <CloudSyncStatus
-        darkMode={darkMode}
-        configured={supabaseConfigured}
-        status={supabaseStatus}
-        error={supabaseError}
-      />
-
-      <FileSyncStatus
-        darkMode={darkMode}
-        fileSupported={fileSupported}
-        fileConnected={fileConnected}
-        fileHandle={fileHandle}
-        fileName={fileName}
-        reconnectFile={reconnectFile}
-      />
-
       {/* Кто вошёл и выход */}
       {user && (
-        <div className={`px-4 py-3 flex items-center gap-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className={`h-[var(--user-h)] flex-shrink-0 px-4 flex items-center gap-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex-1 min-w-0">
             <div className={`text-sm font-medium truncate ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
               {user.name}
@@ -106,32 +132,102 @@ export default function Sidebar({
         </div>
       )}
 
+      {/* Баннеры синхронизации идут после блока пользователя: его нижняя граница —
+          общий рубеж с шапкой страницы, и вклиниваться выше неё нельзя */}
+      <CloudSyncStatus
+        darkMode={darkMode}
+        configured={supabaseConfigured}
+        status={supabaseStatus}
+        error={supabaseError}
+      />
+
+      <FileSyncStatus
+        darkMode={darkMode}
+        fileSupported={fileSupported}
+        fileConnected={fileConnected}
+        fileHandle={fileHandle}
+        fileName={fileName}
+        reconnectFile={reconnectFile}
+      />
+
       {/* Навигация */}
       <div className="p-4 space-y-2 border-b border-gray-300">
         {allowed('kanban') && (
-        <button
-          onClick={() => {
-            if (currentPage === 'kanban') {
-              setProjectsCollapsed(!projectsCollapsed);
-            } else {
-              setCurrentPage('kanban');
-              setProjectsCollapsed(false);
-            }
-          }}
-          className={`w-full flex items-center gap-2 px-4 py-2 rounded font-medium press ${
+        /* Три действия в одной строке: перейти на борд, завести проект,
+           свернуть список. Подсветка активного раздела на всей строке, поэтому
+           фон у обёртки, а кнопки внутри прозрачные */
+        <div
+          className={`flex items-center rounded font-medium ${
             currentPage === 'kanban'
               ? darkMode ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900'
               : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
-          <ProjectsIcon size={18} />
-          <span className="flex-1 text-left">Projects</span>
-          {currentPage === 'kanban' && (projectsCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />)}
-        </button>
+          <button
+            onClick={() => {
+              setCurrentPage('kanban');
+              setProjectsCollapsed(false);
+            }}
+            className="flex-1 min-w-0 flex items-center gap-2 px-4 py-2 rounded press"
+          >
+            <ProjectsIcon size={18} />
+            <span className="flex-1 text-left">Projects</span>
+          </button>
+          {currentPage === 'kanban' && (
+            <>
+              <button
+                onClick={() => {
+                  setProjectsCollapsed(false);
+                  setAddingProject(true);
+                }}
+                title="New project"
+                aria-label="New project"
+                className={`p-1.5 rounded press-icon ${darkMode ? 'hover:bg-green-800' : 'hover:bg-green-200'}`}
+              >
+                <AddIcon size={16} />
+              </button>
+              <button
+                onClick={() => setProjectsCollapsed(prev => !prev)}
+                title={projectsCollapsed ? 'Show projects' : 'Hide projects'}
+                aria-label={projectsCollapsed ? 'Show projects' : 'Hide projects'}
+                aria-expanded={!projectsCollapsed}
+                className={`p-1.5 mr-2 rounded press-icon ${darkMode ? 'hover:bg-green-800' : 'hover:bg-green-200'}`}
+              >
+                {projectsCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+              </button>
+            </>
+          )}
+        </div>
         )}
 
         {allowed('kanban') && currentPage === 'kanban' && (
           <div className="mb-4 pl-4">
+            {!projectsCollapsed && addingProject && (
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={newProjectName}
+                  onChange={e => setNewProjectName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { createProject(); setAddingProject(false); }
+                    if (e.key === 'Escape') { setNewProjectName(''); setAddingProject(false); }
+                  }}
+                  onBlur={() => { if (!newProjectName.trim()) setAddingProject(false); }}
+                  autoFocus
+                  placeholder="New project..."
+                  aria-label="New project name"
+                  className={`flex-1 min-w-0 px-2 py-2 text-sm border rounded focus:outline-none focus:border-green-500 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'}`}
+                />
+                <button
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => { createProject(); setAddingProject(false); }}
+                  aria-label="Create project"
+                  className="p-2 bg-green-800 text-white rounded hover:bg-green-900 press"
+                >
+                  <AddIcon size={16} />
+                </button>
+              </div>
+            )}
             {!projectsCollapsed && projects.map(project => (
               <div
                 key={project.id}
@@ -220,28 +316,7 @@ export default function Sidebar({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        {currentPage === 'kanban' && (
-          <div className={`pt-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newProjectName}
-                onChange={e => setNewProjectName(e.target.value)}
-                onKeyPress={e => e.key === 'Enter' && createProject()}
-                placeholder="New project..."
-                className={`flex-1 min-w-0 px-2 py-2 text-sm border rounded focus:outline-none focus:border-green-500 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'}`}
-              />
-              <button
-                onClick={createProject}
-                className="p-2 bg-green-800 text-white rounded hover:bg-green-900 press"
-              >
-                <AddIcon size={16} />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      <div className="flex-1 overflow-y-auto p-4"></div>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Plus, Eye, EyeOff, Palette, AlignLeft, ListTodo, List, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { NOTE_COLORS, NOTE_MODES } from '../constants';
 import { compressImage } from '../utils/imageCompression';
+import Modal from './Modal';
 
 const MODE_ICONS = { text: AlignLeft, todo: ListTodo, bullet: List };
 
@@ -185,29 +186,26 @@ export default function NoteModal({
   );
 
   return (
-    <div
-      onClick={onClose}
-      onDragOver={e => {
-        // Перетаскивание файла куда угодно поверх открытой заметки — это добавление картинки,
-        // иначе браузер просто откроет файл вместо окна
-        if (!e.dataTransfer.types.includes('Files')) return;
-        e.preventDefault();
-        setIsDragOver(true);
+    <Modal
+      onClose={onClose}
+      size="md"
+      closeOnEsc={false}
+      overlayProps={{
+        // Перетаскивание файла куда угодно поверх открытой заметки — это добавление
+        // картинки, иначе браузер просто откроет файл вместо окна
+        onDragOver: e => {
+          if (!e.dataTransfer.types.includes('Files')) return;
+          e.preventDefault();
+          setIsDragOver(true);
+        },
+        onDragLeave: e => {
+          if (e.currentTarget.contains(e.relatedTarget)) return;
+          setIsDragOver(false);
+        },
+        onDrop: handleImageDrop
       }}
-      onDragLeave={e => {
-        if (e.currentTarget.contains(e.relatedTarget)) return;
-        setIsDragOver(false);
-      }}
-      onDrop={handleImageDrop}
-      className="fixed inset-0 z-40 bg-black bg-opacity-40 flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in"
+      panelClassName={`rounded-xl border shadow-xl ${darkMode ? palette.dark : palette.light} ${isDragOver ? 'ring-2 ring-green-600' : ''}`}
     >
-      {/* Клик внутри окна не должен закрывать его */}
-      <div
-        onClick={e => e.stopPropagation()}
-        className={`relative w-full max-w-2xl my-auto rounded-xl border shadow-xl flex flex-col animate-dialog-in transition ${
-          darkMode ? palette.dark : palette.light
-        } ${isDragOver ? 'ring-2 ring-green-600' : ''}`}
-      >
         {/* Подсказка появляется только когда над окном тащат файл */}
         {isDragOver && (
           <div className="absolute inset-0 z-30 rounded-xl bg-black/40 flex items-center justify-center pointer-events-none animate-fade-in">
@@ -398,24 +396,23 @@ export default function NoteModal({
             Close
           </button>
         </div>
-      </div>
 
       {/* Картинка на весь экран: клик в любом месте — закрыть */}
       {viewerIndex !== null && images[viewerIndex] && (
-        <div
-          onClick={e => {
-            e.stopPropagation();
-            setViewerIndex(null);
-          }}
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6 cursor-zoom-out animate-fade-in"
+        <Modal
+          onClose={() => setViewerIndex(null)}
+          layer="viewer"
+          size="full"
+          closeOnEsc={false}
+          overlayClassName="cursor-zoom-out"
         >
           <img
             src={images[viewerIndex]}
             alt={`Attachment ${viewerIndex + 1}`}
             className="max-w-full max-h-full rounded-lg object-contain"
           />
-        </div>
+        </Modal>
       )}
-    </div>
+    </Modal>
   );
 }
