@@ -27,9 +27,9 @@ export default function KanbanBoard({
 }) {
   // Лейблы прячем, чтобы борд не рябил: показываются по клику на значок
   const [showLabels, setShowLabels] = useState(false);
-  // Одна строка добавления на весь борд: по клику разворачивается в поле,
-  // задача уходит в первую колонку — оттуда её и растаскивают дальше
-  const [composing, setComposing] = useState(false);
+  // Одна строка добавления на весь борд: поле открыто всегда, чтобы внести
+  // задачу можно было не целясь в кнопку. Задача уходит в первую колонку —
+  // оттуда её и растаскивают дальше
   const [draft, setDraft] = useState('');
   const defaultColumn = columns[0]?.id;
   // Фильтр борда по лейблам: выбрано несколько — показываем задачи с любым из них
@@ -61,11 +61,11 @@ export default function KanbanBoard({
     setActiveLabels(prev => (prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]));
   };
 
-  // Enter добавляет и оставляет поле открытым — задачи обычно вносят пачкой
-  const submitDraft = ({ keepOpen = false } = {}) => {
-    if (draft.trim()) createTask(draft, defaultColumn);
+  // Поле не закрывается после добавления — задачи обычно вносят пачкой
+  const submitDraft = () => {
+    if (!draft.trim()) return;
+    createTask(draft, defaultColumn);
     setDraft('');
-    if (!keepOpen) setComposing(false);
   };
 
   const visibleTasks = (columnTasks = []) => {
@@ -79,38 +79,34 @@ export default function KanbanBoard({
     <PageShell
       darkMode={darkMode}
       title={projects.find(p => p.id === currentProject)?.name || ''}
+      flushTop
       subheader={currentProject && (
             /* Добавление и фильтры одной строкой. Она есть всегда: без неё
                в пустом проекте не с чего было бы начать */
             <div className="flex items-center gap-2 flex-wrap">
-              {composing ? (
-                <input
-                  type="text"
-                  value={draft}
-                  onChange={e => setDraft(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') submitDraft({ keepOpen: true });
-                    if (e.key === 'Escape') { setDraft(''); setComposing(false); }
-                  }}
-                  onBlur={() => submitDraft()}
-                  autoFocus
-                  placeholder={`New task in ${columns[0]?.title || ''}...`}
-                  aria-label="New task title"
-                  className={`h-control w-80 sm:w-[26rem] max-w-full px-4 text-body rounded-lg border focus:outline-none focus:border-green-500 ${
-                    darkMode
-                      ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
-                      : 'bg-white border-gray-300 placeholder-gray-400'
-                  }`}
-                />
-              ) : (
-                <button
-                  onClick={() => setComposing(true)}
-                  title={`Add a task to ${columns[0]?.title || ''}`}
-                  className="h-control flex items-center gap-1.5 pl-3 pr-4 text-body font-medium rounded-lg bg-green-800 text-white hover:bg-green-900 press"
-                >
-                  <Plus size={16} /> Task
-                </button>
-              )}
+              <input
+                type="text"
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') submitDraft();
+                  if (e.key === 'Escape') setDraft('');
+                }}
+                placeholder={`New task in ${columns[0]?.title || ''}...`}
+                aria-label="New task title"
+                className={`h-control w-80 sm:w-[30rem] max-w-full px-4 text-body rounded-lg border focus:outline-none focus:border-green-500 ${
+                  darkMode
+                    ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                    : 'bg-white border-gray-300 placeholder-gray-400'
+                }`}
+              />
+              <button
+                onClick={submitDraft}
+                title={`Add a task to ${columns[0]?.title || ''}`}
+                className="h-control flex items-center gap-1.5 pl-3 pr-4 text-body font-medium rounded-lg bg-green-800 text-white hover:bg-green-900 press"
+              >
+                <Plus size={16} /> Task
+              </button>
 
               {/* Одна кнопка сортирует по важности сразу все колонки */}
               {projectTasks.length > 1 && (
@@ -199,9 +195,12 @@ export default function KanbanBoard({
     >
           {/* Борд прокручивается целиком, все колонки разом. По горизонтали
               колонки жмутся до читаемого минимума и только потом появляется
-              прокрутка — на 1280px пять колонок ещё помещаются */}
+              прокрутка — на 1280px пять колонок ещё помещаются.
+              Верхний отступ здесь, а не у скроллера (flushTop): иначе над
+              липкими заголовками колонок остаётся полоса, в которой видно
+              уезжающие карточки */}
           {currentProject && (
-            <div className="flex gap-3 sm:gap-4 min-h-full">
+            <div className="flex gap-3 sm:gap-4 min-h-full pt-4 sm:pt-6">
               {columns.map(column => (
                 <div key={column.id} className="flex-1 min-w-[170px] sm:min-w-[180px]">
                   <DropZone

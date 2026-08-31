@@ -10,8 +10,12 @@ import React from 'react';
 //   странице для дыхания панель управления не нужна.
 //
 // width='grid'  — контент во всю ширину: доски, сетки карточек.
-// width='prose' — узкая колонка: формы и настройки. Правило простое —
+// width='prose' — узкая колонка по центру: формы и настройки. Правило простое —
 //   сетка заполняет ширину, форма нет.
+//
+// flushTop      — верхний отступ тела страница даёт себе сама. Нужно там, где
+//   внутри есть липкие заголовки: padding-top у скроллера оставляет над ними
+//   полосу, в которой видно уезжающие карточки.
 export default function PageShell({
   darkMode,
   title,
@@ -19,6 +23,7 @@ export default function PageShell({
   variant = 'default',
   actions,
   subheader,
+  flushTop = false,
   children
 }) {
   const bgClass = darkMode ? 'bg-gray-900' : 'bg-gray-50';
@@ -34,22 +39,47 @@ export default function PageShell({
   const borderClass = darkMode ? 'border-gray-800' : 'border-gray-200';
   const titleClass = darkMode ? 'text-white' : 'text-gray-800';
 
+  // Кнопки страницы всегда в нижней полосе шапки — рядом с подзаголовком,
+  // а если его нет, то с заголовком, который в этом случае сам стоит внизу
+  const actionsRow = <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>;
+
   return (
     <div className={`flex-1 flex flex-col overflow-hidden ${bgClass}`}>
       {/* Шапка не уезжает при скролле, поэтому нижняя граница нужна:
-          без неё контент подъезжает под заголовок без видимого рубежа */}
-      <div className={`flex-shrink-0 border-b ${borderClass} px-4 sm:px-8 pt-4 sm:pt-6 pb-4 sm:pb-5`}>
-        <div className="flex items-center justify-between gap-4">
+          без неё контент подъезжает под заголовок без видимого рубежа.
+          Высота фиксирована токеном --shell-header-h: граница обязана лечь ровно
+          на линию под блоком пользователя в сайдбаре, одинаково на всех страницах
+          независимо от того, есть подзаголовок или нет. Не height, а min-height —
+          если панель под заголовком перенесётся на вторую строку на узком экране,
+          шапка вырастет, а не обрежет содержимое.
+
+          Сайдбар слева делит ту же высоту на две полосы — логотип и пользователь,
+          и шапка выкладывает содержимое по ним. Есть подзаголовок — заголовок
+          идёт по логотипу, подзаголовок прижат к низу и встаёт по пользователю.
+          Нет подзаголовка — по пользователю идёт сам заголовок: висеть ему
+          наверху с пустотой под собой незачем. Кнопки страницы в обоих случаях
+          прижаты к правому краю нижней полосы. */}
+      <div className={`flex-shrink-0 min-h-[var(--shell-header-h)] flex flex-col border-b ${borderClass} px-4 sm:px-8 ${subheader ? 'pt-4 sm:pt-6 pb-4 sm:pb-5' : ''}`}>
+        <div
+          className={`flex items-center justify-between gap-4 ${
+            subheader ? '' : 'mt-auto flex-shrink-0 h-[var(--user-h)]'
+          }`}
+        >
           <h2 className={`text-title sm:text-title-lg truncate ${titleClass}`}>{title}</h2>
-          {actions && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}
+          {actions && !subheader && actionsRow}
         </div>
-        {subheader && <div className="mt-4 sm:mt-5">{subheader}</div>}
+        {subheader && (
+          <div className="mt-auto pt-4 sm:pt-5 flex items-center justify-between gap-4">
+            <div className="min-w-0">{subheader}</div>
+            {actions && actionsRow}
+          </div>
+        )}
       </div>
 
       {/* Обёртку добавляем только для узкой колонки: у сеток она разорвала бы
           цепочку высот (канбану нужен min-h-full до самого низа) */}
-      <div className="flex-1 min-h-0 overflow-auto px-4 sm:px-8 pt-4 sm:pt-6 pb-4 sm:pb-8">
-        {width === 'prose' ? <div className="max-w-prose">{children}</div> : children}
+      <div className={`flex-1 min-h-0 overflow-auto px-4 sm:px-8 pb-4 sm:pb-8 ${flushTop ? '' : 'pt-4 sm:pt-6'}`}>
+        {width === 'prose' ? <div className="max-w-prose mx-auto">{children}</div> : children}
       </div>
     </div>
   );
