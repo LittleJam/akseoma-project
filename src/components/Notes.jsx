@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, EyeOff } from 'lucide-react';
+import { X, EyeOff, ChevronUp, ChevronDown } from 'lucide-react';
 import { NOTE_COLORS } from '../constants';
 import { compressImage } from '../utils/imageCompression';
 import { themeIcon } from '../themes';
@@ -134,7 +134,10 @@ export default function Notes({
                   }}
                   onDrop={e => handleDrop(e, index, note.id)}
                   onClick={() => setExpandedId(note.id)}
-                  className={`aspect-square self-start min-h-0 overflow-hidden rounded-lg border p-3 flex flex-col cursor-pointer group ${
+                  /* Квадрат держит сетку ровной на широком экране. На телефоне
+                     колонка одна: квадрат стал бы 358px высотой почти пустой
+                     плитки, и на экран влезала бы одна заметка */
+                  className={`sm:aspect-square max-h-64 sm:max-h-none self-start min-h-0 overflow-hidden rounded-lg border p-3 flex flex-col cursor-pointer group ${
                     isDragging ? 'opacity-40 transition duration-150' : 'lift'
                   } ${darkMode ? palette.dark : palette.light} ${
                     isDropTarget || fileOverId === note.id ? 'ring-2 ring-green-600' : ''
@@ -153,13 +156,44 @@ export default function Notes({
 
                     {note.blurred && <EyeOff size={12} className={`flex-shrink-0 ${mutedText}`} />}
 
+                    {/* Порядок заметок на телефоне меняют стрелками: карточки
+                        переставляют перетаскиванием, а оно работает только мышью.
+                        На узком экране сетка в одну колонку, поэтому вверх-вниз */}
+                    {index > 0 && (
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          reorderNotes(index, index - 1);
+                        }}
+                        title="Move up"
+                        aria-label="Move up"
+                        className={`sm:hidden p-1.5 rounded press-icon flex-shrink-0 ${mutedText}`}
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                    )}
+                    {index < notes.length - 1 && (
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          reorderNotes(index, index + 1);
+                        }}
+                        title="Move down"
+                        aria-label="Move down"
+                        className={`sm:hidden p-1.5 rounded press-icon flex-shrink-0 ${mutedText}`}
+                      >
+                        <ChevronDown size={14} />
+                      </button>
+                    )}
+
                     <button
                       onClick={e => {
                         e.stopPropagation();
                         deleteNote(note.id);
                       }}
                       title="Delete note"
-                      className={`p-1.5 sm:p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
+                      /* Видно сразу на телефоне: наведения там не бывает */
+                      className={`p-1.5 sm:p-0.5 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
                     >
                       <X size={14} />
                     </button>

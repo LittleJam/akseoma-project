@@ -247,7 +247,10 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                   setDragOverDay(prev => (prev === day ? null : prev));
                 }}
                 onDrop={e => handleDayDrop(e, day)}
-                className={`rounded-lg p-3 sm:p-4 flex flex-col h-day-card min-h-0 min-w-0 border transition duration-150 ${
+                /* Ровные карточки нужны сетке: в четыре колонки разнобой высот
+                   выглядел бы рваным. На телефоне колонка одна, и фиксированные
+                   315px превращались бы в пустоту под парой дел */
+                className={`rounded-lg p-3 sm:p-4 flex flex-col h-auto sm:h-day-card min-h-0 min-w-0 border transition duration-150 ${
                   isToday
                     ? darkMode ? 'border-green-700 bg-green-950/40' : 'border-green-200 bg-green-50'
                     : darkMode ? 'border-gray-800 bg-gray-800/60' : 'border-gray-200 bg-white'
@@ -363,7 +366,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                         className={`p-1.5 sm:p-0.5 rounded press-icon flex-shrink-0 ${
                           task.important
                             ? 'opacity-100 text-amber-500'
-                            : `opacity-0 group-hover:opacity-100 ${mutedIcon}`
+                            : `opacity-100 sm:opacity-0 sm:group-hover:opacity-100 ${mutedIcon}`
                         }`}
                       >
                         <Star size={13} fill={task.important ? 'currentColor' : 'none'} />
@@ -373,15 +376,34 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                         onClick={() => startEditing(day, task)}
                         title="Edit task"
                         aria-label="Edit task"
-                        className={`p-1.5 sm:p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-green-100'}`}
+                        className={`p-1.5 sm:p-0.5 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-green-100'}`}
                       >
                         <Edit2 size={12} className={darkMode ? 'text-green-400' : 'text-green-600'} />
                       </button>
+                      {/* Перенос на другой день для телефона: строки таскают мышью,
+                          а drag-and-drop не отвечает на касания. Список дней — родной
+                          select: он открывается системным выбором поверх всего, тогда
+                          как своё выпадающее меню обрезал бы скролл карточки дня */}
+                      <select
+                        value={day}
+                        onChange={e => moveWeeklyTask(weekKey, day, e.target.value, task.id)}
+                        onClick={e => e.stopPropagation()}
+                        title="Move to another day"
+                        aria-label="Move to another day"
+                        className={`sm:hidden flex-shrink-0 w-[3.25rem] px-1 py-1 text-[11px] rounded border bg-transparent focus:outline-none focus:border-green-500 ${
+                          darkMode ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-500'
+                        }`}
+                      >
+                        {weekDays.map(target => (
+                          <option key={target} value={target}>{target.slice(0, 3)}</option>
+                        ))}
+                      </select>
+
                       <button
                         onClick={() => deleteWeeklyTask(weekKey, day, task.id)}
                         title="Delete task"
                         aria-label="Delete task"
-                        className={`p-1.5 sm:p-0.5 rounded opacity-0 group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-red-100'}`}
+                        className={`p-1.5 sm:p-0.5 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-red-100'}`}
                       >
                         <X size={13} className={darkMode ? 'text-red-400' : 'text-red-500'} />
                       </button>

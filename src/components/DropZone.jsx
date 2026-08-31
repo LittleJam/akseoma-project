@@ -11,6 +11,8 @@ const DONE_VISIBLE = 5;
 
 export default function DropZone({
   column,
+  columns = [],
+  hideHeader = false,
   darkMode,
   tasks,
   showLabels,
@@ -39,6 +41,13 @@ export default function DropZone({
   const visibleTasks = hiddenCount > 0 ? tasks.slice(hiddenCount) : tasks;
   // Одна поверхность на всю колонку вместо «рамка + заливка + отдельный фон заголовка»
   const surfaceBg = darkMode ? 'bg-gray-800' : 'bg-gray-100';
+
+  // Соседи по борду — для переноса задачи стрелками. Перетаскивание построено
+  // на HTML5 drag-and-drop, а он не отвечает на касания: на телефоне это
+  // единственный способ сдвинуть задачу по колонкам
+  const columnIndex = columns.findIndex(c => c.id === column.id);
+  const prevColumn = columnIndex > 0 ? columns[columnIndex - 1] : null;
+  const nextColumn = columnIndex >= 0 && columnIndex < columns.length - 1 ? columns[columnIndex + 1] : null;
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -74,12 +83,17 @@ export default function DropZone({
       {/* Заголовок липкий, и под ним проезжают карточки. Поверхность колонки во
           многих темах намеренно полупрозрачная, поэтому подложку заголовку
           задаём отдельно — иначе статус читается сквозь чужой текст */}
-      <div className="column-header flex items-center gap-2 p-4 pb-2 sticky top-0 z-10 rounded-t-lg">
-        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
-        <h3 className={`text-xs font-medium uppercase tracking-wide flex-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-          {column.title} ({tasks.length})
-        </h3>
-      </div>
+      {/* На телефоне заголовок скрыт: название и счётчик уже показывает
+          переключатель колонок над бордом, и второй такой же ряд только съел бы
+          высоту, которой там и так мало */}
+      {!hideHeader && (
+        <div className="column-header flex items-center gap-2 p-4 pb-2 sticky top-0 z-10 rounded-t-lg">
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
+          <h3 className={`text-xs font-medium uppercase tracking-wide flex-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            {column.title} ({tasks.length})
+          </h3>
+        </div>
+      )}
       <div className="space-y-3 min-h-[100px] px-4 pb-4 pt-3 flex-1 rounded-b-lg">
         {visibleTasks.map((task, visibleIndex) => {
           // Индекс нужен настоящий, из полного списка: по нему работает перетаскивание
@@ -106,6 +120,9 @@ export default function DropZone({
                 likesEnabled={likesEnabled}
                 currentUsername={currentUsername}
                 onToggleLike={() => toggleTaskLike(task.id, column.id)}
+                prevColumn={prevColumn}
+                nextColumn={nextColumn}
+                onMoveToColumn={toColumnId => moveTask(task.id, column.id, toColumnId)}
               />
               {hasSubtasks && !isCollapsed && task.subtasks.map((subtask, subIndex) => (
                 <SubtaskCard

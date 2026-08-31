@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X } from 'lucide-react';
 import { getProjectCode, uniqueSlug, withSlugs } from './utils/projectCode';
 import { idbGet, idbSet, writeStateToFile } from './utils/fileStorage';
 import { isSupabaseConfigured } from './utils/supabaseClient';
@@ -13,6 +12,7 @@ import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
 import ConfirmDialog from './components/ConfirmDialog';
 import Sidebar from './components/Sidebar';
+import MobileNav from './components/MobileNav';
 import KanbanBoard from './components/KanbanBoard';
 import TaskEditor from './components/TaskEditor';
 import WeeklyTodo from './components/WeeklyTodo';
@@ -32,7 +32,6 @@ export default function PersonalJira() {
   const [collapsedSubtasks, setCollapsedSubtasks] = useState({});
   const [editingTask, setEditingTask] = useState(null);
   // На телефоне боковая панель выезжает поверх содержимого, на широком экране всегда на месте
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   // Кто вошёл и что разрешено обычному пользователю (админу — всё)
   const [user, setUser] = useState(null);
   const [featureFlags, setFeatureFlags] = useState(DEFAULT_FLAGS);
@@ -630,14 +629,16 @@ export default function PersonalJira() {
     setHasUnsavedChanges(false);
   };
 
-  // Создать новый проект
-  const createProject = () => {
-    if (!newProjectName.trim()) return;
+  // Создать новый проект. Имя можно передать явно: на телефоне проекты заводят
+  // из переключателя на самом борде, а не из поля в сайдбаре со своим состоянием
+  const createProject = (name = newProjectName) => {
+    const title = (name || '').trim();
+    if (!title) return;
 
     const newProject = {
       id: Date.now().toString(),
-      name: newProjectName,
-      slug: uniqueSlug(newProjectName, projects.map(p => p.slug).filter(Boolean))
+      name: title,
+      slug: uniqueSlug(title, projects.map(p => p.slug).filter(Boolean))
     };
 
     const updatedProjects = [...projects, newProject];
@@ -1237,7 +1238,6 @@ export default function PersonalJira() {
 
   const handleSignOut = () => {
     setUser(null);
-    setSidebarOpen(false);
     localStorage.removeItem(AUTH_KEY);
   };
 
@@ -1264,28 +1264,9 @@ export default function PersonalJira() {
   }
 
   return (
-    <div data-app className="flex h-full bg-gray-50">
+    <div data-app className="flex flex-col sm:flex-row h-full bg-gray-50">
       <ThemeFx theme={theme} />
       {storageError && <StorageErrorBanner />}
-
-      {/* Кнопка меню и затемнение — только на узком экране */}
-      <button
-        onClick={() => setSidebarOpen(prev => !prev)}
-        title="Menu"
-        aria-label="Menu"
-        className={`sm:hidden fixed top-2 left-2 z-[60] p-2 rounded-lg border press ${
-          darkMode ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-200 text-gray-700'
-        }`}
-      >
-        {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
-      </button>
-
-      {sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          className="sm:hidden fixed inset-0 z-40 bg-black/40 animate-fade-in"
-        />
-      )}
 
       {showConfirmDialog && (
         <ConfirmDialog darkMode={darkMode} onConfirm={handleConfirmSwitchProject} />
@@ -1306,21 +1287,14 @@ export default function PersonalJira() {
         supabaseStatus={supabaseStatus}
         supabaseError={supabaseError}
         currentPage={currentPage}
-        setCurrentPage={page => {
-          setCurrentPage(page);
-          setSidebarOpen(false);
-        }}
-        mobileOpen={sidebarOpen}
+        setCurrentPage={setCurrentPage}
         projects={projects}
         currentProject={currentProject}
         editingProjectId={editingProjectId}
         editingProjectName={editingProjectName}
         setEditingProjectId={setEditingProjectId}
         setEditingProjectName={setEditingProjectName}
-        handleProjectClick={projectId => {
-          handleProjectClick(projectId);
-          setSidebarOpen(false);
-        }}
+        handleProjectClick={handleProjectClick}
         updateProjectName={updateProjectName}
         deleteProject={deleteProject}
         newProjectName={newProjectName}
@@ -1328,8 +1302,9 @@ export default function PersonalJira() {
         createProject={createProject}
       />
 
-      {/* Основное содержимое. На телефоне сверху остаётся место под кнопку меню */}
-      <div className="flex-1 min-w-0 flex flex-col pt-12 sm:pt-0">
+      {/* Основное содержимое. min-h-0 обязателен: без него колонка на телефоне
+          растягивается под свой контент и выталкивает навигацию за экран */}
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col">
       {editingTask && currentPage === 'kanban' && (
         <TaskEditor
           task={editingTask}
@@ -1364,6 +1339,8 @@ export default function PersonalJira() {
           <KanbanBoard
             currentProject={currentProject}
             projects={projects}
+            selectProject={handleProjectClick}
+            createProject={createProject}
             tasks={tasks}
             columns={getProjectColumns(currentProject)}
             createTask={createTask}
@@ -1447,6 +1424,14 @@ export default function PersonalJira() {
         />
       )}
       </div>
+
+      <MobileNav
+        darkMode={darkMode}
+        theme={theme}
+        allowed={allowed}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+      />
     </div>
   );
 }

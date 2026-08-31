@@ -189,6 +189,7 @@ export default function NoteModal({
     <Modal
       onClose={onClose}
       size="md"
+      sheet
       closeOnEsc={false}
       overlayProps={{
         // Перетаскивание файла куда угодно поверх открытой заметки — это добавление
@@ -204,7 +205,7 @@ export default function NoteModal({
         },
         onDrop: handleImageDrop
       }}
-      panelClassName={`rounded-xl border shadow-xl ${darkMode ? palette.dark : palette.light} ${isDragOver ? 'ring-2 ring-green-600' : ''}`}
+      panelClassName={`rounded-none sm:rounded-xl border-0 sm:border shadow-xl ${darkMode ? palette.dark : palette.light} ${isDragOver ? 'ring-2 ring-green-600' : ''}`}
     >
         {/* Подсказка появляется только когда над окном тащат файл */}
         {isDragOver && (

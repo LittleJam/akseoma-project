@@ -20,7 +20,6 @@ export default function Sidebar({
   supabaseError,
   currentPage,
   setCurrentPage,
-  mobileOpen,
   projects,
   currentProject,
   editingProjectId,
@@ -81,14 +80,13 @@ export default function Sidebar({
   return (
     <div
       data-sidebar
-      className={`w-64 sm:w-56 lg:w-64 flex-shrink-0 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col overflow-y-auto
-        fixed inset-y-0 left-0 z-50 pt-[env(safe-area-inset-top)] transition-transform duration-200 ease-out
-        sm:static sm:z-auto sm:translate-x-0 sm:pt-0 sm:transition-none ${
-        mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
-      }`}
+      /* Только десктоп: на телефоне разделы живут в нижней навигации, а проекты —
+         в переключателе на самом борде. Выезжающий ящик шириной 256px закрывал
+         бы почти весь экран ради того же списка */
+      className={`hidden sm:flex w-56 lg:w-64 flex-shrink-0 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex-col overflow-y-auto`}
     >
       {/* Высота задана токеном, а не паддингами: на ней держится общий рубеж шапок */}
-      <div className={`h-[var(--brand-h)] flex-shrink-0 px-4 pl-14 sm:pl-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between gap-2`}>
+      <div className={`h-[var(--brand-h)] flex-shrink-0 px-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between gap-2`}>
         <div className="flex-1 min-w-0">
           <h1
             ref={brandRef}

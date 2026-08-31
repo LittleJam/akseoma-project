@@ -17,6 +17,8 @@
   --brand-h: 68px;
   --user-h: 61px;
   --shell-header-h: 129px;
+  /* Высота нижней навигации: иконка с подписью и запас под палец */
+  --mobile-nav-h: 56px;
 }
 
 @media (min-width: 640px) {

@@ -322,9 +322,12 @@ export default function TaskEditor({
   return (
     <Modal
       size="lg"
+      sheet
       onClose={onClose}
       closeOnBackdrop={false}
-      panelClassName={`max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] overflow-hidden rounded-lg border shadow-xl ${bgClass} ${cardBorderClass}`}
+      /* На телефоне редактор занимает экран целиком: рамка, скругления и поля
+         вокруг съедали бы ширину, которой в форме и так впритык */
+      panelClassName={`max-h-[100dvh] sm:max-h-[calc(100vh-3rem)] overflow-hidden rounded-none sm:rounded-lg border-0 sm:border shadow-xl ${bgClass} ${cardBorderClass}`}
     >
           {/* Header */}
           <div className={`flex items-center justify-between p-4 sm:p-6 sm:pb-4 flex-shrink-0 border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>

@@ -59,18 +59,29 @@ export default function PageShell({
           Нет подзаголовка — по пользователю идёт сам заголовок: висеть ему
           наверху с пустотой под собой незачем. Кнопки страницы в обоих случаях
           прижаты к правому краю нижней полосы. */}
-      <div className={`flex-shrink-0 min-h-[var(--shell-header-h)] flex flex-col border-b ${borderClass} px-4 sm:px-8 ${subheader ? 'pt-4 sm:pt-6 pb-4 sm:pb-5' : ''}`}>
+      {/* Высота шапки задана токеном только с sm: рубеж должен совпасть с линией
+          под блоком пользователя в сайдбаре, а на телефоне сайдбара нет — там
+          эти 129px были бы пустой полосой поперёк и без того короткого экрана */}
+      <div className={`flex-shrink-0 sm:min-h-[var(--shell-header-h)] flex flex-col border-b ${borderClass} px-4 sm:px-8 ${subheader ? 'pt-4 sm:pt-6 pb-4 sm:pb-5' : 'py-3 sm:py-0'}`}>
         <div
           className={`flex items-center justify-between gap-4 ${
-            subheader ? '' : 'mt-auto flex-shrink-0 h-[var(--user-h)]'
+            subheader ? '' : 'mt-auto flex-shrink-0 sm:h-[var(--user-h)]'
           }`}
         >
-          <h2 className={`text-title sm:text-title-lg truncate ${titleClass}`}>{title}</h2>
+          {/* Заголовком может быть не только строка, но и элемент — например,
+              переключатель проектов на телефоне. Обрезку в этом случае не
+              навязываем: overflow срезал бы его выпадающий список */}
+          <h2 className={`text-title sm:text-title-lg min-w-0 ${typeof title === 'string' ? 'truncate' : ''} ${titleClass}`}>
+            {title}
+          </h2>
           {actions && !subheader && actionsRow}
         </div>
         {subheader && (
           <div className="mt-auto pt-4 sm:pt-5 flex items-center justify-between gap-4">
-            <div className="min-w-0">{subheader}</div>
+            {/* flex-1 обязателен вместе с min-w-0: без него полоса под заголовком
+                занимает ширину своего содержимого и на телефоне вылезает за экран,
+                утаскивая за собой всю страницу */}
+            <div className="flex-1 min-w-0">{subheader}</div>
             {actions && actionsRow}
           </div>
         )}
