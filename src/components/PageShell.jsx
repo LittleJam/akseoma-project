@@ -62,7 +62,7 @@ export default function PageShell({
       {/* Высота шапки задана токеном только с sm: рубеж должен совпасть с линией
           под блоком пользователя в сайдбаре, а на телефоне сайдбара нет — там
           эти 129px были бы пустой полосой поперёк и без того короткого экрана */}
-      <div className={`flex-shrink-0 sm:min-h-[var(--shell-header-h)] flex flex-col border-b ${borderClass} px-4 sm:px-8 ${subheader ? 'pt-4 sm:pt-6 pb-4 sm:pb-5' : 'py-3 sm:py-0'}`}>
+      <div className={`flex-shrink-0 sm:min-h-[var(--shell-header-h)] flex flex-col border-b ${borderClass} px-6 sm:px-8 ${subheader ? 'pt-4 sm:pt-6 pb-4 sm:pb-5' : 'py-3 sm:py-0'}`}>
         <div
           className={`flex items-center justify-between gap-4 ${
             subheader ? '' : 'mt-auto flex-shrink-0 sm:h-[var(--user-h)]'
@@ -89,7 +89,7 @@ export default function PageShell({
 
       {/* Обёртку добавляем только для узкой колонки: у сеток она разорвала бы
           цепочку высот (канбану нужен min-h-full до самого низа) */}
-      <div className={`flex-1 min-h-0 overflow-auto px-4 sm:px-8 pb-4 sm:pb-8 ${flushTop ? '' : 'pt-4 sm:pt-6'}`}>
+      <div className={`flex-1 min-h-0 overflow-auto px-6 sm:px-8 pb-4 sm:pb-8 ${flushTop ? '' : 'pt-4 sm:pt-6'}`}>
         {width === 'prose' ? <div className="max-w-prose mx-auto">{children}</div> : children}
       </div>
     </div>

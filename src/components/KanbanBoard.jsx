@@ -234,7 +234,7 @@ export default function KanbanBoard({
             <div className="min-h-full flex flex-col">
               {/* Переключатель липнет к верху: пролистав длинную колонку вниз,
                   перейти в соседнюю нужно там же, где стоишь, а не в начале */}
-              <div className="column-header sticky top-0 z-20 -mx-4 px-4 py-2 flex gap-2 overflow-x-auto">
+              <div className="column-header sticky top-0 z-20 -mx-6 px-6 py-2 flex gap-2 overflow-x-auto">
                 {columns.map(column => {
                   const count = visibleTasks(tasks[currentProject]?.[column.id]).length;
                   const active = column.id === activeColumn.id;
