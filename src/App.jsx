@@ -8,6 +8,7 @@ import { DARK_THEMES, THEME_COLORS } from './themes';
 import { parseLocation, navigate, onRouteChange } from './utils/router';
 import { AUTH_KEY, FLAGS_KEY, DEFAULT_FLAGS, PAGE_FEATURES, canUse } from './auth';
 import { getWeekKey } from './utils/weeks';
+import { DEFAULT_SIGN, signFromBirthDate } from './horoscope';
 import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -41,6 +42,8 @@ export default function PersonalJira() {
   const [featureFlags, setFeatureFlags] = useState(DEFAULT_FLAGS);
   // Лайки включаются по каждому проекту отдельно: { [projectId]: true }
   const [projectLikes, setProjectLikes] = useState({});
+  // Гороскоп в расписании: знак выбирают руками или он считается по дате рождения
+  const [zodiac, setZodiac] = useState({ sign: DEFAULT_SIGN, birthDate: '' });
   const [newProjectName, setNewProjectName] = useState('');
   const [loading, setLoading] = useState(true);
   // Тема сайта: light | dark | wizard | surf. Компоненты по-прежнему знают только
@@ -70,6 +73,10 @@ export default function PersonalJira() {
   const supabaseSaveTimeout = useRef(null);
 
   const weekDays = WEEK_DAYS;
+
+  // Дата рождения главнее выбранного руками знака: если её указали, знак больше
+  // не настройка, а следствие
+  const zodiacSign = signFromBirthDate(zodiac.birthDate) || zodiac.sign || DEFAULT_SIGN;
 
   const RU_TO_EN_DAY = {
     'Понедельник': 'Monday',
@@ -231,10 +238,12 @@ export default function PersonalJira() {
         const savedAuth = localStorage.getItem(AUTH_KEY);
         const savedFlags = localStorage.getItem(FLAGS_KEY);
         const savedProjectLikes = localStorage.getItem('jira-project-likes');
+        const savedZodiac = localStorage.getItem('jira-zodiac');
 
         if (savedAuth) setUser(JSON.parse(savedAuth));
         if (savedFlags) setFeatureFlags({ ...DEFAULT_FLAGS, ...JSON.parse(savedFlags) });
         if (savedProjectLikes) setProjectLikes(JSON.parse(savedProjectLikes));
+        if (savedZodiac) setZodiac({ sign: DEFAULT_SIGN, birthDate: '', ...JSON.parse(savedZodiac) });
         const savedCurrentProject = localStorage.getItem('jira-currentProject');
         const savedCurrentPage = localStorage.getItem('jira-currentPage');
 
@@ -393,6 +402,11 @@ export default function PersonalJira() {
     safeSetItem('jira-project-likes', JSON.stringify(projectLikes));
   }, [projectLikes, loading]);
 
+  useEffect(() => {
+    if (loading) return;
+    safeSetItem('jira-zodiac', JSON.stringify(zodiac));
+  }, [zodiac, loading]);
+
   // Сохранение темы
   useEffect(() => {
     localStorage.setItem('jira-theme', JSON.stringify(theme));
@@ -503,6 +517,7 @@ export default function PersonalJira() {
           if (remote.collapsedSubtasks) saveCollapsedSubtasks(remote.collapsedSubtasks);
           if (remote.settings?.featureFlags) setFeatureFlags({ ...DEFAULT_FLAGS, ...remote.settings.featureFlags });
           if (remote.settings?.projectLikes) setProjectLikes(remote.settings.projectLikes);
+          if (remote.settings?.zodiac) setZodiac({ sign: DEFAULT_SIGN, birthDate: '', ...remote.settings.zodiac });
           if (remote.settings?.theme) setTheme(remote.settings.theme);
           else if (remote.settings?.darkMode !== undefined) setTheme(remote.settings.darkMode ? 'dark' : 'light');
         }
@@ -536,7 +551,7 @@ export default function PersonalJira() {
           collapsedSubtasks,
           // currentProject/currentPage сюда не кладём: раздел и проект — дело
           // конкретного устройства, синхронизировать их значит дёргать чужой экран
-          settings: { darkMode, theme, featureFlags, projectLikes }
+          settings: { darkMode, theme, featureFlags, projectLikes, zodiac }
         });
         setSupabaseStatus('synced');
         setSupabaseError(null);
@@ -1338,6 +1353,7 @@ export default function PersonalJira() {
           theme={theme}
           darkMode={darkMode}
           weekDays={weekDays}
+          zodiacSign={zodiacSign}
         />
       ) : currentPage === 'notes' ? (
         <Notes
@@ -1369,6 +1385,9 @@ export default function PersonalJira() {
           setFeatureFlags={setFeatureFlags}
           projectLikes={projectLikes}
           setProjectLikes={setProjectLikes}
+          zodiac={zodiac}
+          setZodiac={setZodiac}
+          zodiacSign={zodiacSign}
           onSignOut={handleSignOut}
           projects={projects}
           currentProject={currentProject}

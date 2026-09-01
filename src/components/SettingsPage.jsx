@@ -4,6 +4,7 @@ import { COLUMN_COLORS } from '../constants';
 import { THEME_OPTIONS } from '../themes';
 import { FEATURES, DEFAULT_FLAGS } from '../auth';
 import Select from './Select';
+import { ZODIAC, getSign, DEFAULT_SIGN } from '../horoscope';
 import PageShell from './PageShell';
 
 export default function SettingsPage({
@@ -16,6 +17,9 @@ export default function SettingsPage({
   setFeatureFlags,
   projectLikes = {},
   setProjectLikes,
+  zodiac = { sign: DEFAULT_SIGN, birthDate: '' },
+  setZodiac,
+  zodiacSign,
   onSignOut,
   projects,
   currentProject,
@@ -301,6 +305,47 @@ export default function SettingsPage({
           )}
         </div>
         )}
+
+        {/* Гороскоп: чем задан знак — выбором или датой рождения */}
+        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
+          <h3 className={`text-section uppercase mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            Horoscope
+          </h3>
+          <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            Shown as the eighth card in Schedule.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={`block text-sm font-medium ${labelClass} mb-2`}>Sign</label>
+              <Select
+                value={zodiacSign || DEFAULT_SIGN}
+                onChange={e => setZodiac({ ...zodiac, sign: e.target.value })}
+                options={ZODIAC.map(sign => ({ value: sign.key, label: `${sign.symbol} ${sign.label}` }))}
+                darkMode={darkMode}
+                ariaLabel="Zodiac sign"
+                disabled={!!zodiac.birthDate}
+                className={`w-full px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass} ${zodiac.birthDate ? 'opacity-50' : ''}`}
+              />
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium ${labelClass} mb-2`}>Birth date</label>
+              <input
+                type="date"
+                value={zodiac.birthDate || ''}
+                onChange={e => setZodiac({ ...zodiac, birthDate: e.target.value })}
+                aria-label="Birth date"
+                className={`w-full px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+              />
+              <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                {zodiac.birthDate
+                  ? `Sign is taken from the date: ${getSign(zodiacSign).symbol} ${getSign(zodiacSign).label}. Clear the date to choose by hand.`
+                  : 'Fill it in and the sign is worked out from it instead of the list.'}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Project columns */}
         {allowed('kanban') && (

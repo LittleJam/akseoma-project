@@ -34,6 +34,7 @@ export const STORAGE_KEYS = [
   'jira-chill-music',
   'jira-feature-flags',
   'jira-project-likes',
+  'jira-zodiac',
   'jira-currentProject',
   'jira-currentPage'
 ];

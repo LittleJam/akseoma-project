@@ -3,10 +3,11 @@ import { Edit2, X, ChevronLeft, ChevronRight, Star, Clock } from 'lucide-react';
 import { themeIcon } from '../themes';
 import { getWeekStart, addWeeks, getWeekKey, getWeekDates, isSameDay } from '../utils/weeks';
 import { getQuoteForDate } from '../quotes';
+import { getSign, getHoroscopeForDate } from '../horoscope';
 import PageShell from './PageShell';
 import useIsMobile from '../utils/useIsMobile';
 
-export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays }) {
+export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays, zodiacSign }) {
   const AddIcon = themeIcon(theme, 'add');
   const RefreshIcon = themeIcon(theme, 'refresh');
   const [weekOffset, setWeekOffset] = useState(0);
@@ -477,6 +478,34 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
               </div>
             );
           })}
+
+          {/* Восьмая карточка: гороскоп на сегодня. Она же добивает сетку до
+              ровных 4×2 на широком экране — семь дней оставляли дыру.
+              Показываем всегда сегодняшний, независимо от листания недель:
+              гороскоп на прошлый понедельник ничего не значит */}
+          {(() => {
+            const sign = getSign(zodiacSign);
+            return (
+              <div
+                className={`rounded-lg p-3 sm:p-4 flex flex-col h-auto sm:h-day-card min-h-0 min-w-0 border ${
+                  darkMode ? 'border-gray-800 bg-gray-800/60' : 'border-gray-200 bg-white'
+                }`}
+              >
+                <div className="mb-4 flex-shrink-0 flex items-baseline gap-2 min-w-0">
+                  <span className={`text-lg font-semibold truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                    {sign.symbol} {sign.label}
+                  </span>
+                  <span className={`text-xs font-medium uppercase tracking-wide truncate ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Today
+                  </span>
+                </div>
+
+                <p className={`flex-1 min-h-0 overflow-y-auto text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {getHoroscopeForDate(sign.key, today)}
+                </p>
+              </div>
+            );
+          })()}
       </div>
     </PageShell>
   );
