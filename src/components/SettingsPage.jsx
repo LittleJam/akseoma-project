@@ -22,6 +22,7 @@ export default function SettingsPage({
   setZodiac,
   zodiacSign,
   risingSign,
+  moonSign,
   onSignOut,
   projects,
   currentProject,
@@ -422,9 +423,11 @@ export default function SettingsPage({
 
               <div className="flex items-end">
                 <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  {`Sun ${getSign(zodiacSign).symbol} ${getSign(zodiacSign).label}`}
+                  {moonSign ? ` · Moon ${getSign(moonSign).symbol} ${getSign(moonSign).label}` : ''}
                   {risingSign
-                    ? `Rising sign: ${getSign(risingSign).symbol} ${getSign(risingSign).label}.`
-                    : 'Rising sign needs birth time, latitude and longitude.'}
+                    ? ` · Rising ${getSign(risingSign).symbol} ${getSign(risingSign).label}`
+                    : ' · rising sign needs birth time, latitude and longitude'}
                 </p>
               </div>
             </div>

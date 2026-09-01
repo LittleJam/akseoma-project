@@ -8,7 +8,7 @@ import { DARK_THEMES, THEME_COLORS } from './themes';
 import { parseLocation, navigate, onRouteChange } from './utils/router';
 import { AUTH_KEY, FLAGS_KEY, DEFAULT_FLAGS, PAGE_FEATURES, canUse } from './auth';
 import { getWeekKey } from './utils/weeks';
-import { DEFAULT_SIGN, signFromBirthDate, getAscendantSign } from './horoscope';
+import { DEFAULT_SIGN, getNatalChart } from './horoscope';
 import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -77,11 +77,12 @@ export default function PersonalJira() {
 
   const weekDays = WEEK_DAYS;
 
-  // Дата рождения главнее выбранного руками знака: если её указали, знак больше
-  // не настройка, а следствие
-  const zodiacSign = signFromBirthDate(zodiac.birthDate) || zodiac.sign || DEFAULT_SIGN;
-  // Восходящий знак — только если заполнены время и координаты; иначе null
-  const risingSign = getAscendantSign(zodiac);
+  // Карта рождения: Солнце и Луна считаются от даты и времени, асцендент требует
+  // ещё и координат. Дата главнее выбранного руками знака — если она указана,
+  // солнечный знак не настройка, а следствие
+  const natal = getNatalChart(zodiac);
+  const zodiacSign = natal.sun || zodiac.sign || DEFAULT_SIGN;
+  const risingSign = natal.rising;
 
   const RU_TO_EN_DAY = {
     'Понедельник': 'Monday',
@@ -1350,6 +1351,8 @@ export default function PersonalJira() {
           weekDays={weekDays}
           zodiacSign={zodiacSign}
           risingSign={risingSign}
+          moonSign={natal.moon}
+          moonExact={natal.moonExact}
           horoscopeOpen={horoscopeOpen}
           setHoroscopeOpen={setHoroscopeOpen}
         />
@@ -1385,6 +1388,7 @@ export default function PersonalJira() {
           setZodiac={setZodiac}
           zodiacSign={zodiacSign}
           risingSign={risingSign}
+          moonSign={natal.moon}
           onSignOut={handleSignOut}
           projects={projects}
           currentProject={currentProject}

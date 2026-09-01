@@ -8,7 +8,7 @@ import PageShell from './PageShell';
 import Modal from './Modal';
 import useIsMobile from '../utils/useIsMobile';
 
-export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays, zodiacSign, risingSign, horoscopeOpen, setHoroscopeOpen }) {
+export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays, zodiacSign, risingSign, moonSign, moonExact, horoscopeOpen, setHoroscopeOpen }) {
   const AddIcon = themeIcon(theme, 'add');
   const RefreshIcon = themeIcon(theme, 'refresh');
   const [weekOffset, setWeekOffset] = useState(0);
@@ -246,6 +246,56 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
   return (
     <PageShell darkMode={darkMode} title="Schedule" actions={weekNav} subheader={quoteLine}>
       <div className="grid grid-cols-1 cards:grid-cols-2 wide:grid-cols-4 wide:grid-rows-2 gap-3 sm:gap-4 w-full">
+          {/* Гороскоп стоит первым, до понедельника: он про сегодня, а не про
+              день недели, и читают его раньше, чем разбирают дела. Восьмой
+              карточкой сетка складывается в ровные 4×2 на широком экране.
+              Показываем всегда сегодняшний день, независимо от листания недель:
+              гороскоп на прошлый понедельник ничего не значит */}
+          {(() => {
+            const sign = getSign(zodiacSign);
+            const rising = risingSign ? getSign(risingSign) : null;
+            const moon = moonSign ? getSign(moonSign) : null;
+            return (
+              <div
+                className={`rounded-lg p-3 sm:p-4 flex flex-col h-auto sm:h-day-card min-h-0 min-w-0 border ${
+                  darkMode ? 'border-gray-800 bg-gray-800/60' : 'border-gray-200 bg-white'
+                }`}
+              >
+                <div className="mb-4 flex-shrink-0 flex items-baseline gap-2 min-w-0">
+                  <span className={`text-lg font-semibold truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                    {sign.symbol} {sign.label}
+                  </span>
+                  <span className={`text-xs font-medium uppercase tracking-wide truncate ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Today
+                  </span>
+                </div>
+
+                {/* Три главные точки карты. Пишем ровно то, что посчитано: Луна
+                    без времени рождения помечена «≈», асцендента без координат
+                    нет вовсе */}
+                <div className={`flex flex-wrap gap-x-3 gap-y-1 mb-3 flex-shrink-0 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <span>☉ {sign.label}</span>
+                  {moon && <span>☾ {moonExact ? '' : '≈'}{moon.label}</span>}
+                  {rising && <span>ASC {rising.label}</span>}
+                </div>
+
+                {/* На карточке только сводка; разбор по пунктам не влезает и
+                    уезжает на отдельный экран, как заметка */}
+                <p className={`flex-1 min-h-0 overflow-hidden text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {getHoroscopeForDate(sign.key, today, risingSign, moonSign)}
+                </p>
+
+                <button
+                  onClick={() => setHoroscopeOpen(true)}
+                  className={`mt-2 flex-shrink-0 self-start text-xs font-medium press ${
+                    darkMode ? 'text-green-400' : 'text-green-700'
+                  }`}
+                >
+                  More →
+                </button>
+              </div>
+            );
+          })()}
           {weekDays.map((day, i) => {
             const date = weekDates[i];
             const isToday = isSameDay(date, today);
@@ -480,52 +530,12 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
             );
           })}
 
-          {/* Восьмая карточка: гороскоп на сегодня. Она же добивает сетку до
-              ровных 4×2 на широком экране — семь дней оставляли дыру.
-              Показываем всегда сегодняшний, независимо от листания недель:
-              гороскоп на прошлый понедельник ничего не значит */}
-          {(() => {
-            const sign = getSign(zodiacSign);
-            const rising = risingSign ? getSign(risingSign) : null;
-            return (
-              <div
-                className={`rounded-lg p-3 sm:p-4 flex flex-col h-auto sm:h-day-card min-h-0 min-w-0 border ${
-                  darkMode ? 'border-gray-800 bg-gray-800/60' : 'border-gray-200 bg-white'
-                }`}
-              >
-                <div className="mb-4 flex-shrink-0 flex items-baseline gap-2 min-w-0">
-                  <span className={`text-lg font-semibold truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-                    {sign.symbol} {sign.label}
-                  </span>
-                  <span className={`text-xs font-medium uppercase tracking-wide truncate ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {/* Восходящий знак показываем рядом: он и есть та часть
-                        натальной карты, которая здесь действительно считается */}
-                    {rising ? `${rising.symbol} ${rising.label} rising` : 'Today'}
-                  </span>
-                </div>
-
-                {/* На карточке только сводка; разбор по пунктам не влезает и
-                    уезжает на отдельный экран, как заметка */}
-                <p className={`flex-1 min-h-0 overflow-hidden text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {getHoroscopeForDate(sign.key, today, risingSign)}
-                </p>
-
-                <button
-                  onClick={() => setHoroscopeOpen(true)}
-                  className={`mt-2 flex-shrink-0 self-start text-xs font-medium press ${
-                    darkMode ? 'text-green-400' : 'text-green-700'
-                  }`}
-                >
-                  More →
-                </button>
-              </div>
-            );
-          })()}
       </div>
       {horoscopeOpen && (() => {
         const sign = getSign(zodiacSign);
         const rising = risingSign ? getSign(risingSign) : null;
-        const details = getHoroscopeDetails(sign.key, today, risingSign);
+        const moon = moonSign ? getSign(moonSign) : null;
+        const details = getHoroscopeDetails(sign.key, today, risingSign, moonSign);
         return (
           <Modal
             onClose={() => setHoroscopeOpen(false)}
@@ -538,11 +548,6 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
             <div className={`flex items-center gap-2 p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <h2 className={`flex-1 min-w-0 text-title truncate ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                 {sign.symbol} {sign.label}
-                {rising && (
-                  <span className={`ml-2 text-xs font-medium uppercase tracking-wide ${mutedIcon}`}>
-                    {rising.symbol} {rising.label} rising
-                  </span>
-                )}
               </h2>
               <button
                 onClick={() => setHoroscopeOpen(false)}
@@ -555,6 +560,23 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
+              {/* Карта рождения: что где стоит. Чего не посчитали — того и не
+                  пишем, вместо знака стоит, каких данных не хватает */}
+              <div className={`rounded-lg border p-3 space-y-1.5 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                {[
+                  ['Sun', `${sign.symbol} ${sign.label}`],
+                  ['Moon', moon ? `${moon.symbol} ${moon.label}${moonExact ? '' : ' (approx.)'}` : 'needs a birth date'],
+                  ['Rising', rising ? `${rising.symbol} ${rising.label}` : 'needs birth time and place']
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-baseline gap-2">
+                    <span className={`w-16 flex-shrink-0 text-xs uppercase tracking-wide ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {label}
+                    </span>
+                    <span className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>{value}</span>
+                  </div>
+                ))}
+              </div>
+
               <p className={`text-sm leading-relaxed ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                 {details.summary}
               </p>
@@ -572,8 +594,9 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
 
               {/* Прямо говорим, что здесь расчёт, а что — текст дня */}
               <p className={`text-xs pt-2 border-t ${darkMode ? 'border-gray-700 text-gray-500' : 'border-gray-200 text-gray-400'}`}>
-                Sun sign comes from the birth date{rising ? ', rising sign from birth time and place' : ''}.
-                The readings themselves are written by the app, not calculated from planets.
+                Sun, Moon and rising sign are calculated from your birth data.
+                {moon && !moonExact && ' Without a birth time the Moon is taken at noon, so it can be the next sign if you were born close to a change.'}
+                {' '}The readings themselves are written by the app; other planets, houses and aspects are not calculated.
               </p>
             </div>
           </Modal>

@@ -114,6 +114,101 @@ export const getAscendantSign = ({ birthDate, birthTime, latitude, longitude, ut
   return signFromLongitude(ascendantLongitude(lst, lat, obliquity(jd)));
 };
 
+// ── Солнце и Луна ──────────────────────────────────────────────────────────
+// Долготы считаются по коротким рядам (Пол Шлютер, «Computing planetary
+// positions»): Солнце с точностью около 0.02°, Луна около 0.03° после учёта
+// основных возмущений. Знак занимает 30°, так что этого хватает с большим
+// запасом, и таблицы эфемерид не нужны.
+//
+// d — дни от эпохи 2000 Jan 0.0 TDT.
+const daysFromEpoch = (jd) => jd - 2451543.5;
+
+const sin = deg => Math.sin(deg * RAD);
+const cos = deg => Math.cos(deg * RAD);
+const norm = deg => ((deg % 360) + 360) % 360;
+
+// Эклиптическая долгота Солнца
+const sunLongitude = (d) => {
+  const w = 282.9404 + 4.70935e-5 * d;      // долгота перигелия
+  const e = 0.016709 - 1.151e-9 * d;        // эксцентриситет
+  const M = norm(356.0470 + 0.9856002585 * d);
+  const E = M + e * (180 / Math.PI) * sin(M) * (1 + e * cos(M));
+  const xv = cos(E) - e;
+  const yv = Math.sqrt(1 - e * e) * sin(E);
+  return norm(Math.atan2(yv, xv) / RAD + w);
+};
+
+// Эклиптическая долгота Луны. Ряд возмущений короткий, но без него ошибка
+// доходит до нескольких градусов — этого уже хватает, чтобы промахнуться знаком
+const moonLongitude = (d) => {
+  const N = 125.1228 - 0.0529538083 * d;    // долгота восходящего узла
+  const i = 5.1454;
+  const w = 318.0634 + 0.1643573223 * d;    // аргумент перигея
+  const e = 0.054900;
+  const M = norm(115.3654 + 13.0649929509 * d);
+
+  let E = M + e * (180 / Math.PI) * sin(M) * (1 + e * cos(M));
+  for (let k = 0; k < 3; k += 1) {
+    E = E - (E - e * (180 / Math.PI) * sin(E) - M) / (1 - e * cos(E));
+  }
+
+  const xv = Math.cos(E * RAD) - e;
+  const yv = Math.sqrt(1 - e * e) * Math.sin(E * RAD);
+  const v = Math.atan2(yv, xv) / RAD;
+  const lonecl = norm(N + Math.atan2(
+    Math.sin((N + v + w - N) * RAD) * Math.cos(i * RAD),
+    Math.cos((v + w) * RAD)
+  ) / RAD);
+
+  // Возмущения: эвекция, вариация, годичное уравнение и далее по убыванию
+  const Ls = norm(282.9404 + 4.70935e-5 * d + 356.0470 + 0.9856002585 * d);
+  const Lm = norm(N + w + M);
+  const Ms = norm(356.0470 + 0.9856002585 * d);
+  const D = norm(Lm - Ls);
+  const F = norm(Lm - N);
+
+  const corr =
+    -1.274 * sin(M - 2 * D)
+    + 0.658 * sin(2 * D)
+    - 0.186 * sin(Ms)
+    - 0.059 * sin(2 * M - 2 * D)
+    - 0.057 * sin(M - 2 * D + Ms)
+    + 0.053 * sin(M + 2 * D)
+    + 0.046 * sin(2 * D - Ms)
+    + 0.041 * sin(M - Ms)
+    - 0.035 * sin(D)
+    - 0.031 * sin(M + Ms)
+    - 0.015 * sin(2 * F - 2 * D)
+    + 0.011 * sin(M - 4 * D);
+
+  return norm(lonecl + corr);
+};
+
+// Три главные точки карты. Солнце и Луна считаются от даты и времени, асцендент
+// требует ещё и координат. Без времени Луну считаем на полдень: за сутки она
+// проходит около 13°, поэтому у рождённых близко к смене знака она может
+// оказаться в соседнем — об этом сказано на экране разбора.
+export const getNatalChart = (zodiac = {}) => {
+  const { birthDate, birthTime, latitude, longitude, utcOffset } = zodiac;
+  if (!birthDate) return { sun: null, moon: null, rising: null, moonExact: false };
+
+  const [year, month, day] = birthDate.split('-').map(Number);
+  if (!year || !month || !day) return { sun: null, moon: null, rising: null, moonExact: false };
+
+  const hasTime = !!birthTime;
+  const [hh, mm] = hasTime ? birthTime.split(':').map(Number) : [12, 0];
+  const offset = Number.isFinite(Number(utcOffset)) ? Number(utcOffset) : 0;
+  const jd = julianDay(year, month, day, (hh || 0) + (mm || 0) / 60 - (hasTime ? offset : 0));
+  const d = daysFromEpoch(jd);
+
+  return {
+    sun: signFromLongitude(sunLongitude(d)),
+    moon: signFromLongitude(moonLongitude(d)),
+    moonExact: hasTime,
+    rising: getAscendantSign(zodiac)
+  };
+};
+
 const OPENINGS = [
   'The day starts quietly and rewards those who do not rush it.',
   'Energy runs high this morning — spend it before it spends you.',
@@ -176,14 +271,15 @@ const mix = (n) => {
 
 // Восходящий знак входит в текст: иначе поля времени и места рождения были бы
 // украшением — заполнил, а читаешь то же самое
-const horoscopeSeed = (signKey, date, risingKey) => {
+const horoscopeSeed = (signKey, date, risingKey, moonKey) => {
   const index = Math.max(0, ZODIAC.findIndex(s => s.key === signKey));
   const rising = risingKey ? ZODIAC.findIndex(s => s.key === risingKey) + 1 : 0;
-  return (dayNumber(date) * ZODIAC.length + index) * 13 + rising;
+  const moon = moonKey ? ZODIAC.findIndex(s => s.key === moonKey) + 1 : 0;
+  return ((dayNumber(date) * ZODIAC.length + index) * 13 + rising) * 13 + moon;
 };
 
-export const getHoroscopeForDate = (signKey, date = new Date(), risingKey = null) => {
-  const seed = horoscopeSeed(signKey, date, risingKey);
+export const getHoroscopeForDate = (signKey, date = new Date(), risingKey = null, moonKey = null) => {
+  const seed = horoscopeSeed(signKey, date, risingKey, moonKey);
   // Соль у каждой части своя, иначе все три двигались бы вместе и текст выглядел
   // бы одним и тем же, только переставленным
   const pick = (pool, salt) => pool[mix(seed * 1024 + salt) % pool.length];
@@ -253,11 +349,11 @@ const AREAS = [
 
 // Подробный разбор: сводка плюс четыре основных пункта. Всё то же семя, поэтому
 // за день не меняется, у разных знаков и асцендентов разное
-export const getHoroscopeDetails = (signKey, date = new Date(), risingKey = null) => ({
-  summary: getHoroscopeForDate(signKey, date, risingKey),
+export const getHoroscopeDetails = (signKey, date = new Date(), risingKey = null, moonKey = null) => ({
+  summary: getHoroscopeForDate(signKey, date, risingKey, moonKey),
   areas: AREAS.map((area, i) => ({
     key: area.key,
     title: area.title,
-    text: area.lines[mix(horoscopeSeed(signKey, date, risingKey) * 1024 + 17 + i) % area.lines.length]
+    text: area.lines[mix(horoscopeSeed(signKey, date, risingKey, moonKey) * 1024 + 17 + i) % area.lines.length]
   }))
 });
