@@ -1277,27 +1277,6 @@ html.theme-surf .sheet-backdrop { --sheet-backdrop: #eaf7fb; }
 html.theme-millenial .sheet-backdrop { --sheet-backdrop: #245edb; }
 html.theme-handwriting .sheet-backdrop { --sheet-backdrop: #faf6ec; }
 
-/* Полотно страницы в светлой теме. Светлая — единственная тема без своего класса
-   на <html>, поэтому и правило пишется «от обратного»: остальные темы красят те же
-   поверхности сами, через .bg-gray-50 и .bg-gray-100, и трогать их нельзя.
-   Красим по меткам, а не по классам Tailwind: bg-gray-50 и bg-gray-100 стоят ещё
-   на десятке мелких элементов, которым темнеть незачем.
-   Колонка борда опускается на тон вместе с полотном — иначе она сливается с ним */
-html:not([class*='theme-']) [data-app],
-html:not([class*='theme-']) [data-page] {
-  background-color: #f3f4f6;
-}
-
-html:not([class*='theme-']) [data-column] {
-  background-color: #e5e7eb;
-}
-
-/* Липкий заголовок колонки красится отдельной переменной — он обязан совпасть
-   с новой поверхностью колонки, иначе под ним видна полоса прежнего тона */
-html:not([class*='theme-']) {
-  --column-header: #e5e7eb;
-}
-
 .column-header {
   background-color: var(--column-header);
   box-shadow: inset 0 -1px 0 var(--column-header-line);
