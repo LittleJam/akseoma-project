@@ -339,6 +339,22 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                             aria-label="Task time"
                             className={`px-1 py-0.5 rounded text-xs flex-shrink-0 w-[70px] ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
                           />
+                          {/* Стереть время. Родное поле времени очистить нечем:
+                              на телефоне у него нет ни крестика, ни клавиши, и
+                              однажды проставленный час оставался навсегда.
+                              preventDefault на нажатии удерживает фокус в строке —
+                              иначе она закрылась бы по blur со старым значением */}
+                          {editingTime && (
+                            <button
+                              onMouseDown={e => e.preventDefault()}
+                              onClick={() => setEditingTime('')}
+                              title="Clear time"
+                              aria-label="Clear time"
+                              className={`p-1 rounded press-icon flex-shrink-0 ${mutedIcon}`}
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
                           <input
                             type="text"
                             value={editingText}

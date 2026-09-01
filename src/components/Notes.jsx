@@ -114,8 +114,10 @@ export default function Notes({
               const isDragging = dragIndex === index;
               const isDropTarget = dragOverIndex === index && dragIndex !== null && dragIndex !== index;
               const palette = NOTE_COLORS[note.color] || NOTE_COLORS.default;
-              const mode = note.mode || 'text';
+              // Режим решает только вид маркера списка: текст в заметке есть всегда
+              const checklist = (note.mode || 'bullet') === 'todo';
               const items = note.items || [];
+              const hasText = !!note.content?.trim();
               const images = note.images || [];
               const hiddenItems = items.length - PREVIEW_ITEMS;
               const blurClass = note.blurred ? 'blur-[5px] select-none' : '';
@@ -201,49 +203,52 @@ export default function Notes({
 
                   <span className={`text-[10px] mb-2 ${mutedText}`}>{note.updatedAt}</span>
 
+                  {/* Превью показывает обе части заметки: сначала текст, под ним
+                      список. Раньше карточка выбирала одно из двух по режиму, и
+                      половина содержимого на ней не появлялась вовсе */}
                   <div className={`flex-1 min-h-0 overflow-hidden ${blurClass}`}>
-                    {mode === 'text' ? (
-                      note.content?.trim() ? (
-                        <p className={`text-sm whitespace-pre-wrap line-clamp-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                          {note.content}
-                        </p>
-                      ) : (
-                        <p className={`text-sm ${darkMode ? 'text-gray-600' : 'text-gray-300'}`}>Empty note</p>
-                      )
-                    ) : items.length === 0 ? (
-                      <p className={`text-sm ${darkMode ? 'text-gray-600' : 'text-gray-300'}`}>
-                        {mode === 'todo' ? 'No tasks yet' : 'No items yet'}
-                      </p>
+                    {!hasText && items.length === 0 ? (
+                      <p className={`text-sm ${darkMode ? 'text-gray-600' : 'text-gray-300'}`}>Empty note</p>
                     ) : (
-                      <div className="space-y-0.5">
-                        {items.slice(0, PREVIEW_ITEMS).map(item => (
-                          <div key={item.id} className="flex items-center gap-2">
-                            {mode === 'todo' ? (
-                              /* Отметить пункт можно прямо в превью — окно для этого открывать не нужно */
-                              <input
-                                type="checkbox"
-                                checked={!!item.checked}
-                                onClick={e => e.stopPropagation()}
-                                onChange={() => updateNoteItem(note.id, item.id, { checked: !item.checked })}
-                                disabled={!!note.blurred}
-                                className={`w-4 h-4 sm:w-3.5 sm:h-3.5 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
-                                  item.checked ? 'animate-check-pop' : ''
-                                }`}
-                              />
-                            ) : (
-                              <span className={`w-1 h-1 rounded-full flex-shrink-0 mx-[5px] ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} />
+                      <div className="space-y-2">
+                        {hasText && (
+                          <p className={`text-sm whitespace-pre-wrap ${items.length > 0 ? 'line-clamp-3' : 'line-clamp-6'} ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                            {note.content}
+                          </p>
+                        )}
+
+                        {items.length > 0 && (
+                          <div className="space-y-0.5">
+                            {items.slice(0, PREVIEW_ITEMS).map(item => (
+                              <div key={item.id} className="flex items-center gap-2">
+                                {checklist ? (
+                                  /* Отметить пункт можно прямо в превью — окно для этого открывать не нужно */
+                                  <input
+                                    type="checkbox"
+                                    checked={!!item.checked}
+                                    onClick={e => e.stopPropagation()}
+                                    onChange={() => updateNoteItem(note.id, item.id, { checked: !item.checked })}
+                                    disabled={!!note.blurred}
+                                    className={`w-4 h-4 sm:w-3.5 sm:h-3.5 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
+                                      item.checked ? 'animate-check-pop' : ''
+                                    }`}
+                                  />
+                                ) : (
+                                  <span className={`w-1 h-1 rounded-full flex-shrink-0 mx-[5px] ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} />
+                                )}
+                                <span className={`flex-1 min-w-0 text-sm truncate transition-colors duration-200 ${
+                                  item.checked
+                                    ? darkMode ? 'text-gray-500' : 'text-gray-400'
+                                    : darkMode ? 'text-gray-300' : 'text-gray-600'
+                                }`}>
+                                  {item.text}
+                                </span>
+                              </div>
+                            ))}
+                            {hiddenItems > 0 && (
+                              <p className={`text-[11px] pl-[22px] pt-0.5 ${mutedText}`}>+{hiddenItems} more</p>
                             )}
-                            <span className={`flex-1 min-w-0 text-sm truncate transition-colors duration-200 ${
-                              item.checked
-                                ? darkMode ? 'text-gray-500' : 'text-gray-400'
-                                : darkMode ? 'text-gray-300' : 'text-gray-600'
-                            }`}>
-                              {item.text}
-                            </span>
                           </div>
-                        ))}
-                        {hiddenItems > 0 && (
-                          <p className={`text-[11px] pl-[22px] pt-0.5 ${mutedText}`}>+{hiddenItems} more</p>
                         )}
                       </div>
                     )}

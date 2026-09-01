@@ -854,6 +854,17 @@ export default function TaskEditor({
           size="full"
           overlayClassName="cursor-zoom-out"
         >
+          {/* Крестик закрытия. Клик мимо картинки тоже закрывает, но в установленном
+              приложении промахнуться некуда: картинка занимает почти весь экран,
+              а клавиши Escape на телефоне нет. Отступ сверху считает вырез */}
+          <button
+            onClick={() => setViewerIndex(null)}
+            title="Close"
+            aria-label="Close image"
+            className="fixed right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] p-2 rounded-full bg-black/55 text-white press"
+          >
+            <X size={20} />
+          </button>
           {/* self-center обязателен: панель окна — flex-колонка, и без него
               картинка растягивалась во всю её ширину, во сколько бы раз это ни
               было больше её собственного размера. Теперь она открывается как

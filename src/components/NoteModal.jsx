@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Plus, Eye, EyeOff, Palette, AlignLeft, ListTodo, List, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { X, Plus, Eye, EyeOff, Palette, ListTodo, List, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { NOTE_COLORS, NOTE_MODES } from '../constants';
 import { compressImage } from '../utils/imageCompression';
 import Modal from './Modal';
-
-const MODE_ICONS = { text: AlignLeft, todo: ListTodo, bullet: List };
 
 export default function NoteModal({
   note,
@@ -96,8 +94,10 @@ export default function NoteModal({
   });
 
   const palette = NOTE_COLORS[note.color] || NOTE_COLORS.default;
-  const mode = note.mode || 'text';
-  const ModeIcon = MODE_ICONS[mode] || AlignLeft;
+  // Режим решает только вид маркера: галочка или точка. Текст и список в заметке
+  // теперь всегда оба — выбирать одно из двух больше не нужно
+  const checklist = (note.mode || 'bullet') === 'todo';
+  const ModeIcon = checklist ? ListTodo : List;
   const items = note.items || [];
 
   const mutedText = darkMode ? 'text-gray-500' : 'text-gray-400';
@@ -115,24 +115,25 @@ export default function NoteModal({
     onClose();
   };
 
-  const body = mode === 'text' ? (
-    <textarea
-      value={note.content}
-      onChange={e => updateNote(note.id, e.target.value)}
-      onClick={() => note.blurred && toggleNoteBlur(note.id)}
-      readOnly={!!note.blurred}
-      placeholder="Write a note..."
-      autoFocus={!note.blurred}
-      className={`w-full flex-1 min-h-[50vh] text-sm leading-relaxed resize-none focus:outline-none bg-transparent transition ${
-        darkMode ? 'text-gray-200 placeholder-gray-500' : 'text-gray-700 placeholder-gray-400'
-      } ${note.blurred ? 'blur-[5px] select-none cursor-pointer' : ''}`}
-    />
-  ) : (
+  const body = (
     <div className="flex-1 flex flex-col min-h-[50vh]">
-      <div className="space-y-1">
+      <textarea
+        value={note.content}
+        onChange={e => updateNote(note.id, e.target.value)}
+        readOnly={!!note.blurred}
+        placeholder="Write a note..."
+        autoFocus={!note.blurred}
+        /* Текст занимает всё свободное место, но ужимается, когда список длинный:
+           обе части заметки равноправны */
+        className={`w-full flex-1 min-h-[5rem] text-sm leading-relaxed resize-none focus:outline-none bg-transparent transition ${
+          darkMode ? 'text-gray-200 placeholder-gray-500' : 'text-gray-700 placeholder-gray-400'
+        }`}
+      />
+
+      <div className="flex-shrink-0 pt-3 space-y-1">
         {items.map(item => (
           <div key={item.id} className="flex items-center gap-2.5 group/item">
-            {mode === 'todo' ? (
+            {checklist ? (
               <input
                 type="checkbox"
                 checked={!!item.checked}
@@ -159,28 +160,31 @@ export default function NoteModal({
             <button
               onClick={() => deleteNoteItem(note.id, item.id)}
               title="Remove item"
-              className={`p-1.5 sm:p-0.5 rounded opacity-0 group-hover/item:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
+              aria-label="Remove item"
+              /* На телефоне наведения нет — крестик виден сразу */
+              className={`p-1.5 sm:p-0.5 rounded opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
             >
               <X size={13} />
             </button>
           </div>
         ))}
-      </div>
 
-      <div className="flex items-center gap-2.5 mt-1">
-        <Plus size={13} className={`flex-shrink-0 mx-[2px] ${mutedText}`} />
-        <input
-          type="text"
-          value={newItem}
-          onChange={e => setNewItem(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-          onBlur={handleAddItem}
-          placeholder={mode === 'todo' ? 'Add task...' : 'Add item...'}
-          autoFocus
-          className={`flex-1 min-w-0 text-sm py-0.5 bg-transparent focus:outline-none ${
-            darkMode ? 'text-white placeholder-gray-600' : 'placeholder-gray-300'
-          }`}
-        />
+        {/* Строка добавления стоит всегда: по ней и видно, что список тут можно
+            начать, даже если заметка пока состоит из одного текста */}
+        <div className="flex items-center gap-2.5">
+          <Plus size={13} className={`flex-shrink-0 mx-[2px] ${mutedText}`} />
+          <input
+            type="text"
+            value={newItem}
+            onChange={e => setNewItem(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+            onBlur={handleAddItem}
+            placeholder={checklist ? 'Add task...' : 'Add item...'}
+            className={`flex-1 min-w-0 text-sm py-0.5 bg-transparent focus:outline-none ${
+              darkMode ? 'text-white placeholder-gray-600' : 'placeholder-gray-300'
+            }`}
+          />
+        </div>
       </div>
     </div>
   );
@@ -246,7 +250,8 @@ export default function NoteModal({
           <div className="relative flex-shrink-0" ref={openMenu === 'mode' ? menuRef : null}>
             <button
               onClick={() => setOpenMenu(prev => (prev === 'mode' ? null : 'mode'))}
-              title="Note type"
+              title="List style"
+              aria-label="List style"
               className={`p-2 sm:p-1 rounded press-icon ${mutedText} ${iconHover}`}
             >
               <ModeIcon size={16} />
@@ -255,8 +260,8 @@ export default function NoteModal({
             {openMenu === 'mode' && (
               <div className={`absolute z-20 top-full mt-1 right-0 py-1 rounded-lg border shadow-lg w-36 origin-top-right animate-pop-in ${menuSurface}`}>
                 {NOTE_MODES.map(({ key, label }) => {
-                  const Icon = MODE_ICONS[key];
-                  const active = mode === key;
+                  const Icon = key === 'todo' ? ListTodo : List;
+                  const active = checklist === (key === 'todo');
                   return (
                     <button
                       key={key}
@@ -345,7 +350,7 @@ export default function NoteModal({
         </div>
 
         <div className="flex-1 flex flex-col p-4 pt-2">
-          {mode !== 'text' && note.blurred ? (
+          {note.blurred ? (
             <div onClick={() => toggleNoteBlur(note.id)} className="flex-1 flex flex-col cursor-pointer">
               <div className="flex-1 flex flex-col blur-[5px] select-none pointer-events-none">
                 {body}
@@ -400,6 +405,17 @@ export default function NoteModal({
           closeOnEsc={false}
           overlayClassName="cursor-zoom-out"
         >
+          {/* Крестик закрытия. Клик мимо картинки тоже закрывает, но в установленном
+              приложении промахнуться некуда: картинка занимает почти весь экран,
+              а клавиши Escape на телефоне нет. Отступ сверху считает вырез */}
+          <button
+            onClick={() => setViewerIndex(null)}
+            title="Close"
+            aria-label="Close image"
+            className="fixed right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] p-2 rounded-full bg-black/55 text-white press"
+          >
+            <X size={20} />
+          </button>
           {/* То же, что в редакторе задачи: без self-center flex-колонка окна
               растягивала картинку во всю ширину */}
           <img
