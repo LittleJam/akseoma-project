@@ -199,6 +199,26 @@ export default function ChillTimer({ darkMode, theme }) {
           по периметру и ни с чем не пересекается. Вся анимация — в CSS,
           так что перерисовок нет */}
       <div className={`chill-square flex-col gap-4 sm:gap-6 px-4 ${darkMode ? 'is-dark' : ''} ${running ? 'is-running' : ''}`}>
+        {/* Стороны квадрата. Каждая — стрелка в ту сторону, куда по ней идёт
+            значок: вверх по левой, вправо по верхней, вниз по правой, влево по
+            нижней. Шафты обрываются, не доходя до углов, поэтому углов нет —
+            остаются четыре отдельных штриха */}
+        <svg
+          className="chill-arrows"
+          viewBox="0 0 100 100"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 88V12M1.5 18.5L6 12l4.5 6.5" />
+          <path d="M12 6h76M81.5 1.5L88 6l-6.5 4.5" />
+          <path d="M94 12v76M89.5 81.5L94 88l4.5-6.5" />
+          <path d="M88 94H12M18.5 89.5L12 94l6.5 4.5" />
+        </svg>
+
         <span className="chill-marker" aria-hidden="true">
           <BreathMarker />
         </span>
