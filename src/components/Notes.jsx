@@ -13,6 +13,8 @@ const PREVIEW_IMAGES = 3;
 export default function Notes({
   notes,
   addNote,
+  expandedNoteId,
+  setExpandedNoteId,
   updateNoteLines,
   updateNoteTitle,
   setNoteColor,
@@ -27,13 +29,12 @@ export default function Notes({
   const AddIcon = themeIcon(theme, 'add');
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
-  const [expandedId, setExpandedId] = useState(null);
   // id заметки, над которой держат перетаскиваемый файл
   const [fileOverId, setFileOverId] = useState(null);
 
   // Ищем заметку в списке каждый раз, чтобы окно показывало свежие правки,
   // а удаление заметки закрывало окно само
-  const expandedNote = notes.find(n => n.id === expandedId) || null;
+  const expandedNote = notes.find(n => n.id === expandedNoteId) || null;
 
   const handleDragStart = (e, index) => {
     setDragIndex(index);
@@ -132,7 +133,7 @@ export default function Notes({
                     setFileOverId(null);
                   }}
                   onDrop={e => handleDrop(e, index, note.id)}
-                  onClick={() => setExpandedId(note.id)}
+                  onClick={() => setExpandedNoteId(note.id)}
                   /* Квадрат держит сетку ровной на широком экране. На телефоне
                      колонка одна: квадрат стал бы 358px высотой почти пустой
                      плитки, и на экран влезала бы одна заметка */
@@ -284,7 +285,7 @@ export default function Notes({
           deleteNoteImage={deleteNoteImage}
           deleteNote={deleteNote}
           toggleNoteBlur={toggleNoteBlur}
-          onClose={() => setExpandedId(null)}
+          onClose={() => setExpandedNoteId(null)}
           darkMode={darkMode}
         />
       )}

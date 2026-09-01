@@ -327,7 +327,11 @@ export default function NoteModal({
         },
         onDrop: handleImageDrop
       }}
-      panelClassName={`rounded-none sm:rounded-xl border-0 sm:border shadow-xl ${darkMode ? palette.dark : palette.light} ${isDragOver ? 'ring-2 ring-green-600' : ''}`}
+      /* h-[100dvh] на телефоне: заметка занимает экран целиком и всегда одного
+         размера. Без него окно росло под содержимое — короткая заметка была
+         одной высоты, длинная другой, и прокручивалось всё окно вместе с
+         шапкой. Теперь прокручивается только текст внутри */
+      panelClassName={`h-[100dvh] sm:h-auto overflow-hidden rounded-none sm:rounded-xl border-0 sm:border shadow-xl ${darkMode ? palette.dark : palette.light} ${isDragOver ? 'ring-2 ring-green-600' : ''}`}
     >
         {/* Подсказка появляется только когда над окном тащат файл */}
         {isDragOver && (
@@ -443,6 +447,9 @@ export default function NoteModal({
           <span className={`text-[10px] ${mutedText}`}>{note.updatedAt}</span>
         </div>
 
+        {/* Прокрутка одна на текст и вложения: шапка с кнопками остаётся на
+            месте, а разъезжается только содержимое */}
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
         <div className="flex-1 flex flex-col p-4 pt-2">
           {note.blurred ? (
             <div onClick={() => toggleNoteBlur(note.id)} className="flex-1 flex flex-col cursor-pointer">
@@ -485,6 +492,7 @@ export default function NoteModal({
             </div>
           </div>
         )}
+        </div>
 
       {/* Нижней полосы с кнопкой Close нет: окно закрывает крестик в шапке,
           и держать вторую кнопку с той же работой незачем — на телефоне она

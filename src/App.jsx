@@ -32,6 +32,9 @@ export default function PersonalJira() {
   const [notes, setNotes] = useState([]);
   const [collapsedSubtasks, setCollapsedSubtasks] = useState({});
   const [editingTask, setEditingTask] = useState(null);
+  // Открытая заметка — часть адреса, а не внутреннее состояние списка:
+  // так её закрывает системный «назад», а ссылка на заметку открывает именно её
+  const [expandedNoteId, setExpandedNoteId] = useState(null);
   // На телефоне боковая панель выезжает поверх содержимого, на широком экране всегда на месте
   // Кто вошёл и что разрешено обычному пользователю (админу — всё)
   const [user, setUser] = useState(null);
@@ -62,6 +65,8 @@ export default function PersonalJira() {
   const remoteFetchDone = useRef(false);
   // Первый проход синхронизации адреса не должен создавать запись в истории
   const routeSynced = useRef(false);
+  // Предыдущий второй сегмент адреса — чтобы отличить открытие заметки от закрытия
+  const lastDetail = useRef(null);
   const supabaseSaveTimeout = useRef(null);
 
   const weekDays = WEEK_DAYS;
@@ -253,7 +258,7 @@ export default function PersonalJira() {
         // Проект из ссылки главнее сохранённого. Проекта из ссылки может уже
         // не быть — тогда молча открываем последний использованный, а адрес
         // поправится сам следующим эффектом
-        const fromUrl = route.projectSlug && proj.find(p => p.slug === route.projectSlug);
+        const fromUrl = route.page === 'kanban' && route.detail && proj.find(p => p.slug === route.detail);
         if (fromUrl) {
           setCurrentProject(fromUrl.id);
         } else if (savedCurrentProject && proj.find(p => p.id === savedCurrentProject)) {
@@ -261,6 +266,8 @@ export default function PersonalJira() {
         } else {
           setCurrentProject(proj[0]?.id);
         }
+
+        if (route.page === 'notes' && route.detail) setExpandedNoteId(route.detail);
 
         if (route.page) {
           setCurrentPage(route.page);
@@ -422,17 +429,29 @@ export default function PersonalJira() {
   // а не возвращает на предыдущий раздел
   useEffect(() => {
     if (loading) return;
-    const slug = projects.find(p => p.id === currentProject)?.slug;
-    navigate(currentPage, slug, { replace: !routeSynced.current });
+    // Второй сегмент адреса свой у каждого раздела: у доски проект, у заметок
+    // открытая заметка
+    const detail = currentPage === 'kanban'
+      ? projects.find(p => p.id === currentProject)?.slug
+      : currentPage === 'notes' ? expandedNoteId : null;
+
+    // Закрытие заметки не должно копить историю: иначе «назад» после закрытия
+    // открывало бы её снова. Открытие, наоборот, запись создаёт — ей и отвечает
+    // системный жест возврата
+    const closingNote = currentPage === 'notes' && lastDetail.current && !detail;
+    navigate(currentPage, detail, { replace: !routeSynced.current || closingNote });
+    lastDetail.current = detail;
     routeSynced.current = true;
-  }, [currentPage, currentProject, projects, loading]);
+  }, [currentPage, currentProject, projects, expandedNoteId, loading]);
 
   // Адрес → состояние: «назад» и «вперёд» в браузере, а в установленном PWA —
   // системная кнопка «назад» на Android и свайп от края на iOS
   useEffect(() => onRouteChange(() => {
     const route = parseLocation();
     if (route.page) setCurrentPage(route.page);
-    const target = route.projectSlug && projects.find(p => p.slug === route.projectSlug);
+    // Заметка открыта ровно тогда, когда её id стоит в адресе
+    setExpandedNoteId(route.page === 'notes' ? route.detail : null);
+    const target = route.page === 'kanban' && route.detail && projects.find(p => p.slug === route.detail);
     if (target) setCurrentProject(target.id);
   }), [projects]);
 
@@ -1324,6 +1343,8 @@ export default function PersonalJira() {
         <Notes
           notes={notes}
           addNote={addNote}
+          expandedNoteId={expandedNoteId}
+          setExpandedNoteId={setExpandedNoteId}
           updateNoteLines={updateNoteLines}
           updateNoteTitle={updateNoteTitle}
           setNoteColor={setNoteColor}

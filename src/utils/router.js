@@ -1,4 +1,5 @@
-// Мини-роутер: пять плоских разделов и опциональный проект у доски.
+// Мини-роутер: пять плоских разделов и опциональный второй сегмент адреса —
+// проект у доски, открытая заметка у заметок.
 // Библиотека тут не окупается — вложенности, параметров пути и защищённых
 // маршрутов нет, а зависимостей в проекте всего четыре.
 //
@@ -15,20 +16,24 @@ const stripBase = pathname => {
   return withoutBase.replace(/^\/+|\/+$/g, '');
 };
 
-// Возвращает { page, projectSlug } — null там, где в адресе ничего нет
+// Возвращает { page, detail } — null там, где в адресе ничего нет.
+// Что значит detail, решает раздел: у доски это адрес проекта, у заметок — id
+// открытой заметки. Открытая заметка — отдельный адрес, а не окно поверх
+// списка: без своей записи в истории системный «назад» в установленном
+// приложении закрывал бы не её, а весь раздел
 export const parseLocation = () => {
-  const [page, projectSlug] = stripBase(window.location.pathname).split('/');
+  const [page, detail] = stripBase(window.location.pathname).split('/');
   return {
     page: PAGES.includes(page) ? page : null,
-    projectSlug: projectSlug ? decodeURIComponent(projectSlug) : null
+    detail: detail ? decodeURIComponent(detail) : null
   };
 };
 
-export const buildPath = (page, projectSlug) =>
-  `${BASE}${page}${page === 'kanban' && projectSlug ? `/${encodeURIComponent(projectSlug)}` : ''}`;
+export const buildPath = (page, detail) =>
+  `${BASE}${page}${detail ? `/${encodeURIComponent(detail)}` : ''}`;
 
-export const navigate = (page, projectSlug, { replace = false } = {}) => {
-  const path = buildPath(page, projectSlug);
+export const navigate = (page, detail, { replace = false } = {}) => {
+  const path = buildPath(page, detail);
   if (window.location.pathname === path) return;
   window.history[replace ? 'replaceState' : 'pushState']({}, '', path);
 };
