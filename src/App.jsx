@@ -47,6 +47,10 @@ export default function PersonalJira() {
   const [projectLikes, setProjectLikes] = useState({});
   // Гороскоп в расписании: знак выбирают руками или он считается по дате рождения
   const [zodiac, setZodiac] = useState({ sign: DEFAULT_SIGN, birthDate: '' });
+  // Какая порция стартовых заметок уже досылалась этому пользователю. Хранится
+  // вместе с настройками, поэтому досылка случается один раз, а удалённую
+  // заметку не возвращает
+  const [starterNotes, setStarterNotes] = useState(0);
   const [newProjectName, setNewProjectName] = useState('');
   const [loading, setLoading] = useState(true);
   // Тема сайта: light | dark | wizard | surf. Компоненты по-прежнему знают только
@@ -97,6 +101,10 @@ export default function PersonalJira() {
   // Раздел Wishlist убран — заметки умеют чек-листы, и это было вторым способом делать одно и то же.
   // Старые пункты не выбрасываем, а складываем в заметку-чеклист
   // Первый запуск — не пустая доска: сразу даём два привычных списка
+  // Номер набора стартовых заметок. Поднимать при добавлении новой — тогда её
+  // получат и те, у кого приложение давно заполнено
+  const STARTER_NOTES_VERSION = 1;
+
   const createStarterNotes = () => {
     const stamp = Date.now();
     const now = new Date().toLocaleString('en-US');
@@ -142,6 +150,18 @@ export default function PersonalJira() {
         updatedAt: now
       }
     ];
+  };
+
+  // Добавляем только те стартовые заметки, которых у пользователя нет. Сверяем и
+  // по началу id, и по названию: заметка с тем же смыслом могла быть заведена
+  // руками и иметь совсем другой id
+  const withMissingStarterNotes = (list) => {
+    const prefixes = new Set((list || []).map(n => String(n.id || '').split('-')[0]));
+    const titles = new Set((list || []).map(n => (n.title || '').trim().toLowerCase()));
+    const missing = createStarterNotes().filter(n => (
+      !prefixes.has(n.id.split('-')[0]) && !titles.has(n.title.trim().toLowerCase())
+    ));
+    return missing.length ? [...(list || []), ...missing] : list;
   };
 
   const foldWishlistIntoNotes = (wishlistItems, notesList) => {
@@ -265,11 +285,13 @@ export default function PersonalJira() {
         const savedFlags = localStorage.getItem(FLAGS_KEY);
         const savedProjectLikes = localStorage.getItem('jira-project-likes');
         const savedZodiac = localStorage.getItem('jira-zodiac');
+        const savedStarter = localStorage.getItem('jira-starter-notes');
 
         if (savedAuth) setUser(JSON.parse(savedAuth));
         if (savedFlags) setFeatureFlags({ ...DEFAULT_FLAGS, ...JSON.parse(savedFlags) });
         if (savedProjectLikes) setProjectLikes(JSON.parse(savedProjectLikes));
         if (savedZodiac) setZodiac({ sign: DEFAULT_SIGN, birthDate: '', ...JSON.parse(savedZodiac) });
+        if (savedStarter) setStarterNotes(Number(JSON.parse(savedStarter)) || 0);
         const savedCurrentProject = localStorage.getItem('jira-currentProject');
         const savedCurrentPage = localStorage.getItem('jira-currentPage');
 
@@ -434,6 +456,11 @@ export default function PersonalJira() {
     safeSetItem('jira-zodiac', JSON.stringify(zodiac));
   }, [zodiac, loading]);
 
+  useEffect(() => {
+    if (loading) return;
+    safeSetItem('jira-starter-notes', JSON.stringify(starterNotes));
+  }, [starterNotes, loading]);
+
   // Сохранение темы
   useEffect(() => {
     localStorage.setItem('jira-theme', JSON.stringify(theme));
@@ -552,6 +579,7 @@ export default function PersonalJira() {
           // сделанная до появления времени и места рождения, и подмена целиком
           // стёрла бы их сразу после ввода
           if (remote.settings?.zodiac) setZodiac(prev => ({ ...prev, ...remote.settings.zodiac }));
+          if (remote.settings?.starterNotes) setStarterNotes(remote.settings.starterNotes);
           if (remote.settings?.theme) setTheme(remote.settings.theme);
           else if (remote.settings?.darkMode !== undefined) setTheme(remote.settings.darkMode ? 'dark' : 'light');
         }
@@ -585,7 +613,7 @@ export default function PersonalJira() {
           collapsedSubtasks,
           // currentProject/currentPage сюда не кладём: раздел и проект — дело
           // конкретного устройства, синхронизировать их значит дёргать чужой экран
-          settings: { darkMode, theme, featureFlags, projectLikes, zodiac }
+          settings: { darkMode, theme, featureFlags, projectLikes, zodiac, starterNotes }
         });
         setSupabaseStatus('synced');
         setSupabaseError(null);
@@ -596,7 +624,23 @@ export default function PersonalJira() {
       }
     }, 500);
     return () => clearTimeout(supabaseSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, featureFlags, projectLikes, zodiac, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, featureFlags, projectLikes, zodiac, starterNotes, loading]);
+
+  // Досылка стартовых заметок. Ждём облако: если отправить их раньше, загрузка
+  // через миг перезапишет список и заметки исчезнут. Когда облака нет или оно
+  // не ответило, работаем по локальным данным
+  const starterCheckDone = useRef(false);
+  useEffect(() => {
+    if (loading || starterCheckDone.current) return;
+    if (isSupabaseConfigured && !remoteFetchDone.current && supabaseStatus !== 'error') return;
+
+    starterCheckDone.current = true;
+    if (starterNotes >= STARTER_NOTES_VERSION) return;
+
+    const next = withMissingStarterNotes(notes);
+    if (next !== notes) saveNotes(next);
+    setStarterNotes(STARTER_NOTES_VERSION);
+  }, [loading, supabaseStatus, notes, starterNotes]);
 
   // Подключить (создать или выбрать существующий) JSON-файл для автосохранения
   const connectFile = async () => {

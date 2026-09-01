@@ -35,6 +35,7 @@ export const STORAGE_KEYS = [
   'jira-feature-flags',
   'jira-project-likes',
   'jira-zodiac',
+  'jira-starter-notes',
   'jira-currentProject',
   'jira-currentPage'
 ];
