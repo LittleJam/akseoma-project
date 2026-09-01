@@ -63,6 +63,8 @@ export default function TaskEditor({
   const [targetColumnId, setTargetColumnId] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  // Открытая на весь экран картинка вложения; null — просмотрщик закрыт
+  const [viewerIndex, setViewerIndex] = useState(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const colorPickerRef = useRef(null);
   // Список уже существующих лейблов проекта: выбрать из него быстрее и надёжнее,
@@ -325,6 +327,8 @@ export default function TaskEditor({
       sheet
       onClose={onClose}
       closeOnBackdrop={false}
+      // Пока открыта картинка, Escape закрывает её, а не редактор под ней
+      closeOnEsc={viewerIndex === null}
       /* На телефоне редактор занимает экран целиком: рамка, скругления и поля
          вокруг съедали бы ширину, которой в форме и так впритык */
       panelClassName={`max-h-[100dvh] sm:max-h-[calc(100vh-3rem)] overflow-hidden rounded-none sm:rounded-lg border-0 sm:border shadow-xl ${bgClass} ${cardBorderClass}`}
@@ -760,10 +764,21 @@ export default function TaskEditor({
                   <div className="mt-4 grid grid-cols-2 gap-4">
                     {images.map((img, idx) => (
                       <div key={idx} className="relative group">
-                        <img src={img} alt="Task" className="w-full h-32 object-cover rounded-lg" />
+                        {/* Превью обрезано по квадрату, поэтому картинку нужно уметь
+                            открыть целиком — иначе всё, что не влезло в 128px, видно
+                            только после скачивания */}
+                        <img
+                          src={img}
+                          alt={`Task image ${idx + 1}`}
+                          onClick={() => setViewerIndex(idx)}
+                          className="w-full h-32 object-cover rounded-lg cursor-zoom-in transition duration-150 hover:brightness-95"
+                        />
                         <button
                           onClick={() => removeImage(idx)}
-                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                          title="Remove image"
+                          aria-label="Remove image"
+                          /* На телефоне наведения нет — крестик виден сразу */
+                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition"
                         >
                           <X size={16} />
                         </button>
@@ -830,6 +845,22 @@ export default function TaskEditor({
               {isUploading ? 'Please wait...' : 'Save'}
             </button>
           </div>
+
+      {/* Картинка на весь экран: клик в любом месте — закрыть */}
+      {viewerIndex !== null && images[viewerIndex] && (
+        <Modal
+          onClose={() => setViewerIndex(null)}
+          layer="viewer"
+          size="full"
+          overlayClassName="cursor-zoom-out"
+        >
+          <img
+            src={images[viewerIndex]}
+            alt={`Task image ${viewerIndex + 1}`}
+            className="max-w-full max-h-full rounded-lg object-contain"
+          />
+        </Modal>
+      )}
     </Modal>
   );
 }

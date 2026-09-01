@@ -93,10 +93,18 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
 
   // Правку закрываем, только когда фокус ушёл из строки целиком. Переход с текста
   // на поле времени — это всё ещё правка той же задачи: иначе до времени
-  // не добраться, редактор закрывался бы на первом же клике по нему
+  // не добраться, редактор закрывался бы на первом же клике по нему.
+  //
+  // Смотрим, где фокус оказался, а не куда он шёл: relatedTarget в мобильных
+  // браузерах приходит пустым, когда касание открывает системный выбор времени.
+  // По нему выходило, что фокус ушёл со строки, правка закрывалась в тот же миг,
+  // и время существующей задачи на телефоне поменять было нельзя.
   const handleEditBlur = (e) => {
-    if (e.currentTarget.contains(e.relatedTarget)) return;
-    saveEditing();
+    const row = e.currentTarget;
+    setTimeout(() => {
+      if (row.contains(document.activeElement)) return;
+      saveEditing();
+    }, 0);
   };
 
   const handleTaskDragStart = (e, day, task) => {
@@ -380,25 +388,6 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                       >
                         <Edit2 size={12} className={darkMode ? 'text-green-400' : 'text-green-600'} />
                       </button>
-                      {/* Перенос на другой день для телефона: строки таскают мышью,
-                          а drag-and-drop не отвечает на касания. Список дней — родной
-                          select: он открывается системным выбором поверх всего, тогда
-                          как своё выпадающее меню обрезал бы скролл карточки дня */}
-                      <select
-                        value={day}
-                        onChange={e => moveWeeklyTask(weekKey, day, e.target.value, task.id)}
-                        onClick={e => e.stopPropagation()}
-                        title="Move to another day"
-                        aria-label="Move to another day"
-                        className={`sm:hidden flex-shrink-0 w-[3.25rem] px-1 py-1 text-[11px] rounded border bg-transparent focus:outline-none focus:border-green-500 ${
-                          darkMode ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-500'
-                        }`}
-                      >
-                        {weekDays.map(target => (
-                          <option key={target} value={target}>{target.slice(0, 3)}</option>
-                        ))}
-                      </select>
-
                       <button
                         onClick={() => deleteWeeklyTask(weekKey, day, task.id)}
                         title="Delete task"

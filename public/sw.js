@@ -1,6 +1,6 @@
 // Сервис-воркер приложения: офлайн-оболочка и кеш статики.
 // Версию менять при изменении логики — старые кеши подчищаются на активации.
-const VERSION = 'stt-v3';
+const VERSION = 'stt-v4';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 

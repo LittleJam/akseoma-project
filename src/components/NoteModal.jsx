@@ -387,16 +387,9 @@ export default function NoteModal({
           </div>
         )}
 
-        <div className={`flex justify-end px-4 py-3 border-t ${darkMode ? 'border-gray-700/60' : 'border-gray-200'}`}>
-          <button
-            onClick={onClose}
-            className={`px-4 py-1.5 text-sm rounded-lg border press ${
-              darkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Close
-          </button>
-        </div>
+      {/* Нижней полосы с кнопкой Close нет: окно закрывает крестик в шапке,
+          и держать вторую кнопку с той же работой незачем — на телефоне она
+          к тому же занимала строку внизу развёрнутого на весь экран окна */}
 
       {/* Картинка на весь экран: клик в любом месте — закрыть */}
       {viewerIndex !== null && images[viewerIndex] && (

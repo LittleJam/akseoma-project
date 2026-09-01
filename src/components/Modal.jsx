@@ -46,7 +46,12 @@ export default function Modal({
     <div
       {...overlayProps}
       onClick={closeOnBackdrop && onClose ? onClose : undefined}
-      className={`fixed inset-0 ${isViewer ? 'z-viewer bg-black/80' : 'z-modal bg-black/40'} flex items-start sm:items-center justify-center ${
+      /* sheet-backdrop делает подложку сплошной на телефоне: цвета заметок в
+         тёмных темах полупрозрачные, и сквозь развёрнутое окно просвечивал
+         список под ним. С sm правило не действует, там снова затемнение */
+      className={`fixed inset-0 ${isViewer ? 'z-viewer bg-black/80' : 'z-modal bg-black/40'} ${
+        sheet ? 'sheet-backdrop' : ''
+      } flex items-start sm:items-center justify-center ${
         sheet ? 'p-0 sm:p-6' : 'p-3 sm:p-6'
       } overflow-y-auto animate-fade-in ${overlayClassName}`}
     >
