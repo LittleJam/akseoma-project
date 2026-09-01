@@ -42,6 +42,78 @@ export const signFromBirthDate = (value) => {
   return found ? found.key : null;
 };
 
+// ── Асцендент ──────────────────────────────────────────────────────────────
+// Из натальной карты здесь считается ровно то, что можно посчитать без таблиц
+// эфемерид: солнечный знак по дате и восходящий знак (асцендент) по дате,
+// времени и координатам. Положения Луны и планет, дома и аспекты требуют
+// эфемерид — их тут нет, и рисовать их «примерно» значило бы выдавать выдумку
+// за расчёт. Формулы стандартные: юлианская дата → звёздное время → асцендент.
+
+const RAD = Math.PI / 180;
+
+const julianDay = (year, month, day, hoursUT) => {
+  let y = year;
+  let m = month;
+  if (m <= 2) { y -= 1; m += 12; }
+  const a = Math.floor(y / 100);
+  const b = 2 - a + Math.floor(a / 4);
+  return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + day + b - 1524.5 + hoursUT / 24;
+};
+
+// Среднее звёздное время в Гринвиче, градусы
+const gmstDegrees = (jd) => {
+  const t = (jd - 2451545) / 36525;
+  const theta = 280.46061837 + 360.98564736629 * (jd - 2451545)
+    + 0.000387933 * t * t - (t * t * t) / 38710000;
+  return ((theta % 360) + 360) % 360;
+};
+
+const obliquity = (jd) => 23.439291 - 0.0130042 * ((jd - 2451545) / 36525);
+
+// Долгота точки эклиптики, восходящей над горизонтом
+const ascendantLongitude = (lstDeg, latDeg, eps) => {
+  const ramc = lstDeg * RAD;
+  const e = eps * RAD;
+  const phi = latDeg * RAD;
+  const asc = Math.atan2(
+    Math.cos(ramc),
+    -(Math.sin(ramc) * Math.cos(e) + Math.tan(phi) * Math.sin(e))
+  ) / RAD;
+  return ((asc % 360) + 360) % 360;
+};
+
+// Знак по долготе на эклиптике: 0° — начало Овна, дальше по 30°
+const signFromLongitude = (lon) => ZODIAC[Math.floor((((lon % 360) + 360) % 360) / 30)].key;
+
+// Часовой пояс по долготе — грубая прикидка для подсказки в настройках.
+// Настоящий пояс определяется границами государств и переводом часов, поэтому
+// значение только предлагается, а поправить его может только сам человек
+export const guessUtcOffset = (longitude) => {
+  const lon = Number(longitude);
+  return Number.isFinite(lon) ? Math.round(lon / 15) : 0;
+};
+
+// Восходящий знак. null, если данных не хватает: без времени и координат
+// асцендент не определён вовсе — он меняется примерно раз в два часа и зависит
+// от широты
+export const getAscendantSign = ({ birthDate, birthTime, latitude, longitude, utcOffset } = {}) => {
+  if (!birthDate || !birthTime) return null;
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (Math.abs(lat) > 89) return null;   // на полюсах асцендент вырождается
+
+  const [year, month, day] = birthDate.split('-').map(Number);
+  const [hh, mm] = birthTime.split(':').map(Number);
+  if (!year || !month || !day || !Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+
+  const offset = Number.isFinite(Number(utcOffset)) ? Number(utcOffset) : 0;
+  const hoursUT = hh + mm / 60 - offset;
+  const jd = julianDay(year, month, day, hoursUT);
+  const lst = ((gmstDegrees(jd) + lon) % 360 + 360) % 360;
+  return signFromLongitude(ascendantLongitude(lst, lat, obliquity(jd)));
+};
+
 const OPENINGS = [
   'The day starts quietly and rewards those who do not rush it.',
   'Energy runs high this morning — spend it before it spends you.',
@@ -102,9 +174,12 @@ const mix = (n) => {
   return (x ^ (x >>> 16)) >>> 0;
 };
 
-export const getHoroscopeForDate = (signKey, date = new Date()) => {
+// Восходящий знак входит в текст: иначе поля времени и места рождения были бы
+// украшением — заполнил, а читаешь то же самое
+export const getHoroscopeForDate = (signKey, date = new Date(), risingKey = null) => {
   const index = Math.max(0, ZODIAC.findIndex(s => s.key === signKey));
-  const seed = dayNumber(date) * ZODIAC.length + index;
+  const rising = risingKey ? ZODIAC.findIndex(s => s.key === risingKey) + 1 : 0;
+  const seed = (dayNumber(date) * ZODIAC.length + index) * 13 + rising;
   // Соль у каждой части своя, иначе все три двигались бы вместе и текст выглядел
   // бы одним и тем же, только переставленным
   const pick = (pool, salt) => pool[mix(seed * 1024 + salt) % pool.length];

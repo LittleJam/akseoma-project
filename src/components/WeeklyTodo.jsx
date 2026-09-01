@@ -7,7 +7,7 @@ import { getSign, getHoroscopeForDate } from '../horoscope';
 import PageShell from './PageShell';
 import useIsMobile from '../utils/useIsMobile';
 
-export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays, zodiacSign }) {
+export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays, zodiacSign, risingSign }) {
   const AddIcon = themeIcon(theme, 'add');
   const RefreshIcon = themeIcon(theme, 'refresh');
   const [weekOffset, setWeekOffset] = useState(0);
@@ -485,6 +485,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
               гороскоп на прошлый понедельник ничего не значит */}
           {(() => {
             const sign = getSign(zodiacSign);
+            const rising = risingSign ? getSign(risingSign) : null;
             return (
               <div
                 className={`rounded-lg p-3 sm:p-4 flex flex-col h-auto sm:h-day-card min-h-0 min-w-0 border ${
@@ -496,12 +497,14 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                     {sign.symbol} {sign.label}
                   </span>
                   <span className={`text-xs font-medium uppercase tracking-wide truncate ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Today
+                    {/* Восходящий знак показываем рядом: он и есть та часть
+                        натальной карты, которая здесь действительно считается */}
+                    {rising ? `${rising.symbol} ${rising.label} rising` : 'Today'}
                   </span>
                 </div>
 
                 <p className={`flex-1 min-h-0 overflow-y-auto text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {getHoroscopeForDate(sign.key, today)}
+                  {getHoroscopeForDate(sign.key, today, risingSign)}
                 </p>
               </div>
             );

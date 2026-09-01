@@ -4,7 +4,8 @@ import { COLUMN_COLORS } from '../constants';
 import { THEME_OPTIONS } from '../themes';
 import { FEATURES, DEFAULT_FLAGS } from '../auth';
 import Select from './Select';
-import { ZODIAC, getSign, DEFAULT_SIGN } from '../horoscope';
+import SettingsSection from './SettingsSection';
+import { ZODIAC, getSign, DEFAULT_SIGN, guessUtcOffset } from '../horoscope';
 import PageShell from './PageShell';
 
 export default function SettingsPage({
@@ -20,6 +21,7 @@ export default function SettingsPage({
   zodiac = { sign: DEFAULT_SIGN, birthDate: '' },
   setZodiac,
   zodiacSign,
+  risingSign,
   onSignOut,
   projects,
   currentProject,
@@ -128,11 +130,8 @@ export default function SettingsPage({
 
         {/* Доступы: видит и меняет только админ */}
         {user?.role === 'admin' && setFeatureFlags && (
-          <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-            <h3 className={`flex items-center gap-2 text-section uppercase mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-              <ShieldCheck size={14} /> Features for users
-            </h3>
-            <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+        <SettingsSection title={<><ShieldCheck size={14} /> Features for users</>} darkMode={darkMode} borderClass={cardBorderClass}>
+                        <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
               Applies to everyone except administrators — they always see everything.
             </p>
 
@@ -161,7 +160,7 @@ export default function SettingsPage({
                 );
               })}
             </div>
-          </div>
+        </SettingsSection>
         )}
 
         {/* Theme */}
@@ -208,11 +207,8 @@ export default function SettingsPage({
 
         {/* Sync — полная картина здесь; в сайдбаре остаются только проблемы */}
         {allowed('sync') && (
-        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-          <h3 className={`text-section uppercase mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            Sync
-          </h3>
-
+        <SettingsSection title={<>Sync</>} darkMode={darkMode} borderClass={cardBorderClass}>
+          
           <div className="space-y-4">
             <div>
               <div className={`text-sm font-medium ${labelClass}`}>Cloud (Supabase)</div>
@@ -264,17 +260,14 @@ export default function SettingsPage({
               )}
             </div>
           </div>
-        </div>
+        </SettingsSection>
         )}
 
         {/* Лайки: общий доступ даёт фича-тогл выше, а здесь выбирают,
             в каких именно проектах сердечки появятся на карточках */}
         {allowed('kanban') && allowed('likes') && setProjectLikes && (
-        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-          <h3 className={`flex items-center gap-2 text-section uppercase mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            <Heart size={14} /> Likes on tasks
-          </h3>
-          <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+        <SettingsSection title={<><Heart size={14} /> Likes on tasks</>} darkMode={darkMode} borderClass={cardBorderClass}>
+                    <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Switch on per project — a heart appears on the board cards of that project.
           </p>
 
@@ -303,15 +296,12 @@ export default function SettingsPage({
               })}
             </div>
           )}
-        </div>
+        </SettingsSection>
         )}
 
         {/* Гороскоп: чем задан знак — выбором или датой рождения */}
-        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-          <h3 className={`text-section uppercase mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            Horoscope
-          </h3>
-          <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+        <SettingsSection title={<>Horoscope</>} darkMode={darkMode} borderClass={cardBorderClass}>
+                    <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             Shown as the eighth card in Schedule.
           </p>
 
@@ -345,15 +335,106 @@ export default function SettingsPage({
               </p>
             </div>
           </div>
-        </div>
+
+          {/* Натальная часть. Асцендент меняется примерно раз в два часа и
+              зависит от широты, поэтому без времени и координат он не определён */}
+          <div className={`mt-6 pt-6 border-t ${borderClass}`}>
+            <h4 className={`text-sm font-medium ${labelClass}`}>Birth chart</h4>
+            <p className={`text-xs mt-1 mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              Time and place give the rising sign. Positions of the Moon and planets need
+              ephemeris tables, which this app does not carry — they are not calculated.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium ${labelClass} mb-2`}>Birth time</label>
+                <input
+                  type="time"
+                  value={zodiac.birthTime || ''}
+                  onChange={e => setZodiac({ ...zodiac, birthTime: e.target.value })}
+                  aria-label="Birth time"
+                  className={`w-full px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium ${labelClass} mb-2`}>Birth place</label>
+                <input
+                  type="text"
+                  value={zodiac.place || ''}
+                  onChange={e => setZodiac({ ...zodiac, place: e.target.value })}
+                  placeholder="Minsk"
+                  aria-label="Birth place"
+                  className={`w-full px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium ${labelClass} mb-2`}>Latitude</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={zodiac.latitude ?? ''}
+                  onChange={e => setZodiac({ ...zodiac, latitude: e.target.value })}
+                  placeholder="53.90"
+                  aria-label="Latitude"
+                  className={`w-full px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium ${labelClass} mb-2`}>Longitude</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={zodiac.longitude ?? ''}
+                  onChange={e => setZodiac({
+                    ...zodiac,
+                    longitude: e.target.value,
+                    // Пояс подставляем по долготе, пока его не трогали руками:
+                    // чаще всего он и так угадывается
+                    utcOffset: zodiac.utcOffset === undefined || zodiac.utcOffset === ''
+                      ? guessUtcOffset(e.target.value)
+                      : zodiac.utcOffset
+                  })}
+                  placeholder="27.56"
+                  aria-label="Longitude"
+                  className={`w-full px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium ${labelClass} mb-2`}>UTC offset at birth</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={zodiac.utcOffset ?? ''}
+                  onChange={e => setZodiac({ ...zodiac, utcOffset: e.target.value })}
+                  placeholder="3"
+                  aria-label="UTC offset at birth"
+                  className={`w-full px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                />
+                <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Suggested from longitude. Daylight saving and country borders are not
+                  taken into account — check it against the birth year.
+                </p>
+              </div>
+
+              <div className="flex items-end">
+                <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  {risingSign
+                    ? `Rising sign: ${getSign(risingSign).symbol} ${getSign(risingSign).label}.`
+                    : 'Rising sign needs birth time, latitude and longitude.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </SettingsSection>
 
         {/* Project columns */}
         {allowed('kanban') && (
-        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-          <h3 className={`text-section uppercase mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            Project columns
-          </h3>
-
+        <SettingsSection title={<>Project columns</>} darkMode={darkMode} borderClass={cardBorderClass}>
+          
           <div className="mb-4">
             <label className={`block text-sm font-medium ${labelClass} mb-2`}>Project</label>
             <Select
@@ -442,16 +523,13 @@ export default function SettingsPage({
               </div>
             </div>
           )}
-        </div>
+        </SettingsSection>
         )}
 
         {/* Reset */}
         {allowed('reset') && (
-        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
-          <h3 className={`text-section uppercase mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            Reset
-          </h3>
-
+        <SettingsSection title={<>Reset</>} darkMode={darkMode} borderClass={cardBorderClass}>
+          
           {confirmingReset ? (
             <div className="space-y-3 animate-pop-in">
               <p className={`text-sm ${labelClass}`}>
@@ -491,7 +569,7 @@ export default function SettingsPage({
               </p>
             </>
           )}
-        </div>
+        </SettingsSection>
         )}
       </div>
     </PageShell>

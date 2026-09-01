@@ -8,7 +8,7 @@ import { DARK_THEMES, THEME_COLORS } from './themes';
 import { parseLocation, navigate, onRouteChange } from './utils/router';
 import { AUTH_KEY, FLAGS_KEY, DEFAULT_FLAGS, PAGE_FEATURES, canUse } from './auth';
 import { getWeekKey } from './utils/weeks';
-import { DEFAULT_SIGN, signFromBirthDate } from './horoscope';
+import { DEFAULT_SIGN, signFromBirthDate, getAscendantSign } from './horoscope';
 import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -77,6 +77,8 @@ export default function PersonalJira() {
   // Дата рождения главнее выбранного руками знака: если её указали, знак больше
   // не настройка, а следствие
   const zodiacSign = signFromBirthDate(zodiac.birthDate) || zodiac.sign || DEFAULT_SIGN;
+  // Восходящий знак — только если заполнены время и координаты; иначе null
+  const risingSign = getAscendantSign(zodiac);
 
   const RU_TO_EN_DAY = {
     'Понедельник': 'Monday',
@@ -1354,6 +1356,7 @@ export default function PersonalJira() {
           darkMode={darkMode}
           weekDays={weekDays}
           zodiacSign={zodiacSign}
+          risingSign={risingSign}
         />
       ) : currentPage === 'notes' ? (
         <Notes
@@ -1388,6 +1391,7 @@ export default function PersonalJira() {
           zodiac={zodiac}
           setZodiac={setZodiac}
           zodiacSign={zodiacSign}
+          risingSign={risingSign}
           onSignOut={handleSignOut}
           projects={projects}
           currentProject={currentProject}
