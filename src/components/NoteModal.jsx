@@ -424,7 +424,9 @@ export default function NoteModal({
 
             {openMenu === 'color' && (
               <div className={`absolute z-20 top-full mt-1 right-0 p-2 rounded-lg border shadow-lg origin-top-right animate-pop-in ${menuSurface}`}>
-                <div className="flex items-center gap-1.5">
+                {/* Сетка, а не строка: двенадцать кружков в ряд не помещались
+                    на телефоне и уезжали за край выпадающего меню */}
+                <div className="grid grid-cols-6 gap-1.5 w-max">
                   {Object.entries(NOTE_COLORS).map(([key, value]) => (
                     <button
                       key={key}

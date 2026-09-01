@@ -40,8 +40,9 @@ export const STORAGE_KEYS = [
   'jira-currentPage'
 ];
 
-// Цвета заметок. Тинты намеренно бледные: цвет помечает заметку, а не забивает страницу.
-// swatch — насыщенная точка для выбора в пикере
+// Цвета заметок. Тинты намеренно бледные: цвет помечает заметку, а не забивает
+// страницу. swatch — насыщенная точка для выбора в пикере.
+// Двенадцать вместе с «без цвета»: ровно две строки по шесть в пикере
 export const NOTE_COLORS = {
   default: {
     label: 'No color',
@@ -78,6 +79,42 @@ export const NOTE_COLORS = {
     swatch: 'bg-pink-500',
     light: 'bg-pink-50 border-pink-200',
     dark: 'bg-pink-500/10 border-pink-500/25'
+  },
+  orange: {
+    label: 'Orange',
+    swatch: 'bg-orange-500',
+    light: 'bg-orange-50 border-orange-200',
+    dark: 'bg-orange-500/10 border-orange-500/25'
+  },
+  red: {
+    label: 'Red',
+    swatch: 'bg-red-500',
+    light: 'bg-red-50 border-red-200',
+    dark: 'bg-red-500/10 border-red-500/25'
+  },
+  lime: {
+    label: 'Lime',
+    swatch: 'bg-lime-500',
+    light: 'bg-lime-50 border-lime-200',
+    dark: 'bg-lime-500/10 border-lime-500/25'
+  },
+  teal: {
+    label: 'Teal',
+    swatch: 'bg-teal-500',
+    light: 'bg-teal-50 border-teal-200',
+    dark: 'bg-teal-500/10 border-teal-500/25'
+  },
+  indigo: {
+    label: 'Indigo',
+    swatch: 'bg-indigo-500',
+    light: 'bg-indigo-50 border-indigo-200',
+    dark: 'bg-indigo-500/10 border-indigo-500/25'
+  },
+  gray: {
+    label: 'Gray',
+    swatch: 'bg-gray-400',
+    light: 'bg-gray-100 border-gray-300',
+    dark: 'bg-gray-500/10 border-gray-500/25'
   }
 };
 
