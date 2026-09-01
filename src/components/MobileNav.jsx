@@ -22,6 +22,10 @@ export default function MobileNav({ darkMode, theme, currentPage, setCurrentPage
 
   return (
     <nav
+      /* data-sidebar — тот же хук, по которому темы оформляют боковую панель.
+         Панель на телефоне скрыта, и без него millenial терял свою синюю полосу
+         Luna: нижняя навигация оставалась белой, а тема — неузнаваемой */
+      data-sidebar
       className={`sm:hidden flex-shrink-0 h-[var(--mobile-nav-h)] flex items-stretch border-t ${
         darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
       }`}

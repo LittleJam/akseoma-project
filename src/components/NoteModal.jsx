@@ -400,10 +400,12 @@ export default function NoteModal({
           closeOnEsc={false}
           overlayClassName="cursor-zoom-out"
         >
+          {/* То же, что в редакторе задачи: без self-center flex-колонка окна
+              растягивала картинку во всю ширину */}
           <img
             src={images[viewerIndex]}
             alt={`Attachment ${viewerIndex + 1}`}
-            className="max-w-full max-h-full rounded-lg object-contain"
+            className="self-center max-w-full max-h-[85vh] rounded-lg"
           />
         </Modal>
       )}

@@ -919,6 +919,26 @@ html.theme-millenial .text-red-600 {
   color: var(--xp-red);
 }
 
+/* Нижняя навигация телефона — та же панель задач Luna, только снизу. Основное
+   оформление она берёт из общего правила [data-sidebar] выше, здесь только то,
+   что у нижней полосы иначе: граница сверху вместо правой и заметный активный
+   раздел — зелёный текст в этой теме переводится в синий Luna и на синем фоне
+   панели пропадал бы совсем */
+html.theme-millenial nav[data-sidebar] {
+  border-right: 0;
+  border-top: 2px solid #0d2f7a;
+}
+
+html.theme-millenial nav[data-sidebar] .text-green-400,
+html.theme-millenial nav[data-sidebar] .text-green-700 {
+  color: #ffffff;
+}
+
+html.theme-millenial nav[data-sidebar] [aria-current='page'] {
+  background: rgba(255, 255, 255, 0.24);
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.35);
+}
+
 /* Углы у XP почти прямые */
 html.theme-millenial .rounded,
 html.theme-millenial .rounded-lg {

@@ -854,10 +854,14 @@ export default function TaskEditor({
           size="full"
           overlayClassName="cursor-zoom-out"
         >
+          {/* self-center обязателен: панель окна — flex-колонка, и без него
+              картинка растягивалась во всю её ширину, во сколько бы раз это ни
+              было больше её собственного размера. Теперь она открывается как
+              есть и ужимается, только если не влезает в экран */}
           <img
             src={images[viewerIndex]}
             alt={`Task image ${viewerIndex + 1}`}
-            className="max-w-full max-h-full rounded-lg object-contain"
+            className="self-center max-w-full max-h-[85vh] rounded-lg"
           />
         </Modal>
       )}
