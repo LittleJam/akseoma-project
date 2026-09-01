@@ -11,6 +11,7 @@ import { getWeekKey } from './utils/weeks';
 import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
 import ConfirmDialog from './components/ConfirmDialog';
+import { emptyLine, getNoteLines, isListLine } from './utils/noteLines';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import KanbanBoard from './components/KanbanBoard';
@@ -1070,9 +1071,10 @@ export default function PersonalJira() {
       {
         id: Date.now().toString(),
         title: '',
-        content: '',
-        items: [],
-        mode: 'text',
+        // Строки заметки: тип у каждой свой, поэтому текст и пункты идут вперемешку
+        lines: [emptyLine()],
+        // Каким становится пункт при превращении текста в список
+        mode: 'bullet',
         color: 'default',
         images: [],
         updatedAt: new Date().toLocaleString('en-US')
@@ -1081,8 +1083,8 @@ export default function PersonalJira() {
   };
 
   // Отредактировать содержимое заметки
-  const updateNote = (noteId, content) => {
-    saveNotes(notes.map(n => (n.id === noteId ? { ...n, content, updatedAt: new Date().toLocaleString('en-US') } : n)));
+  const updateNoteLines = (noteId, lines) => {
+    saveNotes(notes.map(n => (n.id === noteId ? { ...n, lines, updatedAt: new Date().toLocaleString('en-US') } : n)));
   };
 
   // Удалить заметку
@@ -1102,59 +1104,15 @@ export default function PersonalJira() {
         : n
     )));
 
-  // Переключить заметку между текстом, чек-листом и списком.
-  // Строки текста становятся пунктами и наоборот — ничего не теряется при переключении
+  // Вид маркера у пунктов: галочка или точка. Уже проставленные пункты
+  // перерисовываются вместе с настройкой, текстовые строки не трогаются
   const setNoteMode = (noteId, mode) => {
     const note = notes.find(n => n.id === noteId);
-    if (!note || (note.mode || 'text') === mode) return;
-
-    const wasText = (note.mode || 'text') === 'text';
-    const isText = mode === 'text';
-
-    if (wasText && !isText) {
-      const items = (note.content || '')
-        .split('\n')
-        .map(line => line.trim())
-        .filter(Boolean)
-        .map((text, index) => ({ id: `${Date.now()}-${index}`, text, checked: false }));
-      stampNote(noteId, { mode, items: items.length ? items : (note.items || []), content: '' });
-      return;
-    }
-
-    if (!wasText && isText) {
-      const lines = (note.items || []).map(item => item.text).filter(Boolean).join('\n');
-      stampNote(noteId, { mode, content: lines || note.content || '', items: [] });
-      return;
-    }
-
-    // todo ↔ bullet: меняется только отображение
-    stampNote(noteId, { mode });
-  };
-
-  // Добавить пункт в список заметки
-  const addNoteItem = (noteId, text) => {
-    if (!text.trim()) return;
-    const note = notes.find(n => n.id === noteId);
-    if (!note) return;
+    if (!note || (note.mode || 'bullet') === mode) return;
     stampNote(noteId, {
-      items: [...(note.items || []), { id: Date.now().toString(), text: text.trim(), checked: false }]
+      mode,
+      lines: getNoteLines(note).map(line => (isListLine(line) ? { ...line, type: mode } : line))
     });
-  };
-
-  // Изменить пункт списка (текст или отметку)
-  const updateNoteItem = (noteId, itemId, patch) => {
-    const note = notes.find(n => n.id === noteId);
-    if (!note) return;
-    stampNote(noteId, {
-      items: (note.items || []).map(item => (item.id === itemId ? { ...item, ...patch } : item))
-    });
-  };
-
-  // Удалить пункт списка
-  const deleteNoteItem = (noteId, itemId) => {
-    const note = notes.find(n => n.id === noteId);
-    if (!note) return;
-    stampNote(noteId, { items: (note.items || []).filter(item => item.id !== itemId) });
   };
 
   // Прикрепить картинки к заметке (уже сжатые в data URL)
@@ -1377,13 +1335,10 @@ export default function PersonalJira() {
         <Notes
           notes={notes}
           addNote={addNote}
-          updateNote={updateNote}
+          updateNoteLines={updateNoteLines}
           updateNoteTitle={updateNoteTitle}
           setNoteColor={setNoteColor}
           setNoteMode={setNoteMode}
-          addNoteItem={addNoteItem}
-          updateNoteItem={updateNoteItem}
-          deleteNoteItem={deleteNoteItem}
           addNoteImages={addNoteImages}
           deleteNoteImage={deleteNoteImage}
           deleteNote={deleteNote}

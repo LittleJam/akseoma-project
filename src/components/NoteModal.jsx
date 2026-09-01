@@ -1,18 +1,44 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { X, Plus, Eye, EyeOff, Palette, ListTodo, List, Image as ImageIcon, Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { X, Eye, EyeOff, Palette, ListTodo, List, Image as ImageIcon, Trash2, IndentIncrease } from 'lucide-react';
 import { NOTE_COLORS, NOTE_MODES } from '../constants';
+import { getNoteLines, isListLine, emptyLine, newLineId, LINE_TEXT } from '../utils/noteLines';
 import { compressImage } from '../utils/imageCompression';
 import Modal from './Modal';
 
+
+// Позиция курсора внутри строки в символах: у contentEditable её приходится
+// считать самому — своего selectionStart, как у input, у него нет
+const caretOffset = (el) => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return 0;
+  const range = selection.getRangeAt(0);
+  const measured = range.cloneRange();
+  measured.selectNodeContents(el);
+  measured.setEnd(range.endContainer, range.endOffset);
+  return measured.toString().length;
+};
+
+const placeCaret = (el, offset) => {
+  el.focus();
+  const range = document.createRange();
+  const textNode = el.firstChild;
+  if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+    range.setStart(textNode, Math.min(offset, textNode.textContent.length));
+  } else {
+    range.setStart(el, 0);
+  }
+  range.collapse(true);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+};
+
 export default function NoteModal({
   note,
-  updateNote,
+  updateNoteLines,
   updateNoteTitle,
   setNoteColor,
   setNoteMode,
-  addNoteItem,
-  updateNoteItem,
-  deleteNoteItem,
   addNoteImages,
   deleteNoteImage,
   deleteNote,
@@ -21,7 +47,6 @@ export default function NoteModal({
   darkMode
 }) {
   const [openMenu, setOpenMenu] = useState(null); // 'color' | 'mode'
-  const [newItem, setNewItem] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   // Индекс картинки, открытой на весь экран (null — просмотрщик закрыт)
@@ -94,20 +119,132 @@ export default function NoteModal({
   });
 
   const palette = NOTE_COLORS[note.color] || NOTE_COLORS.default;
-  // Режим решает только вид маркера: галочка или точка. Текст и список в заметке
-  // теперь всегда оба — выбирать одно из двух больше не нужно
-  const checklist = (note.mode || 'bullet') === 'todo';
-  const ModeIcon = checklist ? ListTodo : List;
-  const items = note.items || [];
+  // Режим — вид маркера, каким текст становится при превращении в пункт
+  const marker = (note.mode || 'bullet') === 'todo' ? 'todo' : 'bullet';
+  const ModeIcon = marker === 'todo' ? ListTodo : List;
+  const lines = getNoteLines(note);
 
   const mutedText = darkMode ? 'text-gray-500' : 'text-gray-400';
   const iconHover = darkMode ? 'hover:text-gray-300' : 'hover:text-gray-600';
   const menuSurface = darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200';
 
-  const handleAddItem = () => {
-    if (!newItem.trim()) return;
-    addNoteItem(note.id, newItem);
-    setNewItem('');
+  // Строки редактируются в contentEditable, а не в input: только так выделение
+  // тянется через несколько строк сразу, а без этого «сделать выделенное списком»
+  // работало бы ровно на одну строку
+  const lineRefs = useRef({});
+  // Куда поставить курсор после того, как строки перестроились: {id, offset}
+  const pendingCaret = useRef(null);
+
+  const setLineEl = (id) => (el) => {
+    if (el) lineRefs.current[id] = el;
+    else delete lineRefs.current[id];
+  };
+
+  // Текст в contentEditable кладём мимо React: перерисовка на каждое нажатие
+  // сбрасывала бы курсор в начало. Поэтому только выравниваем расхождения и
+  // никогда не трогаем строку, в которой сейчас печатают
+  useLayoutEffect(() => {
+    const pending = pendingCaret.current;
+
+    lines.forEach(line => {
+      const el = lineRefs.current[line.id];
+      if (!el || el.textContent === line.text) return;
+      // Строку, в которой печатают, не трогаем: запись textContent сбросила бы
+      // курсор в начало. Но когда строки только что перестроились — поделили по
+      // Enter или склеили по Backspace, — курсор всё равно ставится заново, и
+      // текст обязан обновиться во всех строках, включая ту, где он стоял:
+      // иначе половина разделённой строки остаётся на экране старой
+      if (!pending && el === document.activeElement) return;
+      el.textContent = line.text;
+    });
+
+    if (pending) {
+      pendingCaret.current = null;
+      const el = lineRefs.current[pending.id];
+      if (el) placeCaret(el, pending.offset);
+    }
+  });
+
+  const commit = (next) => updateNoteLines(note.id, next);
+
+  const replaceLine = (id, patch) =>
+    commit(lines.map(line => (line.id === id ? { ...line, ...patch } : line)));
+
+  // Строки, которых касается выделение. Схлопнутое выделение — это одна строка,
+  // в которой стоит курсор
+  const selectedLineIds = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return [];
+    const range = selection.getRangeAt(0);
+    return lines
+      .filter(line => {
+        const el = lineRefs.current[line.id];
+        return el && range.intersectsNode(el);
+      })
+      .map(line => line.id);
+  };
+
+  // Одна кнопка в обе стороны: если всё выделенное уже список — разворачиваем
+  // обратно в текст, иначе делаем списком
+  const toggleSelectionType = () => {
+    const ids = selectedLineIds();
+    if (ids.length === 0) return;
+    const touched = lines.filter(line => ids.includes(line.id));
+    const toText = touched.every(isListLine);
+    commit(lines.map(line => (
+      ids.includes(line.id)
+        ? { ...line, type: toText ? LINE_TEXT : marker, checked: toText ? undefined : !!line.checked }
+        : line
+    )));
+  };
+
+  const handleLineInput = (id) => (e) => {
+    const text = e.currentTarget.textContent;
+    // Правим не через commit: перерисовывать строку, в которой печатают, нельзя,
+    // а остальным её новый текст всё равно нужен только при сохранении
+    commit(lines.map(line => (line.id === id ? { ...line, text } : line)));
+  };
+
+  const handleLineKeyDown = (index) => (e) => {
+    const line = lines[index];
+    const el = e.currentTarget;
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const offset = caretOffset(el);
+      const text = el.textContent;
+      const created = {
+        id: newLineId(),
+        // Новая строка продолжает список, если делили пункт, и остаётся текстом
+        // в тексте — так список набирается подряд, без лишних нажатий
+        type: line.type,
+        text: text.slice(offset),
+        checked: false
+      };
+      const next = lines.map(l => (l.id === line.id ? { ...l, text: text.slice(0, offset) } : l));
+      next.splice(index + 1, 0, created);
+      pendingCaret.current = { id: created.id, offset: 0 };
+      commit(next);
+      return;
+    }
+
+    if (e.key === 'Backspace' && caretOffset(el) === 0 && window.getSelection()?.isCollapsed) {
+      // Пункт в начале строки сначала разворачивается в текст: убрать маркер —
+      // более частое намерение, чем склеить строку с предыдущей
+      if (isListLine(line)) {
+        e.preventDefault();
+        replaceLine(line.id, { type: LINE_TEXT, checked: undefined });
+        return;
+      }
+      if (index === 0) return;
+      e.preventDefault();
+      const previous = lines[index - 1];
+      const next = lines
+        .map(l => (l.id === previous.id ? { ...l, text: previous.text + el.textContent } : l))
+        .filter(l => l.id !== line.id);
+      pendingCaret.current = { id: previous.id, offset: previous.text.length };
+      commit(next);
+    }
   };
 
   const handleDelete = () => {
@@ -117,75 +254,65 @@ export default function NoteModal({
 
   const body = (
     <div className="flex-1 flex flex-col min-h-[50vh]">
-      <textarea
-        value={note.content}
-        onChange={e => updateNote(note.id, e.target.value)}
-        readOnly={!!note.blurred}
-        placeholder="Write a note..."
-        autoFocus={!note.blurred}
-        /* Текст занимает всё свободное место, но ужимается, когда список длинный:
-           обе части заметки равноправны */
-        className={`w-full flex-1 min-h-[5rem] text-sm leading-relaxed resize-none focus:outline-none bg-transparent transition ${
-          darkMode ? 'text-gray-200 placeholder-gray-500' : 'text-gray-700 placeholder-gray-400'
-        }`}
-      />
-
-      <div className="flex-shrink-0 pt-3 space-y-1">
-        {items.map(item => (
-          <div key={item.id} className="flex items-center gap-2.5 group/item">
-            {checklist ? (
+      <div className="flex-1 space-y-0.5">
+        {lines.map((line, index) => (
+          <div key={line.id} className="flex items-start gap-2.5 group/line">
+            {line.type === 'todo' && (
               <input
                 type="checkbox"
-                checked={!!item.checked}
-                onChange={() => updateNoteItem(note.id, item.id, { checked: !item.checked })}
-                className={`w-4 h-4 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
-                  item.checked ? 'animate-check-pop' : ''
+                checked={!!line.checked}
+                onChange={() => replaceLine(line.id, { checked: !line.checked })}
+                className={`w-4 h-4 mt-[3px] cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
+                  line.checked ? 'animate-check-pop' : ''
                 }`}
               />
-            ) : (
-              <span className={`w-1 h-1 rounded-full flex-shrink-0 mx-[6px] ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} />
+            )}
+            {line.type === 'bullet' && (
+              <span className={`w-1 h-1 mt-[9px] rounded-full flex-shrink-0 mx-[6px] ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} />
             )}
 
-            <input
-              type="text"
-              value={item.text}
-              onChange={e => updateNoteItem(note.id, item.id, { text: e.target.value })}
-              className={`flex-1 min-w-0 text-sm py-0.5 bg-transparent focus:outline-none transition-colors duration-200 ${
-                item.checked
-                  ? darkMode ? 'text-gray-500' : 'text-gray-400'
+            <div
+              ref={setLineEl(line.id)}
+              contentEditable={!note.blurred}
+              suppressContentEditableWarning
+              onInput={handleLineInput(line.id)}
+              onKeyDown={handleLineKeyDown(index)}
+              data-placeholder={lines.length === 1 && !line.text ? 'Write a note...' : ''}
+              className={`flex-1 min-w-0 text-sm leading-relaxed py-0.5 whitespace-pre-wrap break-words focus:outline-none empty:before:content-[attr(data-placeholder)] ${
+                line.checked
+                  ? darkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through'
                   : darkMode ? 'text-gray-200' : 'text-gray-700'
-              }`}
+              } ${darkMode ? 'before:text-gray-500' : 'before:text-gray-400'}`}
             />
 
             <button
-              onClick={() => deleteNoteItem(note.id, item.id)}
-              title="Remove item"
-              aria-label="Remove item"
+              onClick={() => commit(lines.length > 1 ? lines.filter(l => l.id !== line.id) : [emptyLine()])}
+              title="Remove line"
+              aria-label="Remove line"
               /* На телефоне наведения нет — крестик виден сразу */
-              className={`p-1.5 sm:p-0.5 rounded opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
+              className={`p-1.5 sm:p-0.5 mt-px rounded opacity-100 sm:opacity-0 sm:group-hover/line:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
             >
               <X size={13} />
             </button>
           </div>
         ))}
-
-        {/* Строка добавления стоит всегда: по ней и видно, что список тут можно
-            начать, даже если заметка пока состоит из одного текста */}
-        <div className="flex items-center gap-2.5">
-          <Plus size={13} className={`flex-shrink-0 mx-[2px] ${mutedText}`} />
-          <input
-            type="text"
-            value={newItem}
-            onChange={e => setNewItem(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleAddItem()}
-            onBlur={handleAddItem}
-            placeholder={checklist ? 'Add task...' : 'Add item...'}
-            className={`flex-1 min-w-0 text-sm py-0.5 bg-transparent focus:outline-none ${
-              darkMode ? 'text-white placeholder-gray-600' : 'placeholder-gray-300'
-            }`}
-          />
-        </div>
       </div>
+
+      {/* Клик по пустому месту под строками продолжает заметку с новой строки */}
+      <div
+        onClick={() => {
+          const last = lines[lines.length - 1];
+          if (last && !last.text) {
+            const el = lineRefs.current[last.id];
+            if (el) placeCaret(el, 0);
+            return;
+          }
+          const created = emptyLine(LINE_TEXT);
+          pendingCaret.current = { id: created.id, offset: 0 };
+          commit([...lines, created]);
+        }}
+        className="flex-1 min-h-[3rem] cursor-text"
+      />
     </div>
   );
 
@@ -244,6 +371,19 @@ export default function NoteModal({
             className={`p-2 sm:p-1 rounded press-icon flex-shrink-0 disabled:opacity-40 ${mutedText} ${iconHover}`}
           >
             <ImageIcon size={16} />
+          </button>
+
+          {/* Выделенное — в список и обратно. onMouseDown гасим: без него нажатие
+              уводит фокус из текста, выделение пропадает, и превращать становится
+              нечего */}
+          <button
+            onMouseDown={e => e.preventDefault()}
+            onClick={toggleSelectionType}
+            title="Turn selection into a list or back into text"
+            aria-label="Turn selection into a list or back into text"
+            className={`p-2 sm:p-1 rounded press-icon flex-shrink-0 ${mutedText} ${iconHover}`}
+          >
+            <IndentIncrease size={16} />
           </button>
 
           {/* Тип заметки */}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, EyeOff, ChevronUp, ChevronDown } from 'lucide-react';
 import { NOTE_COLORS } from '../constants';
+import { getNoteLines } from '../utils/noteLines';
 import { compressImage } from '../utils/imageCompression';
 import { themeIcon } from '../themes';
 import NoteModal from './NoteModal';
@@ -12,13 +13,10 @@ const PREVIEW_IMAGES = 3;
 export default function Notes({
   notes,
   addNote,
-  updateNote,
+  updateNoteLines,
   updateNoteTitle,
   setNoteColor,
   setNoteMode,
-  addNoteItem,
-  updateNoteItem,
-  deleteNoteItem,
   addNoteImages,
   deleteNoteImage,
   deleteNote,
@@ -114,12 +112,12 @@ export default function Notes({
               const isDragging = dragIndex === index;
               const isDropTarget = dragOverIndex === index && dragIndex !== null && dragIndex !== index;
               const palette = NOTE_COLORS[note.color] || NOTE_COLORS.default;
-              // Режим решает только вид маркера списка: текст в заметке есть всегда
-              const checklist = (note.mode || 'bullet') === 'todo';
-              const items = note.items || [];
-              const hasText = !!note.content?.trim();
+              const lines = getNoteLines(note);
+              // Пустые строки в превью не показываем: на карточке они выглядели бы
+              // случайными пропусками, а места на ней и так немного
+              const filled = lines.filter(line => line.text.trim());
               const images = note.images || [];
-              const hiddenItems = items.length - PREVIEW_ITEMS;
+              const hiddenItems = filled.length - PREVIEW_ITEMS;
               const blurClass = note.blurred ? 'blur-[5px] select-none' : '';
 
               return (
@@ -203,52 +201,45 @@ export default function Notes({
 
                   <span className={`text-[10px] mb-2 ${mutedText}`}>{note.updatedAt}</span>
 
-                  {/* Превью показывает обе части заметки: сначала текст, под ним
-                      список. Раньше карточка выбирала одно из двух по режиму, и
-                      половина содержимого на ней не появлялась вовсе */}
+                  {/* Превью повторяет строки заметки как есть: текст текстом,
+                      пункты с маркерами, в том же порядке. Отметить пункт можно
+                      прямо здесь — окно для этого открывать не нужно */}
                   <div className={`flex-1 min-h-0 overflow-hidden ${blurClass}`}>
-                    {!hasText && items.length === 0 ? (
+                    {filled.length === 0 ? (
                       <p className={`text-sm ${darkMode ? 'text-gray-600' : 'text-gray-300'}`}>Empty note</p>
                     ) : (
-                      <div className="space-y-2">
-                        {hasText && (
-                          <p className={`text-sm whitespace-pre-wrap ${items.length > 0 ? 'line-clamp-3' : 'line-clamp-6'} ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                            {note.content}
-                          </p>
-                        )}
-
-                        {items.length > 0 && (
-                          <div className="space-y-0.5">
-                            {items.slice(0, PREVIEW_ITEMS).map(item => (
-                              <div key={item.id} className="flex items-center gap-2">
-                                {checklist ? (
-                                  /* Отметить пункт можно прямо в превью — окно для этого открывать не нужно */
-                                  <input
-                                    type="checkbox"
-                                    checked={!!item.checked}
-                                    onClick={e => e.stopPropagation()}
-                                    onChange={() => updateNoteItem(note.id, item.id, { checked: !item.checked })}
-                                    disabled={!!note.blurred}
-                                    className={`w-4 h-4 sm:w-3.5 sm:h-3.5 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
-                                      item.checked ? 'animate-check-pop' : ''
-                                    }`}
-                                  />
-                                ) : (
-                                  <span className={`w-1 h-1 rounded-full flex-shrink-0 mx-[5px] ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} />
+                      <div className="space-y-0.5">
+                        {filled.slice(0, PREVIEW_ITEMS).map(line => (
+                          <div key={line.id} className="flex items-start gap-2">
+                            {line.type === 'todo' && (
+                              <input
+                                type="checkbox"
+                                checked={!!line.checked}
+                                onClick={e => e.stopPropagation()}
+                                onChange={() => updateNoteLines(
+                                  note.id,
+                                  lines.map(l => (l.id === line.id ? { ...l, checked: !l.checked } : l))
                                 )}
-                                <span className={`flex-1 min-w-0 text-sm truncate transition-colors duration-200 ${
-                                  item.checked
-                                    ? darkMode ? 'text-gray-500' : 'text-gray-400'
-                                    : darkMode ? 'text-gray-300' : 'text-gray-600'
-                                }`}>
-                                  {item.text}
-                                </span>
-                              </div>
-                            ))}
-                            {hiddenItems > 0 && (
-                              <p className={`text-[11px] pl-[22px] pt-0.5 ${mutedText}`}>+{hiddenItems} more</p>
+                                disabled={!!note.blurred}
+                                className={`w-4 h-4 sm:w-3.5 sm:h-3.5 mt-0.5 cursor-pointer flex-shrink-0 accent-green-700 transition active:scale-90 ${
+                                  line.checked ? 'animate-check-pop' : ''
+                                }`}
+                              />
                             )}
+                            {line.type === 'bullet' && (
+                              <span className={`w-1 h-1 mt-[7px] rounded-full flex-shrink-0 mx-[5px] ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} />
+                            )}
+                            <span className={`flex-1 min-w-0 text-sm truncate transition-colors duration-200 ${
+                              line.checked
+                                ? darkMode ? 'text-gray-500' : 'text-gray-400'
+                                : darkMode ? 'text-gray-300' : 'text-gray-600'
+                            }`}>
+                              {line.text}
+                            </span>
                           </div>
+                        ))}
+                        {hiddenItems > 0 && (
+                          <p className={`text-[11px] pl-[22px] pt-0.5 ${mutedText}`}>+{hiddenItems} more</p>
                         )}
                       </div>
                     )}
@@ -287,13 +278,10 @@ export default function Notes({
       {expandedNote && (
         <NoteModal
           note={expandedNote}
-          updateNote={updateNote}
+          updateNoteLines={updateNoteLines}
           updateNoteTitle={updateNoteTitle}
           setNoteColor={setNoteColor}
           setNoteMode={setNoteMode}
-          addNoteItem={addNoteItem}
-          updateNoteItem={updateNoteItem}
-          deleteNoteItem={deleteNoteItem}
           addNoteImages={addNoteImages}
           deleteNoteImage={deleteNoteImage}
           deleteNote={deleteNote}
