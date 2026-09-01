@@ -85,7 +85,27 @@ const ascendantLongitude = (lstDeg, latDeg, eps) => {
 // Знак по долготе на эклиптике: 0° — начало Овна, дальше по 30°
 const signFromLongitude = (lon) => ZODIAC[Math.floor((((lon % 360) + 360) % 360) / 30)].key;
 
-// Часовой пояс по долготе — грубая прикидка для подсказки в настройках.
+// Смещение часового пояса на конкретную дату — по названию зоны из геокодера.
+// Intl знает историю переводов часов, поэтому Минск 5 мая 1990 даёт +3, а не +2,
+// который получился бы по долготе: тогда действовало летнее время СССР.
+// Именно час ошибки сдвигает асцендент примерно на ползнака
+export const offsetForZone = (zone, birthDate, birthTime = '12:00') => {
+  if (!zone || !birthDate) return null;
+  try {
+    const [y, m, d] = birthDate.split('-').map(Number);
+    const [hh, mm] = birthTime.split(':').map(Number);
+    const probe = new Date(Date.UTC(y, m - 1, d, hh || 0, mm || 0));
+    const name = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'longOffset' })
+      .formatToParts(probe).find(part => part.type === 'timeZoneName')?.value;
+    const found = /GMT([+-])(\d{2}):(\d{2})/.exec(name || '');
+    if (!found) return null;
+    return (found[1] === '-' ? -1 : 1) * (Number(found[2]) + Number(found[3]) / 60);
+  } catch {
+    return null;
+  }
+};
+
+// Часовой пояс по долготе — грубая прикидка на случай, когда зоны нет.
 // Настоящий пояс определяется границами государств и переводом часов, поэтому
 // значение только предлагается, а поправить его может только сам человек
 export const guessUtcOffset = (longitude) => {
@@ -98,8 +118,8 @@ export const guessUtcOffset = (longitude) => {
 // от широты
 export const getAscendantSign = ({ birthDate, birthTime, latitude, longitude, utcOffset } = {}) => {
   if (!birthDate || !birthTime) return null;
-  const lat = Number(latitude);
-  const lon = Number(longitude);
+  const lat = toCoord(latitude);
+  const lon = toCoord(longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
   if (Math.abs(lat) > 89) return null;   // на полюсах асцендент вырождается
 
@@ -107,7 +127,7 @@ export const getAscendantSign = ({ birthDate, birthTime, latitude, longitude, ut
   const [hh, mm] = birthTime.split(':').map(Number);
   if (!year || !month || !day || !Number.isFinite(hh) || !Number.isFinite(mm)) return null;
 
-  const offset = Number.isFinite(Number(utcOffset)) ? Number(utcOffset) : 0;
+  const offset = Number.isFinite(toCoord(utcOffset)) ? toCoord(utcOffset) : 0;
   const hoursUT = hh + mm / 60 - offset;
   const jd = julianDay(year, month, day, hoursUT);
   const lst = ((gmstDegrees(jd) + lon) % 360 + 360) % 360;
@@ -184,6 +204,14 @@ const moonLongitude = (d) => {
   return norm(lonecl + corr);
 };
 
+// Пустое поле — это отсутствие координаты, а не ноль. Number('') равно нулю, и
+// без этой проверки очищенная широта давала бы асцендент для точки 0°,0°
+// в Атлантике — то есть уверенный, но неверный ответ вместо честного «нет данных»
+const toCoord = (value) => {
+  const text = String(value ?? '').trim();
+  return text === '' ? NaN : Number(text);
+};
+
 // Три главные точки карты. Солнце и Луна считаются от даты и времени, асцендент
 // требует ещё и координат. Без времени Луну считаем на полдень: за сутки она
 // проходит около 13°, поэтому у рождённых близко к смене знака она может
@@ -197,7 +225,7 @@ export const getNatalChart = (zodiac = {}) => {
 
   const hasTime = !!birthTime;
   const [hh, mm] = hasTime ? birthTime.split(':').map(Number) : [12, 0];
-  const offset = Number.isFinite(Number(utcOffset)) ? Number(utcOffset) : 0;
+  const offset = Number.isFinite(toCoord(utcOffset)) ? toCoord(utcOffset) : 0;
   const jd = julianDay(year, month, day, (hh || 0) + (mm || 0) / 60 - (hasTime ? offset : 0));
   const d = daysFromEpoch(jd);
 

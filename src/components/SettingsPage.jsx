@@ -5,7 +5,7 @@ import { THEME_OPTIONS } from '../themes';
 import { FEATURES, DEFAULT_FLAGS } from '../auth';
 import Select from './Select';
 import SettingsSection from './SettingsSection';
-import { ZODIAC, getSign, DEFAULT_SIGN, guessUtcOffset } from '../horoscope';
+import { ZODIAC, getSign, DEFAULT_SIGN, guessUtcOffset, offsetForZone } from '../horoscope';
 import PageShell from './PageShell';
 
 export default function SettingsPage({
@@ -40,6 +40,33 @@ export default function SettingsPage({
   reconnectFile,
   disconnectFile
 }) {
+  // Поиск координат по названию места: 'idle' | 'loading' | 'notfound' | 'error'
+  const [placeStatus, setPlaceStatus] = useState('idle');
+
+  const lookupPlace = async () => {
+    const query = (zodiac.place || '').trim();
+    if (!query) return;
+    setPlaceStatus('loading');
+    try {
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`;
+      const found = (await (await fetch(url)).json())?.results?.[0];
+      if (!found) { setPlaceStatus('notfound'); return; }
+      // Пояс берём из зоны найденного места на дату рождения — с учётом
+      // переводов часов тех лет. По долготе считаем, только если зоны нет
+      const exact = offsetForZone(found.timezone, zodiac.birthDate, zodiac.birthTime);
+      setZodiac({
+        ...zodiac,
+        place: found.name + (found.country ? `, ${found.country}` : ''),
+        latitude: String(found.latitude),
+        longitude: String(found.longitude),
+        utcOffset: String(exact ?? guessUtcOffset(found.longitude))
+      });
+      setPlaceStatus('idle');
+    } catch {
+      setPlaceStatus('error');
+    }
+  };
+
   const [selectedProjectId, setSelectedProjectId] = useState(currentProject);
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [confirmingReset, setConfirmingReset] = useState(false);
@@ -360,14 +387,32 @@ export default function SettingsPage({
 
               <div>
                 <label className={`block text-sm font-medium ${labelClass} mb-2`}>Birth place</label>
-                <input
-                  type="text"
-                  value={zodiac.place || ''}
-                  onChange={e => setZodiac({ ...zodiac, place: e.target.value })}
-                  placeholder="Minsk"
-                  aria-label="Birth place"
-                  className={`w-full px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={zodiac.place || ''}
+                    onChange={e => setZodiac({ ...zodiac, place: e.target.value })}
+                    onKeyDown={e => e.key === 'Enter' && lookupPlace()}
+                    placeholder="Minsk"
+                    aria-label="Birth place"
+                    className={`flex-1 min-w-0 px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                  />
+                  {/* Название города само по себе ничего не значит для расчёта —
+                      нужны координаты. Кнопка ходит за ними один раз и
+                      записывает в настройки, дальше приложение снова автономно */}
+                  <button
+                    onClick={lookupPlace}
+                    disabled={placeStatus === 'loading' || !(zodiac.place || '').trim()}
+                    className={`px-3 rounded-lg border press flex-shrink-0 disabled:opacity-40 ${borderClass} ${labelClass}`}
+                  >
+                    {placeStatus === 'loading' ? '…' : 'Find'}
+                  </button>
+                </div>
+                <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  {placeStatus === 'notfound' ? 'Place not found — fill the coordinates by hand.'
+                    : placeStatus === 'error' ? 'Lookup needs a connection — fill the coordinates by hand.'
+                    : 'Find fills in the coordinates below; they are what the chart is actually calculated from.'}
+                </p>
               </div>
 
               <div>
@@ -416,8 +461,8 @@ export default function SettingsPage({
                   className={`w-full px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
                 />
                 <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Suggested from longitude. Daylight saving and country borders are not
-                  taken into account — check it against the birth year.
+                  Filled from the time zone of the place found, for the birth date —
+                  daylight saving of that year included. Change it if you know better.
                 </p>
               </div>
 
@@ -427,7 +472,7 @@ export default function SettingsPage({
                   {moonSign ? ` · Moon ${getSign(moonSign).symbol} ${getSign(moonSign).label}` : ''}
                   {risingSign
                     ? ` · Rising ${getSign(risingSign).symbol} ${getSign(risingSign).label}`
-                    : ' · rising sign needs birth time, latitude and longitude'}
+                    : ' · rising sign needs birth time and coordinates'}
                 </p>
               </div>
             </div>
