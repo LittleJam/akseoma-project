@@ -528,7 +528,10 @@ export default function PersonalJira() {
           if (remote.collapsedSubtasks) saveCollapsedSubtasks(remote.collapsedSubtasks);
           if (remote.settings?.featureFlags) setFeatureFlags({ ...DEFAULT_FLAGS, ...remote.settings.featureFlags });
           if (remote.settings?.projectLikes) setProjectLikes(remote.settings.projectLikes);
-          if (remote.settings?.zodiac) setZodiac({ sign: DEFAULT_SIGN, birthDate: '', ...remote.settings.zodiac });
+          // Слияние по полям, а не замена целиком: в облаке может лежать запись,
+          // сделанная до появления времени и места рождения, и подмена целиком
+          // стёрла бы их сразу после ввода
+          if (remote.settings?.zodiac) setZodiac(prev => ({ ...prev, ...remote.settings.zodiac }));
           if (remote.settings?.theme) setTheme(remote.settings.theme);
           else if (remote.settings?.darkMode !== undefined) setTheme(remote.settings.darkMode ? 'dark' : 'light');
         }
@@ -573,7 +576,7 @@ export default function PersonalJira() {
       }
     }, 500);
     return () => clearTimeout(supabaseSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, featureFlags, projectLikes, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, featureFlags, projectLikes, zodiac, loading]);
 
   // Подключить (создать или выбрать существующий) JSON-файл для автосохранения
   const connectFile = async () => {
