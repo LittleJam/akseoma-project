@@ -16,7 +16,6 @@ export default function Notes({
   updateNoteLines,
   updateNoteTitle,
   setNoteColor,
-  setNoteMode,
   addNoteImages,
   deleteNoteImage,
   deleteNote,
@@ -281,7 +280,6 @@ export default function Notes({
           updateNoteLines={updateNoteLines}
           updateNoteTitle={updateNoteTitle}
           setNoteColor={setNoteColor}
-          setNoteMode={setNoteMode}
           addNoteImages={addNoteImages}
           deleteNoteImage={deleteNoteImage}
           deleteNote={deleteNote}

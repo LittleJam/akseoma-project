@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { X, Eye, EyeOff, Palette, ListTodo, List, Image as ImageIcon, Trash2, IndentIncrease } from 'lucide-react';
-import { NOTE_COLORS, NOTE_MODES } from '../constants';
+import { X, Eye, EyeOff, Palette, List, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { NOTE_COLORS } from '../constants';
 import { getNoteLines, isListLine, emptyLine, newLineId, LINE_TEXT } from '../utils/noteLines';
 import { compressImage } from '../utils/imageCompression';
 import Modal from './Modal';
@@ -38,7 +38,6 @@ export default function NoteModal({
   updateNoteLines,
   updateNoteTitle,
   setNoteColor,
-  setNoteMode,
   addNoteImages,
   deleteNoteImage,
   deleteNote,
@@ -46,7 +45,7 @@ export default function NoteModal({
   onClose,
   darkMode
 }) {
-  const [openMenu, setOpenMenu] = useState(null); // 'color' | 'mode'
+  const [openMenu, setOpenMenu] = useState(null); // сейчас только 'color'
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   // Индекс картинки, открытой на весь экран (null — просмотрщик закрыт)
@@ -119,9 +118,6 @@ export default function NoteModal({
   });
 
   const palette = NOTE_COLORS[note.color] || NOTE_COLORS.default;
-  // Режим — вид маркера, каким текст становится при превращении в пункт
-  const marker = (note.mode || 'bullet') === 'todo' ? 'todo' : 'bullet';
-  const ModeIcon = marker === 'todo' ? ListTodo : List;
   const lines = getNoteLines(note);
 
   const mutedText = darkMode ? 'text-gray-500' : 'text-gray-400';
@@ -184,16 +180,20 @@ export default function NoteModal({
       .map(line => line.id);
   };
 
-  // Одна кнопка в обе стороны: если всё выделенное уже список — разворачиваем
-  // обратно в текст, иначе делаем списком
-  const toggleSelectionType = () => {
+  // Виды строки по кругу: обычный текст → точка → галочка → снова текст.
+  // Так один контрол заменяет и превращение в список, и выбор маркера
+  const NEXT_TYPE = { text: 'bullet', bullet: 'todo', todo: LINE_TEXT };
+
+  const cycleSelection = () => {
     const ids = selectedLineIds();
     if (ids.length === 0) return;
     const touched = lines.filter(line => ids.includes(line.id));
-    const toText = touched.every(isListLine);
+    // Вид берём от первой выделенной строки и назначаем всем сразу: иначе
+    // смешанное выделение расползлось бы на три разных состояния
+    const next = NEXT_TYPE[touched[0].type] || 'bullet';
     commit(lines.map(line => (
       ids.includes(line.id)
-        ? { ...line, type: toText ? LINE_TEXT : marker, checked: toText ? undefined : !!line.checked }
+        ? { ...line, type: next, checked: next === 'todo' ? !!line.checked : undefined }
         : line
     )));
   };
@@ -285,15 +285,6 @@ export default function NoteModal({
               } ${darkMode ? 'before:text-gray-500' : 'before:text-gray-400'}`}
             />
 
-            <button
-              onClick={() => commit(lines.length > 1 ? lines.filter(l => l.id !== line.id) : [emptyLine()])}
-              title="Remove line"
-              aria-label="Remove line"
-              /* На телефоне наведения нет — крестик виден сразу */
-              className={`p-1.5 sm:p-0.5 mt-px rounded opacity-100 sm:opacity-0 sm:group-hover/line:opacity-100 press-icon flex-shrink-0 ${mutedText} hover:text-red-500`}
-            >
-              <X size={13} />
-            </button>
           </div>
         ))}
       </div>
@@ -373,56 +364,19 @@ export default function NoteModal({
             <ImageIcon size={16} />
           </button>
 
-          {/* Выделенное — в список и обратно. onMouseDown гасим: без него нажатие
-              уводит фокус из текста, выделение пропадает, и превращать становится
-              нечего */}
+          {/* Одна кнопка на все виды строки вместо кнопки превращения и меню
+              выбора маркера рядом с ней: нажатия гоняют выделенное по кругу
+              текст → точки → галочки → текст. onMouseDown гасим — без него
+              нажатие уводит фокус из текста и выделение пропадает */}
           <button
             onMouseDown={e => e.preventDefault()}
-            onClick={toggleSelectionType}
-            title="Turn selection into a list or back into text"
-            aria-label="Turn selection into a list or back into text"
+            onClick={cycleSelection}
+            title="Text → bullets → checkboxes"
+            aria-label="Change line type"
             className={`p-2 sm:p-1 rounded press-icon flex-shrink-0 ${mutedText} ${iconHover}`}
           >
-            <IndentIncrease size={16} />
+            <List size={16} />
           </button>
-
-          {/* Тип заметки */}
-          <div className="relative flex-shrink-0" ref={openMenu === 'mode' ? menuRef : null}>
-            <button
-              onClick={() => setOpenMenu(prev => (prev === 'mode' ? null : 'mode'))}
-              title="List style"
-              aria-label="List style"
-              className={`p-2 sm:p-1 rounded press-icon ${mutedText} ${iconHover}`}
-            >
-              <ModeIcon size={16} />
-            </button>
-
-            {openMenu === 'mode' && (
-              <div className={`absolute z-20 top-full mt-1 right-0 py-1 rounded-lg border shadow-lg w-36 origin-top-right animate-pop-in ${menuSurface}`}>
-                {NOTE_MODES.map(({ key, label }) => {
-                  const Icon = key === 'todo' ? ListTodo : List;
-                  const active = checklist === (key === 'todo');
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => {
-                        setNoteMode(note.id, key);
-                        setOpenMenu(null);
-                      }}
-                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition ${
-                        active
-                          ? darkMode ? 'text-green-400' : 'text-green-700'
-                          : darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      <Icon size={13} className="flex-shrink-0" />
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
 
           {/* Цвет */}
           <div className="relative flex-shrink-0" ref={openMenu === 'color' ? menuRef : null}>

@@ -1,6 +1,13 @@
 // Сервис-воркер приложения: офлайн-оболочка и кеш статики.
 // Версию менять при изменении логики — старые кеши подчищаются на активации.
 const VERSION = 'stt-v4';
+
+// Список собранных файлов подставляет сборка: их имена содержат хеш и заранее
+// неизвестны. Без предварительного кеширования офлайн не работал до третьего
+// захода: на первом визите воркер ещё не управляет страницей, и её бандл
+// загружается мимо него, а значит в кеш не попадает.
+// В режиме разработки список пуст — там воркер и не регистрируется.
+const BUILD_ASSETS = [];
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 
@@ -24,10 +31,13 @@ const FONTS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(SHELL_CACHE)
-      // Отдельные промахи (например, ещё не собранная иконка) не должны валить установку
-      .then(cache => Promise.allSettled([...SHELL, ...FONTS].map(url => cache.add(url))))
-      .then(() => self.skipWaiting())
+    Promise.all([
+      caches.open(SHELL_CACHE)
+        // Отдельные промахи (например, ещё не собранная иконка) не должны валить установку
+        .then(cache => Promise.allSettled([...SHELL, ...FONTS].map(url => cache.add(url)))),
+      caches.open(ASSET_CACHE)
+        .then(cache => Promise.allSettled(BUILD_ASSETS.map(url => cache.add(url))))
+    ]).then(() => self.skipWaiting())
   );
 });
 

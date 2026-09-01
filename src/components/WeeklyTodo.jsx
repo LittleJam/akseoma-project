@@ -4,6 +4,7 @@ import { themeIcon } from '../themes';
 import { getWeekStart, addWeeks, getWeekKey, getWeekDates, isSameDay } from '../utils/weeks';
 import { getQuoteForDate } from '../quotes';
 import PageShell from './PageShell';
+import useIsMobile from '../utils/useIsMobile';
 
 export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays }) {
   const AddIcon = themeIcon(theme, 'add');
@@ -18,6 +19,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
   // Время нужно не каждой задаче, поэтому поле появляется по клику на часы:
   // пустое «--:--» в каждой карточке дня читалось как сломанные данные
   const [timeOpen, setTimeOpen] = useState({});
+  const isMobile = useIsMobile();
   const [editingItem, setEditingItem] = useState(null); // { day, taskId }
   const [editingText, setEditingText] = useState('');
   const [editingTime, setEditingTime] = useState('');
@@ -366,7 +368,14 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                         </div>
                       ) : (
                         <span
+                          /* На телефоне текст сам открывает правку: карандаш в
+                             каждой строке был третьим значком подряд, а места в
+                             строке и так мало. На десктопе клик оставляем в покое —
+                             там строку таскают мышью */
+                          onClick={() => { if (isMobile) startEditing(day, task); }}
                           className={`flex-1 min-w-0 text-sm break-words transition-colors duration-200 ${
+                            isMobile ? 'cursor-text' : ''
+                          } ${
                             task.important && !task.completed ? 'font-semibold' : ''
                           } ${
                             // Выполненная задача просто гаснет: галочки достаточно
@@ -400,7 +409,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                         onClick={() => startEditing(day, task)}
                         title="Edit task"
                         aria-label="Edit task"
-                        className={`p-1.5 sm:p-0.5 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-green-100'}`}
+                        className={`hidden sm:block p-1.5 sm:p-0.5 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 press-icon flex-shrink-0 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-green-100'}`}
                       >
                         <Edit2 size={12} className={darkMode ? 'text-green-400' : 'text-green-600'} />
                       </button>

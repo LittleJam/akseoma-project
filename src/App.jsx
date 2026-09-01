@@ -11,7 +11,7 @@ import { getWeekKey } from './utils/weeks';
 import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
 import ConfirmDialog from './components/ConfirmDialog';
-import { emptyLine, getNoteLines, isListLine } from './utils/noteLines';
+import { emptyLine } from './utils/noteLines';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import KanbanBoard from './components/KanbanBoard';
@@ -1104,17 +1104,6 @@ export default function PersonalJira() {
         : n
     )));
 
-  // Вид маркера у пунктов: галочка или точка. Уже проставленные пункты
-  // перерисовываются вместе с настройкой, текстовые строки не трогаются
-  const setNoteMode = (noteId, mode) => {
-    const note = notes.find(n => n.id === noteId);
-    if (!note || (note.mode || 'bullet') === mode) return;
-    stampNote(noteId, {
-      mode,
-      lines: getNoteLines(note).map(line => (isListLine(line) ? { ...line, type: mode } : line))
-    });
-  };
-
   // Прикрепить картинки к заметке (уже сжатые в data URL)
   const addNoteImages = (noteId, images) => {
     if (!images.length) return;
@@ -1338,7 +1327,6 @@ export default function PersonalJira() {
           updateNoteLines={updateNoteLines}
           updateNoteTitle={updateNoteTitle}
           setNoteColor={setNoteColor}
-          setNoteMode={setNoteMode}
           addNoteImages={addNoteImages}
           deleteNoteImage={deleteNoteImage}
           deleteNote={deleteNote}
