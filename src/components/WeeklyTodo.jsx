@@ -341,7 +341,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                             onChange={e => setEditingTime(e.target.value)}
                             title="Task time"
                             aria-label="Task time"
-                            className={`px-1 py-0.5 rounded text-xs flex-shrink-0 w-[70px] ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
+                            className={`px-1 py-0.5 rounded text-xs flex-shrink-0 w-[5.5rem] sm:w-[70px] ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
                           />
                           {/* Стереть время. Родное поле времени очистить нечем:
                               на телефоне у него нет ни крестика, ни клавиши, и
