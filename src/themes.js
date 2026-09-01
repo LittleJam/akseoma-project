@@ -1,9 +1,10 @@
 import {
-  Sun, Moon, Wand2, Waves, Castle, ScrollText, BookOpenText, Sparkles, Feather,
+  Sun, Moon, Wand, Wand2, Waves, Castle, ScrollText, BookOpenText, Sparkles, Feather,
   Compass, CalendarDays, Shell, Palmtree, Anchor, Plus, Home, Calendar, StickyNote,
-  Coffee, Settings, RefreshCw, Bird, Fish, Monitor, FolderOpen, FileText, Music2, Wrench,
+  Coffee, Settings, RefreshCw, Monitor, FolderOpen, FileText, Music2, Wrench,
   PenLine, Notebook, NotebookPen, Pencil, Highlighter, Paperclip, SlidersHorizontal
 } from 'lucide-react';
+import SurferIcon from './components/SurferIcon';
 
 // Светлые темы держат обычную палитру Tailwind, тёмные — набор для darkMode.
 // wizard тёмный (ночь Хогвартса), surf светлый (день на океане)
@@ -40,7 +41,9 @@ const THEME_ICONS = {
     settings: Wand2,
     add: Feather,
     refresh: Sparkles,
-    mascot: Bird
+    // По квадрату дыхания ходит палочка, а не сова: движение по периметру
+    // читается как взмах, и это ближе к теме, чем птица
+    mascot: Wand
   },
   handwriting: {
     projects: Notebook,
@@ -71,7 +74,8 @@ const THEME_ICONS = {
     settings: SlidersHorizontal,
     add: Plus,
     refresh: Waves,
-    mascot: Fish
+    // Сёрфер на доске вместо рыбы: он идёт по сторонам квадрата как по волне
+    mascot: SurferIcon
   }
 };
 
