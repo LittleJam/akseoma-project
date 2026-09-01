@@ -30,7 +30,7 @@ export default function PageShell({
 
   if (variant === 'focus') {
     return (
-      <div className={`relative overflow-hidden flex-1 flex items-center justify-center ${bgClass}`}>
+      <div data-page className={`relative overflow-hidden flex-1 flex items-center justify-center ${bgClass}`}>
         {children}
       </div>
     );
@@ -44,7 +44,7 @@ export default function PageShell({
   const actionsRow = <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>;
 
   return (
-    <div className={`flex-1 flex flex-col overflow-hidden ${bgClass}`}>
+    <div data-page className={`flex-1 flex flex-col overflow-hidden ${bgClass}`}>
       {/* Шапка не уезжает при скролле, поэтому нижняя граница нужна:
           без неё контент подъезжает под заголовок без видимого рубежа.
           Высота фиксирована токеном --shell-header-h: граница обязана лечь ровно

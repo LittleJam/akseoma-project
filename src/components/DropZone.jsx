@@ -73,6 +73,7 @@ export default function DropZone({
 
   return (
     <div
+      data-column
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
