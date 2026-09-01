@@ -208,7 +208,7 @@ export default function ChillTimer({ darkMode, theme }) {
           viewBox="0 0 100 100"
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.1"
+          strokeWidth="0.7"
           strokeLinecap="round"
           strokeLinejoin="round"
           aria-hidden="true"
