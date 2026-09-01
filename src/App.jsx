@@ -12,7 +12,7 @@ import { DEFAULT_SIGN, getNatalChart } from './horoscope';
 import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
 import ConfirmDialog from './components/ConfirmDialog';
-import { emptyLine } from './utils/noteLines';
+import { emptyLine, newLineId } from './utils/noteLines';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import KanbanBoard from './components/KanbanBoard';
@@ -100,24 +100,44 @@ export default function PersonalJira() {
   const createStarterNotes = () => {
     const stamp = Date.now();
     const now = new Date().toLocaleString('en-US');
+    const line = (type, text) => ({ id: newLineId(), type, text, ...(type === 'todo' ? { checked: false } : {}) });
+
     return [
+      {
+        // Словарик: слово, тире, перевод — по строке на пару. Галочки не
+        // «сделано», а «запомнилось», поэтому список чек-листом: строку можно
+        // отметить и снять обратно, когда слово опять выпало из головы.
+        // Первая строка задаёт формат, остальные — пример, который стирают
+        // и заполняют своим
+        id: `vocabulary-${stamp}`,
+        title: 'Vocabulary',
+        lines: [
+          line('text', 'Word — translation, one per line. Tick the ones that stick.'),
+          line('todo', 'dziękuję — спасибо'),
+          line('todo', 'jutro — завтра'),
+          line('todo', 'sklep — магазин'),
+          line('todo', 'zdanie — предложение')
+        ],
+        mode: 'todo',
+        color: 'blue',
+        images: [],
+        updatedAt: now
+      },
       {
         id: `shopping-${stamp}`,
         title: 'Shopping list',
-        content: '',
+        lines: [emptyLine('todo')],
         mode: 'todo',
         color: 'green',
-        items: [],
         images: [],
         updatedAt: now
       },
       {
         id: `wishlist-${stamp}`,
         title: 'Wishlist',
-        content: '',
+        lines: [emptyLine('todo')],
         mode: 'todo',
         color: 'pink',
-        items: [],
         images: [],
         updatedAt: now
       }
