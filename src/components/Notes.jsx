@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, EyeOff, ChevronUp, ChevronDown } from 'lucide-react';
 import { NOTE_COLORS } from '../constants';
-import { getNoteLines } from '../utils/noteLines';
+import { getNoteLines, isImageLine, newLineId, LINE_IMAGE } from '../utils/noteLines';
 import { compressImage } from '../utils/imageCompression';
 import { themeIcon } from '../themes';
 import NoteModal from './NoteModal';
@@ -18,8 +18,6 @@ export default function Notes({
   updateNoteLines,
   updateNoteTitle,
   setNoteColor,
-  addNoteImages,
-  deleteNoteImage,
   deleteNote,
   toggleNoteBlur,
   reorderNotes,
@@ -63,7 +61,12 @@ export default function Notes({
       resetDrag();
       try {
         const compressed = await Promise.all(files.map(file => compressImage(file)));
-        addNoteImages(noteId, compressed);
+        const note = notes.find(n => n.id === noteId);
+        const lines = getNoteLines(note);
+        updateNoteLines(noteId, [
+          ...lines,
+          ...compressed.map(src => ({ id: newLineId(), type: LINE_IMAGE, text: '', src }))
+        ]);
       } catch (err) {
         console.error('Image compression error:', err);
       }
@@ -116,7 +119,7 @@ export default function Notes({
               // Пустые строки в превью не показываем: на карточке они выглядели бы
               // случайными пропусками, а места на ней и так немного
               const filled = lines.filter(line => line.text.trim());
-              const images = note.images || [];
+              const images = lines.filter(isImageLine).map(l => l.src);
               const hiddenItems = filled.length - PREVIEW_ITEMS;
               const blurClass = note.blurred ? 'blur-[5px] select-none' : '';
 
@@ -281,8 +284,6 @@ export default function Notes({
           updateNoteLines={updateNoteLines}
           updateNoteTitle={updateNoteTitle}
           setNoteColor={setNoteColor}
-          addNoteImages={addNoteImages}
-          deleteNoteImage={deleteNoteImage}
           deleteNote={deleteNote}
           toggleNoteBlur={toggleNoteBlur}
           onClose={() => setExpandedNoteId(null)}

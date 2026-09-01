@@ -176,12 +176,88 @@ const mix = (n) => {
 
 // Восходящий знак входит в текст: иначе поля времени и места рождения были бы
 // украшением — заполнил, а читаешь то же самое
-export const getHoroscopeForDate = (signKey, date = new Date(), risingKey = null) => {
+const horoscopeSeed = (signKey, date, risingKey) => {
   const index = Math.max(0, ZODIAC.findIndex(s => s.key === signKey));
   const rising = risingKey ? ZODIAC.findIndex(s => s.key === risingKey) + 1 : 0;
-  const seed = (dayNumber(date) * ZODIAC.length + index) * 13 + rising;
+  return (dayNumber(date) * ZODIAC.length + index) * 13 + rising;
+};
+
+export const getHoroscopeForDate = (signKey, date = new Date(), risingKey = null) => {
+  const seed = horoscopeSeed(signKey, date, risingKey);
   // Соль у каждой части своя, иначе все три двигались бы вместе и текст выглядел
   // бы одним и тем же, только переставленным
   const pick = (pool, salt) => pool[mix(seed * 1024 + salt) % pool.length];
   return [pick(OPENINGS, 1), pick(FOCUS, 2), pick(CLOSINGS, 3)].join(' ');
 };
+
+// Разделы подробного разбора. Каждый — своя колода, чтобы «работа» и «деньги»
+// не выдавали одну и ту же мысль разными словами
+const AREAS = [
+  {
+    key: 'work',
+    title: 'Work',
+    lines: [
+      'One task carries the day; the rest can wait until it is done.',
+      'Progress comes from finishing, not from starting something new.',
+      'Interruptions cluster in the middle of the day — plan the hard part early.',
+      'A second pair of eyes saves more time than it costs.',
+      'What looks like a blocker is a missing decision, not a missing skill.',
+      'Slow and correct beats fast and re-done today.',
+      'Write the plan down; it will be shorter than it feels.',
+      'Delegating one thing frees the whole afternoon.'
+    ]
+  },
+  {
+    key: 'money',
+    title: 'Money',
+    lines: [
+      'Small recurring costs deserve a look — they add up quietly.',
+      'A purchase you have been circling can wait one more week.',
+      'Check the numbers before agreeing to them.',
+      'Not a day for a big commitment; a day for tidying the ledger.',
+      'Something owed to you is worth one polite reminder.',
+      'Value the hour you spend, not just the sum you save.',
+      'A plain budget beats a clever one right now.',
+      'Spend on what removes friction, not on what adds novelty.'
+    ]
+  },
+  {
+    key: 'people',
+    title: 'People',
+    lines: [
+      'Say the plain version; the careful one will be misread.',
+      'Someone is waiting for you to go first.',
+      'A short message today prevents a long conversation later.',
+      'Listen past the first sentence — the point comes second.',
+      'Good day to make peace over something small.',
+      'Do not read tone into brevity; people are busy, not cold.',
+      'Ask instead of assuming, once.',
+      'One honest no protects two future yeses.'
+    ]
+  },
+  {
+    key: 'energy',
+    title: 'Energy',
+    lines: [
+      'The body sets the pace today — do not argue with it.',
+      'A walk does more for your head than another hour at the desk.',
+      'Sleep is the cheapest fix available.',
+      'Energy peaks early; use it on what matters.',
+      'Eat properly before the afternoon, not after it.',
+      'Stretch the shoulders; that is where the day is sitting.',
+      'An early evening pays for tomorrow morning.',
+      'Do one thing at a time and the tiredness halves.'
+    ]
+  }
+];
+
+// Подробный разбор: сводка плюс четыре основных пункта. Всё то же семя, поэтому
+// за день не меняется, у разных знаков и асцендентов разное
+export const getHoroscopeDetails = (signKey, date = new Date(), risingKey = null) => ({
+  summary: getHoroscopeForDate(signKey, date, risingKey),
+  areas: AREAS.map((area, i) => ({
+    key: area.key,
+    title: area.title,
+    text: area.lines[mix(horoscopeSeed(signKey, date, risingKey) * 1024 + 17 + i) % area.lines.length]
+  }))
+});

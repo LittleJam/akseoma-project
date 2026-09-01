@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { X, Eye, EyeOff, Palette, List, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { NOTE_COLORS } from '../constants';
-import { getNoteLines, isListLine, emptyLine, newLineId, LINE_TEXT } from '../utils/noteLines';
+import { getNoteLines, isListLine, isImageLine, emptyLine, newLineId, LINE_TEXT, LINE_IMAGE } from '../utils/noteLines';
 import { compressImage } from '../utils/imageCompression';
 import Modal from './Modal';
 
@@ -38,8 +38,6 @@ export default function NoteModal({
   updateNoteLines,
   updateNoteTitle,
   setNoteColor,
-  addNoteImages,
-  deleteNoteImage,
   deleteNote,
   toggleNoteBlur,
   onClose,
@@ -74,16 +72,23 @@ export default function NoteModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openMenu]);
 
-  const images = note.images || [];
-
   // Общий путь для всех способов добавить картинку: кнопка, drag & drop и вставка из буфера
+  // Картинка встаёт сразу после строки, в которой стоял курсор, а не в конец
+  // заметки: вставляют её обычно по ходу текста, к тому месту, о котором пишут
   const attachFiles = async (files) => {
     const picked = files.filter(f => f.type.startsWith('image/'));
     if (picked.length === 0) return;
     setIsUploading(true);
     try {
       const compressed = await Promise.all(picked.map(file => compressImage(file)));
-      addNoteImages(note.id, compressed);
+      const added = compressed.map(src => ({ id: newLineId(), type: LINE_IMAGE, text: '', src }));
+      const current = getNoteLines(note);
+      const at = current.findIndex(line => line.id === focusedLine.current);
+      const insertAt = at === -1 ? current.length : at + 1;
+      const next = [...current.slice(0, insertAt), ...added, ...current.slice(insertAt)];
+      // Ниже картинки всегда должна остаться строка, иначе дописывать некуда
+      if (!next[insertAt + added.length]) next.push(emptyLine());
+      updateNoteLines(note.id, next);
     } catch (err) {
       console.error('Image compression error:', err);
     } finally {
@@ -119,6 +124,8 @@ export default function NoteModal({
 
   const palette = NOTE_COLORS[note.color] || NOTE_COLORS.default;
   const lines = getNoteLines(note);
+  // Только картинки — по ним листает просмотрщик
+  const imageLines = lines.filter(isImageLine);
 
   const mutedText = darkMode ? 'text-gray-500' : 'text-gray-400';
   const iconHover = darkMode ? 'hover:text-gray-300' : 'hover:text-gray-600';
@@ -130,6 +137,8 @@ export default function NoteModal({
   const lineRefs = useRef({});
   // Куда поставить курсор после того, как строки перестроились: {id, offset}
   const pendingCaret = useRef(null);
+  // Строка, в которой последний раз стоял курсор — точка вставки картинки
+  const focusedLine = useRef(null);
 
   const setLineEl = (id) => (el) => {
     if (el) lineRefs.current[id] = el;
@@ -142,7 +151,7 @@ export default function NoteModal({
   useLayoutEffect(() => {
     const pending = pendingCaret.current;
 
-    lines.forEach(line => {
+    lines.filter(line => !isImageLine(line)).forEach(line => {
       const el = lineRefs.current[line.id];
       if (!el || el.textContent === line.text) return;
       // Строку, в которой печатают, не трогаем: запись textContent сбросила бы
@@ -271,10 +280,30 @@ export default function NoteModal({
               <span className={`w-1 h-1 mt-[9px] rounded-full flex-shrink-0 mx-[6px] ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} />
             )}
 
+            {isImageLine(line) ? (
+              <div className="relative group/img w-full my-1">
+                <img
+                  src={line.src}
+                  alt=""
+                  onClick={() => setViewerIndex(imageLines.findIndex(l => l.id === line.id))}
+                  className="max-h-64 w-auto max-w-full rounded-lg cursor-zoom-in transition duration-150 hover:brightness-95"
+                />
+                <button
+                  onClick={() => commit(lines.filter(l => l.id !== line.id))}
+                  title="Remove image"
+                  aria-label="Remove image"
+                  /* На телефоне наведения нет — крестик виден сразу */
+                  className="absolute top-1 left-1 p-1.5 rounded-full bg-black/55 text-white opacity-100 sm:opacity-0 sm:group-hover/img:opacity-100 press-icon"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
             <div
               ref={setLineEl(line.id)}
               contentEditable={!note.blurred}
               suppressContentEditableWarning
+              onFocus={() => { focusedLine.current = line.id; }}
               onInput={handleLineInput(line.id)}
               onKeyDown={handleLineKeyDown(index)}
               data-placeholder={lines.length === 1 && !line.text ? 'Write a note...' : ''}
@@ -284,6 +313,7 @@ export default function NoteModal({
                   : darkMode ? 'text-gray-200' : 'text-gray-700'
               } ${darkMode ? 'before:text-gray-500' : 'before:text-gray-400'}`}
             />
+            )}
 
           </div>
         ))}
@@ -462,44 +492,13 @@ export default function NoteModal({
           )}
         </div>
 
-        {(images.length > 0 || isUploading) && (
-          <div className="px-4 pb-4">
-            <div className={`grid grid-cols-4 sm:grid-cols-6 gap-2 ${note.blurred ? 'blur-[5px] select-none pointer-events-none' : ''}`}>
-              {images.map((img, index) => (
-                <div key={index} className="relative group/img">
-                  <img
-                    src={img}
-                    alt={`Attachment ${index + 1}`}
-                    onClick={() => setViewerIndex(index)}
-                    className="w-full aspect-square object-cover rounded-lg cursor-zoom-in transition duration-150 hover:brightness-95"
-                  />
-                  <button
-                    onClick={() => deleteNoteImage(note.id, index)}
-                    title="Remove image"
-                    className="absolute top-1 right-1 p-1.5 sm:p-1 rounded-full bg-black/55 text-white opacity-0 group-hover/img:opacity-100 press-icon"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-              {isUploading && (
-                <div className={`aspect-square rounded-lg border border-dashed flex items-center justify-center text-[11px] animate-pulse ${
-                  darkMode ? 'border-gray-600 text-gray-500' : 'border-gray-300 text-gray-400'
-                }`}>
-                  Adding...
-                </div>
-              )}
-            </div>
-          </div>
+        {isUploading && (
+          <p className={`px-4 pb-4 text-xs animate-pulse ${mutedText}`}>Adding images…</p>
         )}
         </div>
 
-      {/* Нижней полосы с кнопкой Close нет: окно закрывает крестик в шапке,
-          и держать вторую кнопку с той же работой незачем — на телефоне она
-          к тому же занимала строку внизу развёрнутого на весь экран окна */}
-
       {/* Картинка на весь экран: клик в любом месте — закрыть */}
-      {viewerIndex !== null && images[viewerIndex] && (
+      {viewerIndex !== null && imageLines[viewerIndex] && (
         <Modal
           onClose={() => setViewerIndex(null)}
           layer="viewer"
@@ -521,7 +520,7 @@ export default function NoteModal({
           {/* То же, что в редакторе задачи: без self-center flex-колонка окна
               растягивала картинку во всю ширину */}
           <img
-            src={images[viewerIndex]}
+            src={imageLines[viewerIndex].src}
             alt={`Attachment ${viewerIndex + 1}`}
             className="self-center max-w-full max-h-[85vh] rounded-lg"
           />

@@ -3,11 +3,12 @@ import { Edit2, X, ChevronLeft, ChevronRight, Star, Clock } from 'lucide-react';
 import { themeIcon } from '../themes';
 import { getWeekStart, addWeeks, getWeekKey, getWeekDates, isSameDay } from '../utils/weeks';
 import { getQuoteForDate } from '../quotes';
-import { getSign, getHoroscopeForDate } from '../horoscope';
+import { getSign, getHoroscopeForDate, getHoroscopeDetails } from '../horoscope';
 import PageShell from './PageShell';
+import Modal from './Modal';
 import useIsMobile from '../utils/useIsMobile';
 
-export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays, zodiacSign, risingSign }) {
+export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays, zodiacSign, risingSign, horoscopeOpen, setHoroscopeOpen }) {
   const AddIcon = themeIcon(theme, 'add');
   const RefreshIcon = themeIcon(theme, 'refresh');
   const [weekOffset, setWeekOffset] = useState(0);
@@ -503,13 +504,81 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                   </span>
                 </div>
 
-                <p className={`flex-1 min-h-0 overflow-y-auto text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                {/* На карточке только сводка; разбор по пунктам не влезает и
+                    уезжает на отдельный экран, как заметка */}
+                <p className={`flex-1 min-h-0 overflow-hidden text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                   {getHoroscopeForDate(sign.key, today, risingSign)}
                 </p>
+
+                <button
+                  onClick={() => setHoroscopeOpen(true)}
+                  className={`mt-2 flex-shrink-0 self-start text-xs font-medium press ${
+                    darkMode ? 'text-green-400' : 'text-green-700'
+                  }`}
+                >
+                  More →
+                </button>
               </div>
             );
           })()}
       </div>
+      {horoscopeOpen && (() => {
+        const sign = getSign(zodiacSign);
+        const rising = risingSign ? getSign(risingSign) : null;
+        const details = getHoroscopeDetails(sign.key, today, risingSign);
+        return (
+          <Modal
+            onClose={() => setHoroscopeOpen(false)}
+            size="md"
+            sheet
+            panelClassName={`h-[100dvh] sm:h-auto overflow-hidden rounded-none sm:rounded-xl border-0 sm:border shadow-xl ${
+              darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+            }`}
+          >
+            <div className={`flex items-center gap-2 p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h2 className={`flex-1 min-w-0 text-title truncate ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                {sign.symbol} {sign.label}
+                {rising && (
+                  <span className={`ml-2 text-xs font-medium uppercase tracking-wide ${mutedIcon}`}>
+                    {rising.symbol} {rising.label} rising
+                  </span>
+                )}
+              </h2>
+              <button
+                onClick={() => setHoroscopeOpen(false)}
+                title="Close"
+                aria-label="Close"
+                className={`p-2 sm:p-1 rounded press-icon flex-shrink-0 ${mutedIcon}`}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
+              <p className={`text-sm leading-relaxed ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                {details.summary}
+              </p>
+
+              {details.areas.map(area => (
+                <div key={area.key}>
+                  <h3 className={`text-section uppercase mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {area.title}
+                  </h3>
+                  <p className={`text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    {area.text}
+                  </p>
+                </div>
+              ))}
+
+              {/* Прямо говорим, что здесь расчёт, а что — текст дня */}
+              <p className={`text-xs pt-2 border-t ${darkMode ? 'border-gray-700 text-gray-500' : 'border-gray-200 text-gray-400'}`}>
+                Sun sign comes from the birth date{rising ? ', rising sign from birth time and place' : ''}.
+                The readings themselves are written by the app, not calculated from planets.
+              </p>
+            </div>
+          </Modal>
+        );
+      })()}
     </PageShell>
   );
 }

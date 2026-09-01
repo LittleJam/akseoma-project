@@ -36,6 +36,9 @@ export default function PersonalJira() {
   // Открытая заметка — часть адреса, а не внутреннее состояние списка:
   // так её закрывает системный «назад», а ссылка на заметку открывает именно её
   const [expandedNoteId, setExpandedNoteId] = useState(null);
+  // Подробный гороскоп открывается как заметка — своим адресом, чтобы его
+  // закрывал системный «назад»
+  const [horoscopeOpen, setHoroscopeOpen] = useState(false);
   // На телефоне боковая панель выезжает поверх содержимого, на широком экране всегда на месте
   // Кто вошёл и что разрешено обычному пользователю (админу — всё)
   const [user, setUser] = useState(null);
@@ -279,6 +282,7 @@ export default function PersonalJira() {
         }
 
         if (route.page === 'notes' && route.detail) setExpandedNoteId(route.detail);
+        if (route.page === 'weekly' && route.detail === 'horoscope') setHoroscopeOpen(true);
 
         if (route.page) {
           setCurrentPage(route.page);
@@ -449,16 +453,19 @@ export default function PersonalJira() {
     // открытая заметка
     const detail = currentPage === 'kanban'
       ? projects.find(p => p.id === currentProject)?.slug
-      : currentPage === 'notes' ? expandedNoteId : null;
+      : currentPage === 'notes' ? expandedNoteId
+      : currentPage === 'weekly' ? (horoscopeOpen ? 'horoscope' : null)
+      : null;
 
-    // Закрытие заметки не должно копить историю: иначе «назад» после закрытия
-    // открывало бы её снова. Открытие, наоборот, запись создаёт — ей и отвечает
-    // системный жест возврата
-    const closingNote = currentPage === 'notes' && lastDetail.current && !detail;
-    navigate(currentPage, detail, { replace: !routeSynced.current || closingNote });
+    // Закрытие не должно копить историю: иначе «назад» после закрытия открывало
+    // бы то же самое снова. Открытие, наоборот, запись создаёт — ей и отвечает
+    // системный жест возврата. Проект на доске так себя не ведёт: он не
+    // открывается и не закрывается, а всегда какой-то есть
+    const closingDetail = currentPage !== 'kanban' && lastDetail.current && !detail;
+    navigate(currentPage, detail, { replace: !routeSynced.current || closingDetail });
     lastDetail.current = detail;
     routeSynced.current = true;
-  }, [currentPage, currentProject, projects, expandedNoteId, loading]);
+  }, [currentPage, currentProject, projects, expandedNoteId, horoscopeOpen, loading]);
 
   // Адрес → состояние: «назад» и «вперёд» в браузере, а в установленном PWA —
   // системная кнопка «назад» на Android и свайп от края на iOS
@@ -467,6 +474,7 @@ export default function PersonalJira() {
     if (route.page) setCurrentPage(route.page);
     // Заметка открыта ровно тогда, когда её id стоит в адресе
     setExpandedNoteId(route.page === 'notes' ? route.detail : null);
+    setHoroscopeOpen(route.page === 'weekly' && route.detail === 'horoscope');
     const target = route.page === 'kanban' && route.detail && projects.find(p => p.slug === route.detail);
     if (target) setCurrentProject(target.id);
   }), [projects]);
@@ -1140,21 +1148,6 @@ export default function PersonalJira() {
         : n
     )));
 
-  // Прикрепить картинки к заметке (уже сжатые в data URL)
-  const addNoteImages = (noteId, images) => {
-    if (!images.length) return;
-    const note = notes.find(n => n.id === noteId);
-    if (!note) return;
-    stampNote(noteId, { images: [...(note.images || []), ...images] });
-  };
-
-  // Убрать одну картинку из заметки
-  const deleteNoteImage = (noteId, index) => {
-    const note = notes.find(n => n.id === noteId);
-    if (!note) return;
-    stampNote(noteId, { images: (note.images || []).filter((_, i) => i !== index) });
-  };
-
   // Покрасить заметку (updatedAt не меняем — это оформление, а не содержимое)
   const setNoteColor = (noteId, color) => {
     saveNotes(notes.map(n => (n.id === noteId ? { ...n, color } : n)));
@@ -1357,6 +1350,8 @@ export default function PersonalJira() {
           weekDays={weekDays}
           zodiacSign={zodiacSign}
           risingSign={risingSign}
+          horoscopeOpen={horoscopeOpen}
+          setHoroscopeOpen={setHoroscopeOpen}
         />
       ) : currentPage === 'notes' ? (
         <Notes
@@ -1367,8 +1362,6 @@ export default function PersonalJira() {
           updateNoteLines={updateNoteLines}
           updateNoteTitle={updateNoteTitle}
           setNoteColor={setNoteColor}
-          addNoteImages={addNoteImages}
-          deleteNoteImage={deleteNoteImage}
           deleteNote={deleteNote}
           toggleNoteBlur={toggleNoteBlur}
           reorderNotes={reorderNotes}

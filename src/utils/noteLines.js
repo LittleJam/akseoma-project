@@ -7,8 +7,15 @@
 export const LINE_TEXT = 'text';
 export const LINE_TODO = 'todo';
 export const LINE_BULLET = 'bullet';
+// Картинка — такая же строка заметки, как текст или пункт. Раньше вложения
+// лежали отдельным полем images и показывались сеткой внизу: вставить снимок
+// между двумя абзацами было некуда, он всё равно уезжал в конец
+export const LINE_IMAGE = 'image';
 
 export const isListLine = line => line.type === LINE_TODO || line.type === LINE_BULLET;
+export const isImageLine = line => line.type === LINE_IMAGE;
+// Строки, в которых стоит курсор и которые можно печатать
+export const isTextual = line => !isImageLine(line);
 
 // Счётчик добавлен к времени: строки нередко появляются пачкой в один
 // миллисекундный тик (перенос списка, разбиение абзаца), и Date.now() сам по
@@ -41,7 +48,16 @@ export const getNoteLines = (note) => {
     checked: !!item.checked
   }));
 
-  const lines = [...textLines, ...itemLines];
+  // Старые вложения встают в конец: где именно они были задуманы, из прежней
+  // формы не восстановить — там у них не было места в тексте
+  const imageLines = (note?.images || []).map((src, index) => ({
+    id: `legacy-image-${index}`,
+    type: LINE_IMAGE,
+    text: '',
+    src
+  }));
+
+  const lines = [...textLines, ...itemLines, ...imageLines];
   return lines.length ? lines : [emptyLine()];
 };
 
