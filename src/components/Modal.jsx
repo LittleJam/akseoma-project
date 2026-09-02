@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useBackClose } from '../utils/backClose';
 
 // Общее окно поверх страницы. Всё, что раньше было написано по-разному
 // в каждом окне, задано здесь один раз: затемнение, слой, центрирование,
@@ -21,11 +22,17 @@ export default function Modal({
   sheet = false,
   closeOnEsc = true,          // выключается там, где окно закрывает слои по одному
   closeOnBackdrop = true,
+  // Закрывать ли окно системным «назад». Выключается там, где окно и так живёт
+  // в адресе (открытая заметка, гороскоп): там запись в истории уже есть
+  backCloses = true,
   overlayProps = {},          // например, обработчики перетаскивания файлов
   overlayClassName = '',
   panelClassName = '',
   children
 }) {
+  // Системный «назад» на телефоне закрывает окно — как Escape на клавиатуре
+  useBackClose(backCloses && Boolean(onClose), onClose);
+
   useEffect(() => {
     if (!closeOnEsc || !onClose) return;
     const handleKeyDown = e => { if (e.key === 'Escape') onClose(); };

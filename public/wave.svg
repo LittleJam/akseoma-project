@@ -1,14 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <defs>
-    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#14b8a6"/>
-      <stop offset="1" stop-color="#14532d"/>
-    </linearGradient>
-  </defs>
-  <rect width="32" height="32" rx="7" fill="url(#sea)"/>
-  <g fill="none" stroke="#fff" stroke-linecap="round">
-    <path d="M0 13c4 0 4-4.5 8-4.5s4 4.5 8 4.5 4-4.5 8-4.5 4 4.5 8 4.5" stroke-width="2" stroke-opacity=".3"/>
-    <path d="M0 20c4 0 4-4.5 8-4.5s4 4.5 8 4.5 4-4.5 8-4.5 4 4.5 8 4.5" stroke-width="2.8"/>
-    <path d="M0 27c4 0 4-4.5 8-4.5s4 4.5 8 4.5 4-4.5 8-4.5 4 4.5 8 4.5" stroke-width="2.2" stroke-opacity=".5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Знак приложения: галочка над волной — ровно то, что написано на вывеске,
+       «Surf the Task». Без градиентов и теней: иконка живёт и в 16px во вкладке,
+       и там от них остаётся только грязь. Зелёный тот же, что у строки состояния
+       (theme_color), поэтому на телефоне иконка и шапка приложения одного тона.
+       Отсюда же собраны png для установленного приложения (иконка iOS и
+       maskable — из icon-maskable.svg, там фон без скруглений):
+       rsvg-convert -w 192 -h 192 public/wave.svg -o public/icon-192.png
+       rsvg-convert -w 512 -h 512 public/wave.svg -o public/icon-512.png -->
+  <rect width="512" height="512" rx="112" fill="#166534"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Задача: галочка размашистая, чтобы читалась первой -->
+    <path d="M188 198l46 46 90-104" stroke-width="46"/>
+    <!-- Волна под ней: одна линия в два гребня; больше линий в мелком размере
+         слипаются в полоску -->
+    <path d="M96 366c40 0 40-60 80-60s40 60 80 60 40-60 80-60 40 60 80 60" stroke-width="34"/>
   </g>
 </svg>

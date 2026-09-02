@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, X, ChevronLeft, ChevronRight, Star, Clock } from 'lucide-react';
+import { Edit2, X, ChevronLeft, ChevronRight, Star, Clock, CalendarPlus } from 'lucide-react';
 import { themeIcon } from '../themes';
 import { getWeekStart, addWeeks, getWeekKey, getWeekDates, isSameDay } from '../utils/weeks';
 import { getQuoteForDate } from '../quotes';
+import { buildWeekIcs, downloadIcs, timedWeekTasks } from '../utils/ics';
 import { getSign, getHoroscopeForDate, getHoroscopeDetails } from '../horoscope';
 import PageShell from './PageShell';
 import Modal from './Modal';
@@ -187,9 +188,32 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
       : 'border-gray-200 text-gray-600 hover:bg-gray-100'
   }`;
 
+  // Выгрузка недели в родной календарь. Уходят только задачи с временем —
+  // остальные строки дня для сетки календаря не события
+  const timedTasks = timedWeekTasks({ weekTasks, weekDays, weekDates });
+
+  const exportWeekToCalendar = () => {
+    const ics = buildWeekIcs({ weekKey, weekTasks, weekDays, weekDates });
+    if (ics) downloadIcs(`schedule-${weekKey}.ics`, ics);
+  };
+
   // Листание недель — действия страницы, поэтому уезжают в шапку каркаса рядом с заголовком
   const weekNav = (
     <>
+      <button
+        onClick={exportWeekToCalendar}
+        disabled={timedTasks.length === 0}
+        title={
+          timedTasks.length
+            ? `Add ${timedTasks.length} timed task${timedTasks.length > 1 ? 's' : ''} to the calendar (.ics)`
+            : 'No tasks with time on this week'
+        }
+        aria-label="Add week to calendar"
+        className={`${navButtonClass} mr-1 ${timedTasks.length === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+      >
+        <CalendarPlus size={16} />
+      </button>
+
       <button
         onClick={() => setWeekOffset(prev => prev - 1)}
         title="Previous week"
@@ -245,7 +269,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
 
   return (
     <PageShell darkMode={darkMode} title="Schedule" actions={weekNav} subheader={quoteLine}>
-      <div className="grid grid-cols-1 cards:grid-cols-2 wide:grid-cols-4 wide:grid-rows-2 gap-3 sm:gap-4 w-full">
+      <div className="grid grid-cols-1 cards:grid-cols-2 wide:grid-cols-4 wide:grid-rows-2 gap-4 w-full">
           {/* Гороскоп стоит первым, до понедельника: он про сегодня, а не про
               день недели, и читают его раньше, чем разбирают дела. Восьмой
               карточкой сетка складывается в ровные 4×2 на широком экране.
@@ -257,12 +281,12 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
             const moon = moonSign ? getSign(moonSign) : null;
             return (
               <div
-                className={`rounded-lg p-3 sm:p-4 flex flex-col h-auto sm:h-day-card min-h-0 min-w-0 border ${
+                className={`rounded-lg p-2.5 sm:p-4 flex flex-col h-auto sm:h-day-card min-h-0 min-w-0 border ${
                   darkMode ? 'border-gray-800 bg-gray-800/60' : 'border-gray-200 bg-white'
                 }`}
               >
-                <div className="mb-4 flex-shrink-0 flex items-baseline gap-2 min-w-0">
-                  <span className={`text-lg font-semibold truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                <div className="mb-2 sm:mb-4 flex-shrink-0 flex items-baseline gap-2 min-w-0">
+                  <span className={`text-base sm:text-lg font-semibold truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                     {sign.symbol} {sign.label}
                   </span>
                   <span className={`text-xs font-medium uppercase tracking-wide truncate ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
@@ -312,7 +336,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                 /* Ровные карточки нужны сетке: в четыре колонки разнобой высот
                    выглядел бы рваным. На телефоне колонка одна, и фиксированные
                    315px превращались бы в пустоту под парой дел */
-                className={`rounded-lg p-3 sm:p-4 flex flex-col h-auto sm:h-day-card min-h-0 min-w-0 border transition duration-150 ${
+                className={`rounded-lg p-2.5 sm:p-4 flex flex-col h-auto sm:h-day-card min-h-0 min-w-0 border transition duration-150 ${
                   isToday
                     ? darkMode ? 'border-green-700 bg-green-950/40' : 'border-green-200 bg-green-50'
                     : darkMode ? 'border-gray-800 bg-gray-800/60' : 'border-gray-200 bg-white'
@@ -321,8 +345,8 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                 }`}
               >
                 {/* День недели и дата — одной строкой */}
-                <div className="mb-4 flex-shrink-0 flex items-baseline gap-2 min-w-0">
-                  <span className={`text-lg font-semibold truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                <div className="mb-2 sm:mb-4 flex-shrink-0 flex items-baseline gap-2 min-w-0">
+                  <span className={`text-base sm:text-lg font-semibold truncate ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                     {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                   <span className={`text-xs font-medium uppercase tracking-wide truncate ${
@@ -334,7 +358,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                   </span>
                 </div>
 
-                <div className="space-y-1 mb-3 flex-1 min-h-0 overflow-y-auto">
+                <div className="space-y-0.5 sm:space-y-1 mb-2 sm:mb-3 flex-1 min-h-0 overflow-y-auto">
                   {weekTasks[day]?.map((task, taskIndex) => {
                     const isEditingThis = editingItem?.day === day && editingItem?.taskId === task.id;
                     const isLastTask = taskIndex === weekTasks[day].length - 1;
@@ -348,7 +372,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                       onDragOver={e => handleTaskDragOver(e, day, taskIndex)}
                       onDrop={e => handleTaskDrop(e, day, taskIndex)}
                       title="Drag to reorder or to another day"
-                      className={`relative flex items-start gap-1.5 py-1.5 min-w-0 group rounded transition duration-150 ${
+                      className={`relative flex items-start gap-1.5 py-1 sm:py-1.5 min-w-0 group rounded transition duration-150 ${
                         isEditingThis ? '' : 'cursor-grab active:cursor-grabbing'
                       } ${
                         draggedTask?.taskId === task.id ? 'opacity-40' : ''
@@ -541,6 +565,8 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
             onClose={() => setHoroscopeOpen(false)}
             size="md"
             sheet
+            /* Гороскоп — свой адрес, запись в истории у него уже есть */
+            backCloses={false}
             panelClassName={`h-[100dvh] sm:h-auto overflow-hidden rounded-none sm:rounded-xl border-0 sm:border shadow-xl ${
               darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
             }`}

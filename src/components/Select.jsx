@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useBackClose } from '../utils/backClose';
 import { ChevronDown, Check, Search } from 'lucide-react';
 
 // Свой выпадающий список вместо системного: и поле, и раскрытый список рисуем сами,
@@ -19,6 +20,10 @@ export default function Select({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [query, setQuery] = useState('');
+
+  // Раскрытый список — верхний слой, и системный «назад» закрывает его,
+  // а не уводит со страницы
+  useBackClose(open, () => setOpen(false));
   const rootRef = useRef(null);
   const searchRef = useRef(null);
 

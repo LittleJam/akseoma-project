@@ -247,8 +247,13 @@ export default function KanbanBoard({
           {currentProject && isMobile && activeColumn && (
             <div className="min-h-full flex flex-col">
               {/* Переключатель липнет к верху: пролистав длинную колонку вниз,
-                  перейти в соседнюю нужно там же, где стоишь, а не в начале */}
-              <div className="column-header sticky top-0 z-20 -mx-6 px-6 py-2 flex gap-2 overflow-x-auto">
+                  перейти в соседнюю нужно там же, где стоишь, а не в начале.
+                  Ряд умещается в экран целиком и никуда не прокручивается:
+                  боковая прокрутка в шапке борда читалась как ещё один слой,
+                  который надо разглядывать. Название носит только выбранная
+                  колонка, остальные — точка цвета и число задач; на них и так
+                  смотрят как на «сколько осталось справа» */}
+              <div className="column-header sticky top-0 z-20 -mx-6 px-6 py-2 flex gap-1.5">
                 {columns.map(column => {
                   const count = visibleTasks(tasks[currentProject]?.[column.id]).length;
                   const active = column.id === activeColumn.id;
@@ -258,7 +263,11 @@ export default function KanbanBoard({
                       key={column.id}
                       onClick={() => setActiveColumnId(column.id)}
                       aria-pressed={active}
-                      className={`flex-shrink-0 h-control flex items-center gap-1.5 px-3 text-xs rounded-full border press ${
+                      title={`${column.title} (${count})`}
+                      aria-label={`${column.title} (${count})`}
+                      className={`h-control min-w-0 flex items-center justify-center gap-1.5 text-xs rounded-full border press ${
+                        active ? 'flex-1 px-3' : 'px-2.5'
+                      } ${
                         active
                           ? darkMode
                             ? 'border-green-700 bg-gray-800 text-green-400'
@@ -269,8 +278,8 @@ export default function KanbanBoard({
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
-                      <span className="whitespace-nowrap">{column.title}</span>
-                      <span className="opacity-60">{count}</span>
+                      {active && <span className="truncate">{column.title}</span>}
+                      <span className="opacity-60 flex-shrink-0">{count}</span>
                     </button>
                   );
                 })}

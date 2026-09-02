@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Тот же знак для maskable-иконки Android. Отличий два: фон без скруглений
+       (форму вырежет сама система — круг, каплю или квадрат) и знак ужат к
+       центру до 72%, чтобы целиком попасть в безопасную зону — круг в 80%
+       ширины. Отсюда же собрана иконка для iOS: она тоже не терпит прозрачных
+       углов — систему скругляет их сама, а под ними оказалась бы чернота.
+       rsvg-convert -w 512 -h 512 public/icon-maskable.svg -o public/icon-maskable-512.png
+       rsvg-convert -w 180 -h 180 public/icon-maskable.svg -o public/apple-touch-icon.png -->
+  <rect width="512" height="512" fill="#166534"/>
+  <g transform="translate(256 256) scale(0.72) translate(-256 -256)"
+     fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M188 198l46 46 90-104" stroke-width="46"/>
+    <path d="M96 366c40 0 40-60 80-60s40 60 80 60 40-60 80-60 40 60 80 60" stroke-width="34"/>
+  </g>
+</svg>

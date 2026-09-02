@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Check, Plus } from 'lucide-react';
+import { useBackClose } from '../utils/backClose';
 
 // Выбор проекта для телефона. На десктопе эту работу делает список в сайдбаре,
 // но там его нет, и без переключателя борд оказался бы заперт в одном проекте.
@@ -10,6 +11,10 @@ export default function ProjectPicker({ darkMode, projects, currentProject, onSe
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const rootRef = useRef(null);
+
+  // Системный «назад» закрывает список, а не уводит с борда: раскрытый
+  // переключатель — такой же верхний слой, как окно
+  useBackClose(open, () => setOpen(false));
 
   // Закрытие по касанию мимо списка. pointerdown, а не click: по клику список
   // успевал бы закрыться раньше, чем сработает выбор внутри него
