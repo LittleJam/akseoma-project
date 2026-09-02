@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Tide — вариант иконки приложения, выбирается в Settings → App icon.
+       Скругления здесь: этот файл идёт в фавиконку вкладки и в png «any».
+       rsvg-convert -w 192 -h 192 public/icons/tide.svg -o public/icons/tide-192.png
+       rsvg-convert -w 512 -h 512 public/icons/tide.svg -o public/icons/tide-512.png -->
+  <rect width="512" height="512" rx="112" fill="#0f8fa3"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M96 286c40 0 40-60 80-60s40 60 80 60 40-60 80-60 40 60 80 60" stroke-width="42"/>
+  </g>
+</svg>

@@ -688,13 +688,15 @@ html.theme-handwriting h3 {
   line-height: 1.25;
 }
 
-/* Полотно страницы прозрачное — сквозь него видна линейка листа */
+/* Полотно страницы прозрачное — сквозь него виден сам лист */
 html.theme-handwriting .bg-gray-50 {
   background-color: transparent;
 }
 
+/* Карточки и панели почти прозрачны: бумага должна читаться под всем, а не
+   только на полях. Плотнее — и светотень складок под ними пропадала */
 html.theme-handwriting .bg-white {
-  background-color: rgba(255, 253, 247, 0.9);
+  background-color: rgba(255, 253, 247, 0.62);
   box-shadow: none;
 }
 
@@ -716,7 +718,8 @@ html.theme-handwriting .animate-toast-in {
   box-shadow: none;
 }
 
-/* Активный пункт кладём поверх бумаги плотно — иначе сквозь него просвечивает линейка.
+/* Активный пункт кладём поверх бумаги плотно: он должен читаться как отметка
+   чернилами, а не как ещё одно пятно на листе.
    bg-green-50 не трогаем: этим же классом покрашены зелёные заметки */
 html.theme-handwriting .bg-green-100 {
   background-color: #e8edf9;
@@ -840,7 +843,9 @@ html.theme-handwriting .press-icon:hover {
   filter: none;
 }
 
-/* Лист в линейку с полем слева — рисуется компонентом ThemeFx */
+/* Лист бумаги — рисуется компонентом ThemeFx. Линейки убраны: текст в теме
+   рукописный, и своя разлиновка почти никогда не совпадала с его строками,
+   получалась вторая сетка поперёк первой. Осталась сама бумага */
 .fx-paper {
   position: fixed;
   inset: 0;
@@ -849,8 +854,6 @@ html.theme-handwriting .press-icon:hover {
   /* Тон листа повторяем здесь, а не только на body: светотень мятой бумаги
      ниже подмешивается умножением, а умножать ей надо по чему-то */
   background-color: var(--hw-paper, #faf6ec);
-  background-image:
-    repeating-linear-gradient(180deg, transparent 0 31px, var(--hw-rule) 31px 32px);
 }
 
 /* Лист не идеально ровный: страницу когда-то смяли и разгладили. Складки —
@@ -865,8 +868,9 @@ html.theme-handwriting .press-icon:hover {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='crumple' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.01' numOctaves='4' seed='11' stitchTiles='stitch' result='noise'/%3E%3CfeDiffuseLighting in='noise' lighting-color='%23ffffff' surfaceScale='2.4'%3E%3CfeDistantLight azimuth='235' elevation='62'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='500' height='500' filter='url(%23crumple)'/%3E%3C/svg%3E");
   background-size: 500px 500px;
   mix-blend-mode: multiply;
-  /* «Чуть помятая»: выше 0.5 складки начинают читаться как грязь на листе */
-  opacity: 0.38;
+  /* «Чуть помятая»: выше 0.55 складки начинают читаться как грязь на листе.
+     Без линеек лист пустее, и складки можно дать чуть заметнее */
+  opacity: 0.45;
 }
 
 /* ═══ MILLENIAL ═══ Windows XP, 2001: Luna-синий, бежевые панели, Tahoma,

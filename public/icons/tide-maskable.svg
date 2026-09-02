@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Tide, maskable: фон без скруглений (форму вырежет система) и знак
+       ужат к центру до 72%, чтобы попасть в безопасную зону — круг в 80%
+       ширины. Отсюда же иконка для iOS: прозрачных углов она не терпит.
+       rsvg-convert -w 512 -h 512 public/icons/tide-maskable.svg -o public/icons/tide-maskable-512.png
+       rsvg-convert -w 180 -h 180 public/icons/tide-maskable.svg -o public/icons/tide-180.png -->
+  <rect width="512" height="512" fill="#0f8fa3"/>
+  <g transform="translate(256 256) scale(0.72) translate(-256 -256)" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M96 286c40 0 40-60 80-60s40 60 80 60 40-60 80-60 40 60 80 60" stroke-width="42"/>
+  </g>
+</svg>

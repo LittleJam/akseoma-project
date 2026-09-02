@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Board — вариант иконки приложения, выбирается в Settings → App icon.
+       Скругления здесь: этот файл идёт в фавиконку вкладки и в png «any».
+       rsvg-convert -w 192 -h 192 public/icons/board.svg -o public/icons/board-192.png
+       rsvg-convert -w 512 -h 512 public/icons/board.svg -o public/icons/board-512.png -->
+  <rect width="512" height="512" rx="112" fill="#1f2937"/>
+  <g fill="#ffffff">
+    <rect x="120" y="150" width="60" height="212" rx="30"/>
+    <rect x="226" y="196" width="60" height="166" rx="30"/>
+    <rect x="332" y="242" width="60" height="120" rx="30"/>
+  </g>
+</svg>

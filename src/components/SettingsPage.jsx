@@ -5,6 +5,7 @@ import { THEME_OPTIONS } from '../themes';
 import { FEATURES, DEFAULT_FLAGS } from '../auth';
 import Select from './Select';
 import SettingsSection from './SettingsSection';
+import { APP_ICONS } from '../utils/appIcon';
 import { ZODIAC, getSign, DEFAULT_SIGN, guessUtcOffset, offsetForZone } from '../horoscope';
 import PageShell from './PageShell';
 
@@ -12,6 +13,8 @@ export default function SettingsPage({
   darkMode,
   theme,
   setTheme,
+  appIcon,
+  setAppIcon,
   user,
   allowed = () => true,
   featureFlags = DEFAULT_FLAGS,
@@ -227,11 +230,47 @@ export default function SettingsPage({
                 : theme === 'millenial'
                   ? 'Millenial: Windows XP, 2001 — Luna blue, Tahoma and beveled buttons.'
                   : theme === 'handwriting'
-                    ? 'Handwriting: a paper notebook — ruled sheet, ink and hand-drawn frames.'
+                    ? 'Handwriting: a paper notebook — a creased sheet, ink and hand-drawn frames.'
                     : 'Wizard is Hogwarts at night, Surf is the ocean, Millenial is Windows XP, Handwriting is a notebook.'}
           </p>
         </div>
         )}
+
+        {/* Иконка приложения. Вариантов немного и каждый — свой манифест:
+            список icons в манифесте статичен, подменять его на ходу нечем */}
+        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
+          <h3 className={`text-section uppercase mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            App icon
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {APP_ICONS.map(({ id, label, hint, preview }) => {
+              const active = appIcon === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setAppIcon(id)}
+                  title={hint}
+                  aria-pressed={active}
+                  className={`flex items-center gap-2 pl-2 pr-4 py-2 rounded-lg font-medium border press ${
+                    active
+                      ? 'border-green-600 text-green-600'
+                      : darkMode
+                        ? 'border-gray-700 text-gray-300 hover:bg-gray-700'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {/* Показываем сам файл иконки, а не её описание словами */}
+                  <img src={preview} alt="" width="28" height="28" className="w-7 h-7 rounded-md flex-shrink-0" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <p className={`text-xs mt-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            The browser tab changes right away. The installed app picks the icon up on a next
+            launch on Android; on iOS add the app to the home screen again.
+          </p>
+        </div>
 
         {/* Sync — полная картина здесь; в сайдбаре остаются только проблемы */}
         {allowed('sync') && (

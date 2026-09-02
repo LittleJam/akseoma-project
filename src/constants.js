@@ -37,7 +37,8 @@ export const STORAGE_KEYS = [
   'jira-zodiac',
   'jira-starter-notes',
   'jira-currentProject',
-  'jira-currentPage'
+  'jira-currentPage',
+  'jira-app-icon'
 ];
 
 // Цвета заметок. Тинты намеренно бледные: цвет помечает заметку, а не забивает

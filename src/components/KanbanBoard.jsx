@@ -107,14 +107,12 @@ export default function KanbanBoard({
       ) : (projects.find(p => p.id === currentProject)?.name || '')}
       flushTop
       subheader={currentProject && (
-            /* Добавление и фильтры. На десктопе — одна строка с переносом, она
-               есть всегда: без неё в пустом проекте не с чего было бы начать.
-               На телефоне строки две, поле ввода в своей. В общей оно ужималось
-               каждый раз, когда появлялась кнопка или разворачивались лейблы:
-               flex-1 отдаёт им место у себя. Обёртки строк на десктопе снимает
-               sm:contents — там раскладка ровно прежняя */
-            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
-              <div className="flex items-center gap-2 sm:contents">
+            /* Добавление и фильтры одной строкой с переносом. Строка есть
+               всегда: без неё в пустом проекте не с чего было бы начать.
+               Поле ввода занимает остаток строки (flex-1 при базе 8rem):
+               кнопки и значки фильтров встают справа от него, а развёрнутые
+               лейблы переходят на следующую строку */
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 type="text"
                 value={draft}
@@ -125,9 +123,9 @@ export default function KanbanBoard({
                 }}
                 placeholder={`New task in ${columns[0]?.title || ''}...`}
                 aria-label="New task title"
-                /* На телефоне поле тянется по ширине экрана, на десктопе имеет
-                   свой размер: там строка делится ещё и с фильтрами */
-                className={`h-control flex-1 min-w-0 sm:flex-none sm:w-[30rem] px-4 text-body rounded-lg border focus:outline-none focus:border-green-500 ${
+                /* На телефоне поле забирает остаток строки, на десктопе имеет
+                   свой размер: там ширины хватает и полю, и фильтрам */
+                className={`h-control flex-1 basis-32 min-w-0 sm:flex-none sm:basis-auto sm:w-[30rem] px-4 text-body rounded-lg border focus:outline-none focus:border-green-500 ${
                   darkMode
                     ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
                     : 'bg-white border-gray-300 placeholder-gray-400'
@@ -143,9 +141,7 @@ export default function KanbanBoard({
                     ширину у поля, ради которого строка и существует */}
                 <Plus size={16} /> <span className="hidden sm:inline">Task</span>
               </button>
-              </div>
 
-              <div className="flex items-center gap-2 flex-wrap sm:contents">
               {/* Одна кнопка сортирует по важности сразу все колонки */}
               {projectTasks.length > 1 && (
                 <button
@@ -154,7 +150,7 @@ export default function KanbanBoard({
                   aria-label="Sort all columns by priority"
                   /* На телефоне от кнопок фильтров остаются значки: подписи
                      занимали строку, которой и так впритык */
-                  className={`h-control flex items-center gap-1.5 px-3 sm:px-3.5 text-xs rounded-full border press ${
+                  className={`h-control flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-3.5 text-xs rounded-full border press ${
                     darkMode
                       ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
                       : 'border-gray-200 text-gray-600 hover:bg-gray-100'
@@ -171,7 +167,7 @@ export default function KanbanBoard({
                   title={onlyLiked ? 'Show all tasks' : 'Show only liked tasks'}
                   aria-pressed={onlyLiked}
                   aria-label={onlyLiked ? 'Show all tasks' : 'Show only liked tasks'}
-                  className={`h-control flex items-center gap-1.5 px-3 sm:px-3.5 text-xs rounded-full border press ${
+                  className={`h-control flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-3.5 text-xs rounded-full border press ${
                     onlyLiked
                       ? 'border-rose-500 text-rose-500'
                       : darkMode
@@ -194,7 +190,7 @@ export default function KanbanBoard({
                   }}
                   title={showLabels ? 'Hide labels' : 'Show labels'}
                   aria-label={showLabels ? 'Hide labels' : 'Show labels'}
-                  className={`h-control flex items-center gap-1.5 px-3 sm:px-3.5 text-xs rounded-full border press ${
+                  className={`h-control flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-3.5 text-xs rounded-full border press ${
                     showLabels
                       ? darkMode
                         ? 'border-green-700 text-green-400'
@@ -234,7 +230,6 @@ export default function KanbanBoard({
                   <X size={12} /> Clear
                 </button>
               )}
-              </div>
             </div>
       )}
     >
@@ -248,12 +243,11 @@ export default function KanbanBoard({
             <div className="min-h-full flex flex-col">
               {/* Переключатель липнет к верху: пролистав длинную колонку вниз,
                   перейти в соседнюю нужно там же, где стоишь, а не в начале.
-                  Ряд умещается в экран целиком и никуда не прокручивается:
-                  боковая прокрутка в шапке борда читалась как ещё один слой,
-                  который надо разглядывать. Название носит только выбранная
-                  колонка, остальные — точка цвета и число задач; на них и так
-                  смотрят как на «сколько осталось справа» */}
-              <div className="column-header sticky top-0 z-20 -mx-6 px-6 py-2 flex gap-1.5">
+                  Названия у всех колонок, но ряд никуда не прокручивается: не
+                  уместившиеся кнопки переходят на вторую строку. Боковая
+                  прокрутка в шапке борда читалась как ещё один слой, который
+                  надо разглядывать, а безымянные кнопки — как ребус */}
+              <div className="column-header sticky top-0 z-20 -mx-6 px-6 py-2 flex flex-wrap gap-1.5">
                 {columns.map(column => {
                   const count = visibleTasks(tasks[currentProject]?.[column.id]).length;
                   const active = column.id === activeColumn.id;
@@ -265,9 +259,7 @@ export default function KanbanBoard({
                       aria-pressed={active}
                       title={`${column.title} (${count})`}
                       aria-label={`${column.title} (${count})`}
-                      className={`h-control min-w-0 flex items-center justify-center gap-1.5 text-xs rounded-full border press ${
-                        active ? 'flex-1 px-3' : 'px-2.5'
-                      } ${
+                      className={`h-control min-w-0 flex-shrink-0 flex items-center justify-center gap-1.5 px-3 text-xs rounded-full border press ${
                         active
                           ? darkMode
                             ? 'border-green-700 bg-gray-800 text-green-400'
@@ -278,7 +270,7 @@ export default function KanbanBoard({
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
-                      {active && <span className="truncate">{column.title}</span>}
+                      <span className="truncate">{column.title}</span>
                       <span className="opacity-60 flex-shrink-0">{count}</span>
                     </button>
                   );

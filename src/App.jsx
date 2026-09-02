@@ -6,6 +6,7 @@ import { loadRemoteState, saveRemoteState } from './utils/supabaseStorage';
 import { DEFAULT_COLUMNS, WEEK_DAYS, STORAGE_KEYS } from './constants';
 import { DARK_THEMES, THEME_COLORS } from './themes';
 import { parseLocation, navigate, onRouteChange } from './utils/router';
+import { applyAppIcon, DEFAULT_APP_ICON } from './utils/appIcon';
 import { AUTH_KEY, FLAGS_KEY, DEFAULT_FLAGS, PAGE_FEATURES, canUse } from './auth';
 import { getWeekKey } from './utils/weeks';
 import { DEFAULT_SIGN, getNatalChart } from './horoscope';
@@ -57,6 +58,16 @@ export default function PersonalJira() {
   // про darkMode — тёмная она или светлая, — а характер темы накручивается сверху в CSS
   const [theme, setTheme] = useState('light');
   const darkMode = DARK_THEMES.includes(theme);
+  // Иконка приложения. Хранится только на устройстве и в облако не уезжает:
+  // на телефоне и на ноутбуке иконка стоит на разных экранах, и выбор там
+  // разумно иметь разный
+  const [appIcon, setAppIcon] = useState(() => {
+    try {
+      return localStorage.getItem('jira-app-icon') || DEFAULT_APP_ICON;
+    } catch {
+      return DEFAULT_APP_ICON;
+    }
+  });
   const [editingProjectId, setEditingProjectId] = useState(null);
   const [editingProjectName, setEditingProjectName] = useState('');
   const [currentPage, setCurrentPage] = useState('kanban');
@@ -460,6 +471,19 @@ export default function PersonalJira() {
     if (loading) return;
     safeSetItem('jira-starter-notes', JSON.stringify(starterNotes));
   }, [starterNotes, loading]);
+
+  // Выбранная иконка: переставляем ссылки в <head> и запоминаем выбор.
+  // applyAppIcon возвращает применённый вариант — сохранённый мог остаться от
+  // варианта, которого в списке уже нет
+  useEffect(() => {
+    const applied = applyAppIcon(appIcon);
+    try {
+      localStorage.setItem('jira-app-icon', applied);
+    } catch {
+      // Приватный режим и переполненное хранилище иконке не помеха
+    }
+    if (applied !== appIcon) setAppIcon(applied);
+  }, [appIcon]);
 
   // Сохранение темы
   useEffect(() => {
@@ -1445,6 +1469,8 @@ export default function PersonalJira() {
           darkMode={darkMode}
           theme={theme}
           setTheme={setTheme}
+          appIcon={appIcon}
+          setAppIcon={setAppIcon}
           user={user}
           allowed={allowed}
           featureFlags={featureFlags}

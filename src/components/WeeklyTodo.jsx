@@ -269,7 +269,10 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
 
   return (
     <PageShell darkMode={darkMode} title="Schedule" actions={weekNav} subheader={quoteLine}>
-      <div className="grid grid-cols-1 cards:grid-cols-2 wide:grid-cols-4 wide:grid-rows-2 gap-4 w-full">
+      {/* На телефоне сетка с отступом по бокам: карточка дня встаёт ровно той
+          же ширины, что задача на борде — та лежит внутри колонки и потому
+          отступает от края экрана на те же 16px */}
+      <div className="grid grid-cols-1 cards:grid-cols-2 wide:grid-cols-4 wide:grid-rows-2 gap-4 w-full px-4 sm:px-0">
           {/* Гороскоп стоит первым, до понедельника: он про сегодня, а не про
               день недели, и читают его раньше, чем разбирают дела. Восьмой
               карточкой сетка складывается в ровные 4×2 на широком экране.
