@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Volume2, VolumeX, SkipForward } from 'lucide-react';
-import { CHILL_BADGE, themeIcon } from '../themes';
 import PageShell from './PageShell';
+import LungsIcon from './LungsIcon';
 
 const DURATION = 15 * 60;
 
@@ -12,6 +12,21 @@ const TRACKS = [
   { id: 'JdqL89ZZwFw', label: 'Lo-fi 2' },
   { id: 'HRCfnvxpYP8', label: 'Lo-fi 3' }
 ];
+
+// Фазы дыхания по кругу, по четыре секунды на каждую: вдох слева, задержка
+// сверху, выдох справа и снова задержка снизу. start — секунда, на которой
+// фаза начинается; из неё же считаются задержки подсветки слова и счёта,
+// поэтому подписи, счёт и лёгкие идут одним циклом и не расходятся
+const PHASES = [
+  { side: 'left', word: 'inhale', start: 0 },
+  { side: 'top', word: 'hold', start: 4 },
+  { side: 'right', word: 'exhale', start: 8 },
+  // Круг идёт по часовой, и низ читается справа налево: там счёт стоит задом
+  // наперёд, «4 3 2 hold», чтобы фаза начиналась с той стороны, откуда пришла
+  { side: 'bottom', word: 'hold', start: 12, mirrored: true }
+];
+const CYCLE = 16;
+const COUNTS = [2, 3, 4];
 
 const MUSIC_KEY = 'jira-chill-music';
 const today = () => new Date().toDateString();
@@ -186,53 +201,69 @@ export default function ChillTimer({ darkMode, theme }) {
     setRunning(prev => !prev);
   };
 
-  // По периметру квадрата ходит талисман темы: сова в Wizard, рыба в Surf,
-  // скрепка в Handwriting — тот же значок, что тема ставит везде
-  const BreathMarker = themeIcon(theme, 'mascot');
-
   const minutes = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
   const seconds = (secondsLeft % 60).toString().padStart(2, '0');
 
   return (
     <PageShell darkMode={darkMode} variant="focus">
-      {/* Квадрат дыхания: таймер и кнопки внутри него, поэтому значок обходит их
-          по периметру и ни с чем не пересекается. Вся анимация — в CSS,
-          так что перерисовок нет */}
-      <div className={`chill-square flex-col gap-4 sm:gap-6 px-4 ${darkMode ? 'is-dark' : ''} ${running ? 'is-running' : ''}`}>
-        {/* Стороны квадрата. Каждая — стрелка в ту сторону, куда по ней идёт
-            значок: вверх по левой, вправо по верхней, вниз по правой, влево по
-            нижней. Штрихи короче стороны и обрываются далеко от углов, поэтому
-            углов нет — остаются четыре отдельных лёгких линии */}
-        <svg
-          className="chill-arrows"
-          viewBox="0 0 100 100"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="0.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M6 76V24M2.5 29.5L6 24l3.5 5.5" />
-          <path d="M24 6h52M70.5 2.5L76 6l-5.5 3.5" />
-          <path d="M94 24v52M90.5 70.5L94 76l3.5-5.5" />
-          <path d="M76 94H24M29.5 90.5L24 94l5.5 3.5" />
-        </svg>
+      {/* Квадрат дыхания: по сторонам фазы со счётом, внутри таймер, лёгкие и
+          кнопки. Пока таймер стоит — это плакат; пошёл таймер — дышат лёгкие и
+          загорается счёт. Всё движение в CSS: секунды фаз не гоняют перерисовку */}
+      <div className={`chill-square flex-col gap-3 sm:gap-6 px-4 ${darkMode ? 'is-dark' : ''} ${running ? 'is-running' : ''}`}>
+        {/* Стороны квадрата — фазы дыхания со счётом на четыре. Пока таймер
+            идёт, разгорается название текущей фазы, а за ним по секунде
+            загораются 2, 3 и 4: отрицательная задержка сдвигает общий
+            шестнадцатисекундный цикл на нужную секунду. Считает CSS —
+            перерисовывать подписи каждую секунду не приходится */}
+        <div className="chill-phases" aria-hidden="true">
+          {PHASES.map(({ side, word, start, mirrored }) => {
+            // Слово и счёт — четыре доли фазы подряд; на нижней стороне тот же
+            // ряд читается справа налево, поэтому его разворачиваем целиком.
+            // Задержка подсветки привязана к самой доле, а не к её месту в
+            // строке, поэтому огонёк идёт по ходу круга в обе стороны
+            const name = (
+              <b key="word" style={{ animationDelay: `${start - CYCLE}s` }}>{word}</b>
+            );
+            const counts = COUNTS.map((count, index) => (
+              <i key={count} style={{ animationDelay: `${start + index + 1 - CYCLE}s` }}>
+                {count}
+              </i>
+            ));
+            const parts = mirrored ? [...counts.reverse(), name] : [name, ...counts];
 
-        <span className="chill-marker" aria-hidden="true">
-          <BreathMarker />
-        </span>
-        <h2 className={`text-title-lg ${darkMode ? 'text-white' : 'text-gray-800'}`}>{CHILL_BADGE[theme] || CHILL_BADGE.light} Chill</h2>
+            return (
+              <span key={side} className={`chill-phase chill-phase-${side}`}>
+                {parts.map((part, index) => (
+                  <React.Fragment key={part.key}>
+                    {/* Многоточие тянется от счёта к счёту. Рядом со словом
+                        фазы его нет — там просто пробел, с какой бы стороны
+                        слово ни стояло */}
+                    {index > 0 && (
+                      <span className="chill-lead">
+                        {part.key === 'word' || parts[index - 1].key === 'word' ? '\u00a0' : '…\u00a0'}
+                      </span>
+                    )}
+                    {part}
+                  </React.Fragment>
+                ))}
+              </span>
+            );
+          })}
+        </div>
         {/* Размер цифр считается от стороны квадрата — см. .chill-time */}
         <div className={`chill-time leading-none font-mono font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           {minutes}:{seconds}
         </div>
 
+        {/* Лёгкие под цифрами — вся анимация квадрата: набирают на вдохе,
+            держат, отпускают на выдохе. Пока таймер стоит, стоят и они */}
+        <LungsIcon className="chill-lungs" aria-hidden="true" />
+
         {/* Старт крупнее и выше, музыка — второстепенное, поэтому мельче и под ним */}
         <div className="flex flex-col items-center gap-3 sm:gap-4">
           <button
             onClick={toggleTimer}
-            className={`p-5 bg-green-800 text-white rounded-full hover:bg-green-900 flex items-center justify-center press ${
+            className={`p-4 sm:p-5 bg-green-800 text-white rounded-full hover:bg-green-900 flex items-center justify-center press ${
               running ? 'animate-pulse-ring' : ''
             }`}
             aria-label={running ? 'Stop' : 'Start'}

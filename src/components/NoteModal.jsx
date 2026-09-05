@@ -4,6 +4,7 @@ import { NOTE_COLORS } from '../constants';
 import { getNoteLines, isListLine, isImageLine, emptyLine, newLineId, LINE_TEXT, LINE_IMAGE } from '../utils/noteLines';
 import { compressImage } from '../utils/imageCompression';
 import Modal from './Modal';
+import useIsMobile from '../utils/useIsMobile';
 
 
 // Позиция курсора внутри строки в символах: у contentEditable её приходится
@@ -43,6 +44,8 @@ export default function NoteModal({
   onClose,
   darkMode
 }) {
+  // На телефоне часть кнопок шапки лишняя: там своё, системное закрытие
+  const isMobile = useIsMobile();
   const [openMenu, setOpenMenu] = useState(null); // сейчас только 'color'
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -466,15 +469,19 @@ export default function NoteModal({
             <Trash2 size={16} />
           </button>
 
-          {/* Крестик закрывает окно и ничего не удаляет — за удаление отвечает корзина */}
-          <button
-            onClick={onClose}
-            title="Close"
-            aria-label="Close"
-            className={`p-2 sm:p-1 rounded press-icon flex-shrink-0 ${mutedText} ${iconHover}`}
-          >
-            <X size={16} />
-          </button>
+          {/* Крестик закрывает окно и ничего не удаляет — за удаление отвечает
+              корзина. На телефоне его нет: заметка открыта своим адресом, и
+              закрывает её системный «назад», которым там и пользуются */}
+          {!isMobile && (
+            <button
+              onClick={onClose}
+              title="Close"
+              aria-label="Close"
+              className={`p-2 sm:p-1 rounded press-icon flex-shrink-0 ${mutedText} ${iconHover}`}
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
 
         <div className="px-4">

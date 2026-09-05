@@ -89,7 +89,7 @@ export default function DropZone({
       {!hideHeader && (
         <div className="column-header flex items-center gap-2 p-4 pb-2 sticky top-0 z-10 rounded-t-lg">
           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
-          <h3 className={`text-xs font-medium uppercase tracking-wide flex-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <h3 className={`column-title text-xs font-medium uppercase tracking-wide flex-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
             {column.title} ({tasks.length})
           </h3>
         </div>

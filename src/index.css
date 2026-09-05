@@ -843,6 +843,87 @@ html.theme-handwriting .press-icon:hover {
   filter: none;
 }
 
+/* Задача — листок, вырванный из блокнота: сверху рваный край, слева поле
+   красной ручкой, по листу линейка. Цвет карточки не трогаем: линейка ложится
+   поверх него.
+   Рваный край режем маской: полукруги вырезаются из верхней кромки с шагом в
+   12px. Тень поэтому не box-shadow — маска срезала бы её вместе с кромкой, —
+   а drop-shadow, он считается уже по вырезанной форме */
+html.theme-handwriting [data-card='task'] {
+  position: relative;
+  border-color: transparent;
+  border-radius: 3px;
+  background-image:
+    repeating-linear-gradient(180deg, transparent 0 21px, rgba(43, 58, 85, 0.07) 21px 22px);
+  -webkit-mask-image: radial-gradient(circle 5px at 6px 0, transparent 5px, #000 5.5px);
+  mask-image: radial-gradient(circle 5px at 6px 0, transparent 5px, #000 5.5px);
+  -webkit-mask-size: 12px 100%;
+  mask-size: 12px 100%;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  filter: drop-shadow(0 1px 1px rgba(43, 58, 85, 0.18));
+}
+
+/* Поле слева — красной ручкой, как в тетради. Линия идёт по всей высоте
+   листа и не мешает содержимому: оно и так начинается правее */
+html.theme-handwriting [data-card='task']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  border-left: 1px solid rgba(192, 57, 43, 0.3);
+  pointer-events: none;
+}
+
+
+/* Заметка — лист, прихваченный зажимом: рамка нарисована от руки, сверху по
+   центру биндер. Ни линейки, ни рваного края тут нет — лист чистый, и всё, что
+   на нём есть, это название в углу.
+   Рамка — картинка, растянутая на карточку: чтобы линия не толстела вместе с
+   ней, штрих помечен non-scaling-stroke. Скругления и рамку самой карточки
+   снимаем — их роль теперь у рисунка */
+html.theme-handwriting [data-card='note'] {
+  position: relative;
+  border-color: transparent;
+  border-radius: 0;
+  overflow: visible;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E %3Cpath d='M2.6 3.2c16-.9 33-.4 49.6-.7 15.4-.3 31.4.4 45.6-.1.9 15.6.2 31.4.5 47 .2 15.6-.6 33.4.1 48.2-15.8.9-32.6.1-48.8.4-15.2.3-30.6-.5-45.6.1-.9-15.8-.1-32.4-.4-48.4C3.3 34 2 18.6 2.6 3.2z' fill='none' stroke='%232b3a55' stroke-width='1.3' vector-effect='non-scaling-stroke' stroke-linejoin='round' stroke-linecap='round'/%3E %3C/svg%3E");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  -webkit-mask-image: none;
+  mask-image: none;
+  filter: none;
+}
+
+/* Зажим держит лист за верхний край и потому немного выступает над ним */
+html.theme-handwriting [data-card='note']::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 26px;
+  height: 30px;
+  transform: translateX(-50%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 46' fill='none' stroke='%232b3a55' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E %3C%21-- %D0%B4%D0%BB%D0%B8%D0%BD%D0%BD%D0%B0%D1%8F %D0%BF%D0%B5%D1%82%D0%BB%D1%8F %D1%80%D1%83%D1%87%D0%BA%D0%B8: %D1%83%D0%B7%D0%BA%D0%B0%D1%8F, %D1%81 %D0%B7%D0%B0%D0%BA%D1%80%D1%83%D0%B3%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5%D0%BC %D0%BD%D0%B0%D0%B2%D0%B5%D1%80%D1%85%D1%83 --%3E %3Cpath d='M16.8 27.4c-.6-5.6-1.8-11.4-1-15.6.5-2.8 2.2-4.6 4.4-4.6 2.3 0 3.8 1.9 4 4.7.3 4.4-1.4 10.2-2.2 15.5'/%3E %3Cpath d='M18.6 27.4c-.4-5.4-1.2-11-.6-14.8.4-2.4 1.7-3.9 3.2-3.9'/%3E %3C%21-- %D0%BF%D1%80%D0%BE%D0%B2%D0%BE%D0%BB%D0%BE%D0%BA%D0%B0 %D1%83%D1%85%D0%BE%D0%B4%D0%B8%D1%82 %D0%B2 %D0%B1%D0%BE%D0%BA%D0%BE%D0%B2%D1%8B%D0%B5 %D1%83%D1%88%D0%BA%D0%B8 %D0%BA%D0%BE%D1%80%D0%BF%D1%83%D1%81%D0%B0 --%3E %3Cpath d='M17 22.2c-1.9-.5-3.7.4-4 2.2-.3 1.6.7 3 2.4 3.6'/%3E %3Cpath d='M23 22.2c1.9-.5 3.7.4 4 2.2.3 1.6-.7 3-2.4 3.6'/%3E %3C%21-- %D0%BA%D0%BE%D1%80%D0%BF%D1%83%D1%81: %D1%82%D1%80%D0%B0%D0%BF%D0%B5%D1%86%D0%B8%D1%8F, %D1%87%D1%83%D1%82%D1%8C %D1%88%D0%B8%D1%80%D0%B5 %D1%81%D0%B2%D0%B5%D1%80%D1%85%D1%83 --%3E %3Cpath d='M8.4 27.2c7.6-.8 15.6-.8 23.2 0 .5 5.2.5 10.8-.2 16-7.6.8-15.4.8-23 0-.5-5.2-.5-10.8 0-16z'/%3E %3Cpath d='M11.4 42.4c5.8.5 11.6.5 17.4 0'/%3E %3C/svg%3E") no-repeat center / contain;
+  pointer-events: none;
+}
+
+/* Названия колонок — подпись от руки, а не машинописный ярлык: тот же Caveat,
+   что у заголовков, крупнее и без разрядки. Капс рукописным шрифтом читается
+   как крик, поэтому строчными, с заглавной первой */
+html.theme-handwriting .column-title {
+  font-family: 'Caveat', 'Neucha', 'Bradley Hand', cursive;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: lowercase;
+}
+
+html.theme-handwriting .column-title::first-letter {
+  text-transform: uppercase;
+}
+
 /* Лист бумаги — рисуется компонентом ThemeFx. Линейки убраны: текст в теме
    рукописный, и своя разлиновка почти никогда не совпадала с его строками,
    получалась вторая сетка поперёк первой. Осталась сама бумага */
@@ -1353,17 +1434,26 @@ html.theme-handwriting {
   --column-header-line: var(--hw-rule);
 }
 
-/* ═══ CHILL ═══ Квадрат дыхания на четыре счёта: значок обходит периметр, и
-   каждая сторона — своя фаза (вдох, задержка, выдох, задержка). Сами стороны
-   нарисованы стрелками (.chill-arrows), углов нет. На сторону
-   приходится четыре секунды, весь круг — шестнадцать. Таймер и кнопки живут внутри
-   квадрата, так что анимация идёт вокруг них и ничему не мешает: размер цифр
-   считается от стороны квадрата, значит они не дорастут до его рамки ни на
-   каком экране. Системное «уменьшить движение» гасит анимацию глобальным
-   правилом в @layer base — квадрат остаётся, точка замирает в углу */
+/* Название на обложке заметки. Шрифт свой, а не темы: обложка — это одна
+   строка по диагонали, и на ней размашистый рукописный или книжный шрифт темы
+   читался хуже всего. Здесь нужен самый спокойный вариант — системный гротеск,
+   светлое начертание и разрядка вместо жира */
+.note-cover-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+}
+
+/* ═══ CHILL ═══ Квадрат дыхания на четыре счёта: каждая сторона — своя фаза
+   (вдох слева, задержка сверху, выдох справа, задержка снизу), по четыре
+   секунды на сторону и шестнадцать на круг. Рамки нет: стороны — это сами
+   подписи (.chill-phases). Дышат только лёгкие в середине (.chill-lungs), и
+   всё это в CSS, без перерисовок. Таймер, лёгкие и кнопки живут внутри
+   квадрата: размеры считаются от его стороны, поэтому до подписей они не
+   дорастают ни на каком экране. Системное «уменьшить движение» гасит анимацию
+   глобальным правилом в @layer base — квадрат остаётся, лёгкие замирают */
 .chill-square {
   --chill-side: min(82vmin, 36rem);
-  --chill-marker: calc(var(--chill-side) * 0.062);
   --chill-breath: 22, 101, 52;   /* акцент темы: перекрывается ниже */
   position: relative;
   display: flex;
@@ -1373,52 +1463,158 @@ html.theme-handwriting {
   height: var(--chill-side);
 }
 
-/* Стороны квадрата — четыре стрелки, по одной на фазу дыхания, и ничего больше.
-   Рамки нет: углы не рисуются вовсе, стрелки не доходят до них и обрываются.
-   Так фигура показывает направление и ритм, а не обводит таймер прямоугольником.
-   Цвет — акцент темы, тот же, которым светится значок */
-.chill-arrows {
+/* Стороны квадрата — четыре надписи, по одной на фазу дыхания, и ничего
+   больше. Рамки нет: углы не рисуются вовсе, надписи до них не достают. Так
+   фигура называет ритм, а не обводит таймер прямоугольником. Цвет — акцент
+   темы, тот же, которым нарисованы лёгкие. Надписи стоят по самым граням:
+   раньше их отодвигали внутрь ради бегущего значка, но значка больше нет */
+.chill-phases {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
   pointer-events: none;
-  color: rgba(var(--chill-breath), 0.3);
+  color: rgba(var(--chill-breath), 0.55);
 }
 
-/* Значок темы обходит периметр по часовой стрелке из левого нижнего угла:
-   у каждой темы он свой — сова, рыба, скрепка. Отсчёт идёт от внутреннего края
-   рамки, поэтому путь короче на её толщину. Значок держится прямо, не крутится */
-.chill-marker {
+.chill-phase {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: var(--chill-marker);
-  height: var(--chill-marker);
-  margin: calc(var(--chill-marker) / -2) 0 0 calc(var(--chill-marker) / -2);
-  color: rgba(var(--chill-breath), 0.9);
-  pointer-events: none;
-  animation: chill-square 16s linear infinite;   /* по 4 с на сторону */
-  /* Дыхание идёт вместе с таймером: на паузе значок замирает там, где стоял,
-     и с того же места продолжает, когда таймер снова запустили */
+  white-space: nowrap;
+  font-size: calc(var(--chill-side) * 0.045);
+  line-height: 1;
+  letter-spacing: 0.14em;
+}
+
+.chill-phase b {
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(var(--chill-breath), 0.95);
+}
+
+.chill-phase i {
+  font-style: normal;
+  opacity: 0.5;
+}
+
+/* Многоточия между счётом живут своей жизнью: они не загораются вместе с
+   цифрами, иначе строка мигала бы целиком, а не отсчитывала доли */
+.chill-lead {
+  opacity: 0.45;
+}
+
+/* Пока таймер стоит, квадрат — плакат: все подписи ровные и ничего не мигает.
+   Пошёл таймер — название фазы разгорается на свои четыре секунды, а следом
+   по секунде вспыхивают 2, 3 и 4. Задержку каждому даёт разметка: она
+   считается от секунды, на которой фаза начинается */
+.chill-square.is-running .chill-phase b {
+  animation: chill-word 16s linear infinite;
+}
+
+.chill-square.is-running .chill-phase i {
+  animation: chill-count 16s linear infinite;
+}
+
+@keyframes chill-word {
+  0% {
+    opacity: 0.4;
+  }
+  3% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 1;
+  }
+  31% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes chill-count {
+  0% {
+    opacity: 0.3;
+  }
+  3% {
+    opacity: 1;
+  }
+  6.25% {
+    opacity: 1;
+  }
+  12.5% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+.chill-phase-top {
+  top: calc(var(--chill-side) * 0.02);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.chill-phase-bottom {
+  bottom: calc(var(--chill-side) * 0.02);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Боковые читаются по кругу: правая сверху вниз, левая снизу вверх */
+.chill-phase-right {
+  top: 50%;
+  right: calc(var(--chill-side) * 0.02);
+  transform: translate(50%, -50%) rotate(90deg);
+}
+
+.chill-phase-left {
+  top: 50%;
+  left: calc(var(--chill-side) * 0.02);
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
+/* Лёгкие под цифрами — единственное, что здесь движется. Цикл на шестнадцать
+   секунд, по четыре на фазу: вдох слева набирает, верхняя задержка держит
+   набранное, выдох справа отпускает, нижняя задержка держит пустые.
+   Идёт вместе с таймером: на паузе лёгкие замирают там, где остановились */
+.chill-lungs {
+  /* Крупнее, чем были: заголовка над цифрами больше нет, место освободилось,
+     а мелкие бронхи внутри должны оставаться различимыми */
+  width: calc(var(--chill-side) * 0.22);
+  height: auto;
+  color: rgba(var(--chill-breath), 0.85);
+  animation: chill-lungs 16s ease-in-out infinite;
   animation-play-state: paused;
 }
 
-.chill-square.is-running .chill-marker {
+.chill-square.is-running .chill-lungs {
   animation-play-state: running;
 }
 
-.chill-marker svg {
-  display: block;
-  width: 100%;
-  height: 100%;
+@keyframes chill-lungs {
+  0% {
+    transform: scale(0.8);
+  }
+  25% {
+    transform: scale(1.1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  75% {
+    transform: scale(0.8);
+  }
+  100% {
+    transform: scale(0.8);
+  }
 }
 
 /* Цифры считаем от стороны квадрата, а не от ширины экрана: «15:00» — это пять
-   знаков моноширинного шрифта. Доля меньше стороны с запасом — квадрат должен
-   дышать вокруг таймера, а не облегать его */
+   знаков моноширинного шрифта. Доля меньше стороны с запасом — внутри квадрата
+   помещаются и цифры, и лёгкие, и кнопки, и до подписей на гранях они не
+   дотягиваются ни на каком экране */
 .chill-time {
-  font-size: calc(var(--chill-side) * 0.16);
+  font-size: calc(var(--chill-side) * 0.14);
 }
 
 .chill-square.is-dark {
@@ -1443,20 +1639,3 @@ html.theme-handwriting .chill-square {
   --chill-breath: 43, 58, 85;
 }
 
-@keyframes chill-square {
-  0% {
-    transform: translate(0, calc(var(--chill-side) - 2px));
-  }
-  25% {
-    transform: translate(0, 0);
-  }
-  50% {
-    transform: translate(calc(var(--chill-side) - 2px), 0);
-  }
-  75% {
-    transform: translate(calc(var(--chill-side) - 2px), calc(var(--chill-side) - 2px));
-  }
-  100% {
-    transform: translate(0, calc(var(--chill-side) - 2px));
-  }
-}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, X, ChevronLeft, ChevronRight, Star, Clock, CalendarPlus } from 'lucide-react';
+import { Edit2, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, Clock, CalendarPlus } from 'lucide-react';
 import { themeIcon } from '../themes';
 import { getWeekStart, addWeeks, getWeekKey, getWeekDates, isSameDay } from '../utils/weeks';
 import { getQuoteForDate } from '../quotes';
@@ -22,6 +22,9 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
   // Время нужно не каждой задаче, поэтому поле появляется по клику на часы:
   // пустое «--:--» в каждой карточке дня читалось как сломанные данные
   const [timeOpen, setTimeOpen] = useState({});
+  // Прошедшие дни текущей недели на телефоне свёрнуты в одну строку над
+  // сегодняшним: они уже позади, а место дорогое. Разворачиваются все разом
+  const [pastOpen, setPastOpen] = useState(false);
   const isMobile = useIsMobile();
   const [editingItem, setEditingItem] = useState(null); // { day, taskId }
   const [editingText, setEditingText] = useState('');
@@ -39,6 +42,27 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
   const weekTasks = weeklyTasks[weekKey] || {};
   const quote = getQuoteForDate(today, quoteOffset);
 
+  // Порядок дней всегда обычный, с понедельника: неделя должна читаться как
+  // неделя. До сегодняшнего дня на телефоне сворачивается — прошедшие дни
+  // стоят на своих местах перед текущим, но строкой, а не карточкой.
+  // Свернуть можно только то, что позади, и только на телефоне: в пролистанных
+  // неделях сегодня нет, а прошлую неделю открывают, чтобы её прочитать
+  const days = weekDays.map((day, index) => ({ day, date: weekDates[index] }));
+  const todayIndex = days.findIndex(({ date }) => isSameDay(date, today));
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const isPastDay = (date) => isMobile && todayIndex >= 0 && date < startOfToday;
+
+  const pastDays = days.filter(({ date }) => isPastDay(date));
+  const restDays = days.filter(({ date }) => !isPastDay(date));
+  // Свёрнутые дни стоят на своих местах — перед сегодняшним, — поэтому строка
+  // с ними идёт первой, а сами карточки появляются под ней только развёрнутыми
+  const shownDays = pastOpen ? [...pastDays, ...restDays] : restDays;
+  const dayDate = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const pastLeft = pastDays.reduce(
+    (count, { day }) => count + (weekTasks[day] || []).filter(task => !task.completed).length,
+    0
+  );
+
   useEffect(() => {
     const now = new Date();
     const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
@@ -48,6 +72,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
 
   // Черновики и незакрытое редактирование относятся к прошлой неделе — сбрасываем при переходе
   useEffect(() => {
+    setPastOpen(false);
     setEditingItem(null);
     setEditingText('');
     setEditingTime('');
@@ -323,8 +348,39 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
               </div>
             );
           })()}
-          {weekDays.map((day, i) => {
-            const date = weekDates[i];
+          {/* Прошедшие дни этой недели — одной строкой на всех: дата первого
+              и последнего, сколько дел осталось несделанными, и разворот сразу
+              всей пачки. Порознь они занимали по строке каждый */}
+          {pastDays.length > 0 && (
+            <button
+              onClick={() => setPastOpen(prev => !prev)}
+              aria-expanded={pastOpen}
+              className={`rounded-lg px-2.5 py-2 flex items-center gap-2 min-w-0 border text-left press ${
+                darkMode ? 'border-gray-800 bg-gray-800/40' : 'border-gray-200 bg-white/60'
+              }`}
+            >
+              <span className={`text-sm font-semibold truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                {pastDays.length === 1
+                  ? dayDate(pastDays[0].date)
+                  : `${dayDate(pastDays[0].date)} – ${dayDate(pastDays[pastDays.length - 1].date)}`}
+              </span>
+              <span className={`flex-1 min-w-0 text-xs font-medium uppercase tracking-wide truncate ${
+                darkMode ? 'text-gray-600' : 'text-gray-400'
+              }`}>
+                Earlier
+              </span>
+              {pastLeft > 0 && (
+                <span className={`text-xs flex-shrink-0 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  {pastLeft} left
+                </span>
+              )}
+              {pastOpen
+                ? <ChevronUp size={14} className={`flex-shrink-0 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+                : <ChevronDown size={14} className={`flex-shrink-0 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} />}
+            </button>
+          )}
+
+          {shownDays.map(({ day, date }) => {
             const isToday = isSameDay(date, today);
 
             return (
@@ -359,6 +415,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                   }`}>
                     {day}
                   </span>
+
                 </div>
 
                 <div className="space-y-0.5 sm:space-y-1 mb-2 sm:mb-3 flex-1 min-h-0 overflow-y-auto">

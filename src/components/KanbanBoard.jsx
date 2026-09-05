@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Tag, X, ArrowDownWideNarrow, Heart } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, Tag, X, ArrowDownWideNarrow, Heart, ChevronDown, Check } from 'lucide-react';
 import DropZone from './DropZone';
 import { getLabelColor, COLUMN_COLORS } from '../constants';
 import PageShell from './PageShell';
 import ProjectPicker from './ProjectPicker';
 import useIsMobile from '../utils/useIsMobile';
+import { useBackClose } from '../utils/backClose';
 
 export default function KanbanBoard({
   currentProject,
@@ -46,6 +47,24 @@ export default function KanbanBoard({
   const isMobile = useIsMobile();
   const [activeColumnId, setActiveColumnId] = useState(null);
   const activeColumn = columns.find(c => c.id === activeColumnId) || columns[0];
+  // Список статусов открывается по кнопке: пять кнопок в ряд занимали две
+  // строки шапки, а нужна из них за раз одна
+  const [statusOpen, setStatusOpen] = useState(false);
+  const statusRef = useRef(null);
+
+  // Системный «назад» закрывает список, а не уводит с борда
+  useBackClose(statusOpen, () => setStatusOpen(false));
+
+  // Закрытие по касанию мимо списка. pointerdown, а не click: по клику список
+  // успевал бы закрыться раньше, чем сработает выбор внутри него
+  useEffect(() => {
+    if (!statusOpen) return;
+    const closeOnOutside = event => {
+      if (!statusRef.current?.contains(event.target)) setStatusOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutside);
+    return () => document.removeEventListener('pointerdown', closeOnOutside);
+  }, [statusOpen]);
 
   // Сменили проект или колонку переименовали в настройках — выбор мог повиснуть
   // на колонке, которой больше нет
@@ -243,38 +262,72 @@ export default function KanbanBoard({
             <div className="min-h-full flex flex-col">
               {/* Переключатель липнет к верху: пролистав длинную колонку вниз,
                   перейти в соседнюю нужно там же, где стоишь, а не в начале.
-                  Названия у всех колонок, но ряд никуда не прокручивается: не
-                  уместившиеся кнопки переходят на вторую строку. Боковая
-                  прокрутка в шапке борда читалась как ещё один слой, который
-                  надо разглядывать, а безымянные кнопки — как ребус */}
-              <div className="column-header sticky top-0 z-20 -mx-6 px-6 py-2 flex flex-wrap gap-1.5">
-                {columns.map(column => {
-                  const count = visibleTasks(tasks[currentProject]?.[column.id]).length;
-                  const active = column.id === activeColumn.id;
-                  const palette = COLUMN_COLORS[column.color] || COLUMN_COLORS.gray;
-                  return (
-                    <button
-                      key={column.id}
-                      onClick={() => setActiveColumnId(column.id)}
-                      aria-pressed={active}
-                      title={`${column.title} (${count})`}
-                      aria-label={`${column.title} (${count})`}
-                      className={`h-control min-w-0 flex-shrink-0 flex items-center justify-center gap-1.5 px-3 text-xs rounded-full border press ${
-                        active
-                          ? darkMode
-                            ? 'border-green-700 bg-gray-800 text-green-400'
-                            : 'border-green-600 bg-white text-green-700'
-                          : darkMode
-                            ? 'border-gray-700 text-gray-400'
-                            : 'border-gray-300 text-gray-500'
+                  Статусов пять, а нужен за раз один, поэтому в шапке одна
+                  кнопка с текущим статусом, а остальные открываются списком.
+                  Рядом кнопок больше нет: они занимали две строки шапки */}
+              <div className="column-header sticky top-0 z-20 -mx-6 px-6 py-2 flex">
+                <div ref={statusRef} className="relative min-w-0">
+                  <button
+                    onClick={() => setStatusOpen(prev => !prev)}
+                    aria-expanded={statusOpen}
+                    aria-haspopup="listbox"
+                    aria-label="Status"
+                    title="Status"
+                    className={`h-control max-w-full flex items-center gap-1.5 px-3 text-xs rounded-full border press ${
+                      darkMode
+                        ? 'border-gray-700 bg-gray-800 text-gray-200'
+                        : 'border-gray-300 bg-white text-gray-700'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      (COLUMN_COLORS[activeColumn.color] || COLUMN_COLORS.gray).dot
+                    }`} />
+                    <span className="column-title truncate">{activeColumn.title}</span>
+                    <span className="opacity-60 flex-shrink-0">
+                      {visibleTasks(tasks[currentProject]?.[activeColumn.id]).length}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      className={`flex-shrink-0 transition-transform duration-200 ${statusOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  {statusOpen && (
+                    <div
+                      role="listbox"
+                      className={`absolute z-dropdown top-full mt-2 left-0 w-56 max-w-[80vw] p-1 rounded-lg border shadow-lg origin-top-left animate-pop-in ${
+                        darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                       }`}
                     >
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
-                      <span className="truncate">{column.title}</span>
-                      <span className="opacity-60 flex-shrink-0">{count}</span>
-                    </button>
-                  );
-                })}
+                      {columns.map(column => {
+                        const count = visibleTasks(tasks[currentProject]?.[column.id]).length;
+                        const active = column.id === activeColumn.id;
+                        const palette = COLUMN_COLORS[column.color] || COLUMN_COLORS.gray;
+                        return (
+                          <button
+                            key={column.id}
+                            role="option"
+                            aria-selected={active}
+                            onClick={() => {
+                              setActiveColumnId(column.id);
+                              setStatusOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm press ${
+                              darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                          >
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
+                            <span className="column-title flex-1 min-w-0 text-left truncate">{column.title}</span>
+                            <span className={`text-xs flex-shrink-0 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              {count}
+                            </span>
+                            {active && <Check size={14} className="flex-shrink-0 text-green-600" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex-1 flex pt-3 pb-4">

@@ -63,8 +63,10 @@ export default function PageShell({
           под блоком пользователя в сайдбаре, а на телефоне сайдбара нет — там
           эти 129px были бы пустой полосой поперёк и без того короткого экрана */}
       <div className={`flex-shrink-0 sm:min-h-[var(--shell-header-h)] flex flex-col border-b ${borderClass} px-6 sm:px-8 ${subheader ? 'pt-4 sm:pt-6 pb-4 sm:pb-5' : 'py-3 sm:py-0'}`}>
+        {/* Отступ сверху у самой строки, а не у шапки: без подзаголовка строка
+            прижата к низу, и отступ шапки её бы не сдвинул */}
         <div
-          className={`flex items-center justify-between gap-4 ${
+          className={`flex items-center justify-between gap-4 pt-2 sm:pt-3 ${
             subheader ? '' : 'mt-auto flex-shrink-0 sm:h-[var(--user-h)]'
           }`}
         >

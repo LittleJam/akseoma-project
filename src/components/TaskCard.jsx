@@ -79,6 +79,8 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
 
   return (
     <div
+      /* Хук для тем: в Handwriting карточка становится листком из блокнота */
+      data-card="task"
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
