@@ -53,6 +53,15 @@ code {
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
+/* Нижнюю безопасную зону на телефоне забирает себе навигация: она красит её
+   собой и поднимает над домашней полоской только свои кнопки. Отступ у #root
+   отрывал панель от нижнего края экрана, и под ней светилась полоса фона */
+@media (max-width: 639px) {
+  #root {
+    padding-bottom: 0;
+  }
+}
+
 @layer base {
   /* Уважаем системную настройку «уменьшить движение»: интерфейс остаётся, движение уходит */
   @media (prefers-reduced-motion: reduce) {
@@ -843,9 +852,8 @@ html.theme-handwriting .press-icon:hover {
   filter: none;
 }
 
-/* Задача — листок, вырванный из блокнота: сверху рваный край, слева поле
-   красной ручкой, по листу линейка. Цвет карточки не трогаем: линейка ложится
-   поверх него.
+/* Задача — листок, вырванный из блокнота: сверху рваный край и поле красной
+   ручкой слева. Сам лист чистый: линейка на нём спорила с текстом задачи.
    Рваный край режем маской: полукруги вырезаются из верхней кромки с шагом в
    12px. Тень поэтому не box-shadow — маска срезала бы её вместе с кромкой, —
    а drop-shadow, он считается уже по вырезанной форме */
@@ -853,8 +861,6 @@ html.theme-handwriting [data-card='task'] {
   position: relative;
   border-color: transparent;
   border-radius: 3px;
-  background-image:
-    repeating-linear-gradient(180deg, transparent 0 21px, rgba(43, 58, 85, 0.07) 21px 22px);
   -webkit-mask-image: radial-gradient(circle 5px at 6px 0, transparent 5px, #000 5.5px);
   mask-image: radial-gradient(circle 5px at 6px 0, transparent 5px, #000 5.5px);
   -webkit-mask-size: 12px 100%;

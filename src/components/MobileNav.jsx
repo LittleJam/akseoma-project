@@ -26,7 +26,11 @@ export default function MobileNav({ darkMode, theme, currentPage, setCurrentPage
          Панель на телефоне скрыта, и без него millenial терял свою синюю полосу
          Luna: нижняя навигация оставалась белой, а тема — неузнаваемой */
       data-sidebar
-      className={`sm:hidden flex-shrink-0 h-[var(--mobile-nav-h)] flex items-stretch border-t ${
+      /* Панель достаёт до самого низа экрана и сама закрывает собой домашнюю
+         полоску: высота — своя плюс безопасная зона, а отступ снизу поднимает
+         над полоской кнопки. Раньше эту зону держал отступ у #root, и панель
+         висела над краем, а под ней светилась полоса фона */
+      className={`sm:hidden flex-shrink-0 h-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] flex items-stretch border-t ${
         darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
       }`}
     >

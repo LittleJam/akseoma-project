@@ -48,12 +48,15 @@ export default function ProjectPicker({ darkMode, projects, currentProject, onSe
         onClick={() => setOpen(prev => !prev)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="flex items-center gap-1.5 min-w-0 max-w-full press"
+        className="flex items-start gap-1.5 min-w-0 max-w-full text-left press"
       >
-        <span className="truncate">{current?.name || 'Projects'}</span>
+        {/* Длинное название переносится, а не обрезается: это заголовок
+            страницы, и по нему понимают, где находятся. Шапка каркаса задана
+            минимальной высотой и на вторую строку вырастет сама */}
+        <span className="min-w-0 text-left break-words leading-tight">{current?.name || 'Projects'}</span>
         <ChevronDown
           size={18}
-          className={`flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`flex-shrink-0 mt-1 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
