@@ -1,6 +1,6 @@
 import {
   Sun, Moon, Wand, Wand2, Waves, Castle, ScrollText, BookOpenText, Sparkles, Feather,
-  Compass, CalendarDays, Shell, Palmtree, Anchor, Plus, Home, Calendar, StickyNote,
+  Compass, CalendarDays, Map, Palmtree, Anchor, Plus, Home, Calendar, StickyNote,
   Coffee, Settings, RefreshCw, Monitor, FolderOpen, FileText, Music2, Wrench,
   PenLine, Notebook, NotebookPen, Pencil, Highlighter, Paperclip, SlidersHorizontal
 } from 'lucide-react';
@@ -68,7 +68,10 @@ const THEME_ICONS = {
   surf: {
     projects: Compass,
     schedule: CalendarDays,
-    notes: Shell,
+    // Ракушка читалась как «море вообще», а не как заметки. Карта — то, на чём
+    // в море и записывают: отметки, точки, места. Свиток занят у Wizard,
+    // липкий листок — у светлой темы
+    notes: Map,
     chill: Palmtree,
     // Якорь читался как «морская тема», а не как настройки — ползунки понятнее
     settings: SlidersHorizontal,

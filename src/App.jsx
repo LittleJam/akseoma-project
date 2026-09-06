@@ -7,6 +7,7 @@ import { DEFAULT_COLUMNS, WEEK_DAYS, STORAGE_KEYS } from './constants';
 import { DARK_THEMES, THEME_COLORS } from './themes';
 import { parseLocation, navigate, onRouteChange } from './utils/router';
 import { applyAppIcon, DEFAULT_APP_ICON } from './utils/appIcon';
+import { DEFAULT_REMINDERS, scheduleDayReminders } from './utils/reminders';
 import { AUTH_KEY, FLAGS_KEY, DEFAULT_FLAGS, PAGE_FEATURES, canUse } from './auth';
 import { getWeekKey } from './utils/weeks';
 import { DEFAULT_SIGN, getNatalChart } from './horoscope';
@@ -61,6 +62,15 @@ export default function PersonalJira() {
   // Иконка приложения. Хранится только на устройстве и в облако не уезжает:
   // на телефоне и на ноутбуке иконка стоит на разных экранах, и выбор там
   // разумно иметь разный
+  // Напоминания о задачах Расписания. Настройка местная, как и иконка: они
+  // ставятся таймерами в этом браузере и в другой копии приложения не звучат
+  const [reminders, setReminders] = useState(() => {
+    try {
+      return { ...DEFAULT_REMINDERS, ...JSON.parse(localStorage.getItem('jira-reminders') || '{}') };
+    } catch {
+      return DEFAULT_REMINDERS;
+    }
+  });
   const [appIcon, setAppIcon] = useState(() => {
     try {
       return localStorage.getItem('jira-app-icon') || DEFAULT_APP_ICON;
@@ -471,6 +481,32 @@ export default function PersonalJira() {
     if (loading) return;
     safeSetItem('jira-starter-notes', JSON.stringify(starterNotes));
   }, [starterNotes, loading]);
+
+  // Напоминания: список пересобирается при каждой правке расписания и при
+  // каждом возвращении к приложению — таймеры живут только в этой сессии
+  useEffect(() => {
+    try {
+      localStorage.setItem('jira-reminders', JSON.stringify(reminders));
+    } catch {
+      // Приватный режим — настройка просто не переживёт перезапуск
+    }
+
+    if (!reminders.enabled || loading) return;
+
+    let cancel = scheduleDayReminders({ weeklyTasks, weekDays, lead: reminders.lead });
+
+    const resync = () => {
+      if (document.visibilityState !== 'visible') return;
+      cancel();
+      cancel = scheduleDayReminders({ weeklyTasks, weekDays, lead: reminders.lead });
+    };
+
+    document.addEventListener('visibilitychange', resync);
+    return () => {
+      document.removeEventListener('visibilitychange', resync);
+      cancel();
+    };
+  }, [reminders, weeklyTasks, weekDays, loading]);
 
   // Выбранная иконка: переставляем ссылки в <head> и запоминаем выбор.
   // applyAppIcon возвращает применённый вариант — сохранённый мог остаться от
@@ -1471,6 +1507,8 @@ export default function PersonalJira() {
           setTheme={setTheme}
           appIcon={appIcon}
           setAppIcon={setAppIcon}
+          reminders={reminders}
+          setReminders={setReminders}
           user={user}
           allowed={allowed}
           featureFlags={featureFlags}

@@ -1,0 +1,552 @@
+openapi: 3.1.0
+
+# Сетевые запросы приложения. Своего сервера у Surf the Task нет: данные живут
+# в браузере, а наружу уходят два вида запросов — синхронизация состояния через
+# PostgREST Supabase и разовый поиск координат места рождения для гороскопа.
+# Здесь описаны именно они, чтобы форму запроса и форму данных можно было
+# прочитать, не вылавливая их из вызовов supabase-js.
+#
+# Запросы отправляет библиотека @supabase/supabase-js, поэтому в коде их не
+# видно буквально: раздел ниже — расшифровка того, что она формирует.
+# Смотреть: npx @redocly/cli preview-docs docs/api.yaml
+#              (или любой другой просмотрщик OpenAPI)
+
+info:
+  title: Surf the Task — внешние запросы
+  version: '1'
+  description: |
+    Приложение работает офлайн и хранит всё в localStorage. Наружу оно ходит
+    в двух случаях:
+
+    * **Синхронизация** — если заданы `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY`.
+      Всё состояние приложения лежит одной строкой таблицы `app_state`
+      с `id = "default"`: одна запись на установку, без разбиения по сущностям.
+      Читается один раз при запуске, пишется через 500 мс после любой правки.
+    * **Геокодирование** — когда в настройках гороскопа ищут место рождения.
+      Ключей не требует, ответ никуда не сохраняется, кроме локальных настроек.
+
+    Чего здесь нет: вход в приложение проверяется в браузере сравнением SHA-256
+    (см. `src/auth.js`) и запросов не делает; автосохранение в файл идёт через
+    File System Access API; музыка в Chill — iframe YouTube.
+
+servers:
+  - url: '{supabaseUrl}/rest/v1'
+    description: PostgREST проекта Supabase
+    variables:
+      supabaseUrl:
+        default: https://your-project.supabase.co
+        description: значение VITE_SUPABASE_URL
+
+security:
+  - apiKey: []
+    bearerAuth: []
+
+tags:
+  - name: Sync
+    description: Состояние приложения в облаке
+  - name: Geocoding
+    description: Поиск места рождения для гороскопа
+
+paths:
+  /app_state:
+    get:
+      tags: [Sync]
+      operationId: loadRemoteState
+      summary: Прочитать состояние приложения
+      description: |
+        Вызывается один раз при запуске: `supabase.from('app_state')
+        .select('data').eq('id', 'default').maybeSingle()`.
+
+        `maybeSingle()` просит один объект вместо массива (`Accept:
+        application/vnd.pgrst.object+json`) и превращает ответ «строк нет»
+        в `null` — для приложения это первый запуск, оно продолжает
+        с локальными данными.
+
+        Пока ответ не получен, отправка наверх запрещена: иначе пустое
+        локальное состояние затёрло бы облако при запуске без сети.
+      parameters:
+        - name: select
+          in: query
+          required: true
+          schema:
+            type: string
+            const: data
+        - name: id
+          in: query
+          required: true
+          description: Фильтр PostgREST — всегда одна и та же строка
+          schema:
+            type: string
+            const: eq.default
+        - name: Accept
+          in: header
+          required: false
+          schema:
+            type: string
+            const: application/vnd.pgrst.object+json
+      responses:
+        '200':
+          description: Строка найдена
+          content:
+            application/vnd.pgrst.object+json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AppState'
+        '406':
+          description: |
+            Строки нет. PostgREST отвечает ошибкой `PGRST116`, потому что был
+            запрошен ровно один объект; supabase-js отдаёт приложению `null`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostgrestError'
+              example:
+                code: PGRST116
+                details: The result contains 0 rows
+                hint: null
+                message: JSON object requested, multiple (or no) rows returned
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Sync]
+      operationId: saveRemoteState
+      summary: Записать состояние приложения
+      description: |
+        `supabase.from('app_state').upsert({ id, data, updated_at })` — вставка
+        с обновлением по конфликту первичного ключа, отсюда заголовок
+        `Prefer: resolution=merge-duplicates`.
+
+        Отправляется не на каждое нажатие: изменения копятся 500 мс и уходят
+        одним запросом. Тело — состояние целиком, частичных обновлений нет.
+      parameters:
+        - name: Prefer
+          in: header
+          required: true
+          schema:
+            type: string
+            const: resolution=merge-duplicates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppStateRow'
+      responses:
+        '201':
+          description: 'Записано; тело пустое — Prefer: return=minimal'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: |
+            Конфликт записи. В приложении не обрабатывается отдельно: статус
+            синхронизации переходит в `error`, а текст ошибки показывается
+            в сайдбаре и в Settings → Sync.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostgrestError'
+
+  /v1/search:
+    servers:
+      - url: https://geocoding-api.open-meteo.com
+        description: Открытое геокодирование Open-Meteo, без ключа
+    get:
+      tags: [Geocoding]
+      operationId: lookupPlace
+      summary: Найти координаты места рождения
+      description: |
+        Одиночный запрос по кнопке в Settings → Horoscope. Из ответа берутся
+        широта, долгота и часовой пояс: пояс нужен, чтобы посчитать смещение
+        на дату рождения с учётом переводов часов тех лет. Ошибка и пустой
+        ответ показываются в форме и ничего не меняют.
+      parameters:
+        - name: name
+          in: query
+          required: true
+          description: Название места, как его ввели
+          schema:
+            type: string
+          example: Minsk
+        - name: count
+          in: query
+          required: true
+          schema:
+            type: integer
+            const: 1
+        - name: language
+          in: query
+          required: true
+          schema:
+            type: string
+            const: en
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            const: json
+      security: []
+      responses:
+        '200':
+          description: |
+            Результаты поиска. Приложение берёт `results[0]`; если массива нет,
+            форма показывает «место не найдено».
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GeocodingResult'
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: apikey
+      description: Анонимный ключ проекта (VITE_SUPABASE_ANON_KEY)
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Тот же анонимный ключ. Пользователей Supabase Auth в приложении нет,
+        поэтому доступ к строке ограничивают политики RLS на стороне базы,
+        а не токен пользователя.
+
+  responses:
+    Unauthorized:
+      description: Ключ не принят или политика RLS не пропускает запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PostgrestError'
+
+  schemas:
+    AppStateRow:
+      type: object
+      description: Строка таблицы `app_state` — она в базе одна
+      required: [id, data]
+      properties:
+        id:
+          type: string
+          const: default
+          description: Первичный ключ; приложение всегда пишет одну и ту же строку
+        data:
+          $ref: '#/components/schemas/AppState'
+        updated_at:
+          type: string
+          format: date-time
+          description: Ставится приложением перед отправкой
+
+    AppState:
+      type: object
+      description: |
+        Состояние целиком. Что сюда не попадает: открытый раздел и выбранный
+        проект (это дело конкретного устройства), выбранная иконка приложения
+        и напоминания — они тоже местные.
+      properties:
+        version:
+          type: integer
+          const: 1
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        tasks:
+          type: object
+          description: Задачи по проектам и колонкам
+          additionalProperties:
+            type: object
+            description: Ключ — id колонки
+            additionalProperties:
+              type: array
+              items:
+                $ref: '#/components/schemas/Task'
+        columns:
+          type: object
+          description: Колонки проекта; ключ — id проекта
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/Column'
+        weeklyTasks:
+          type: object
+          description: Расписание; ключ — понедельник недели в виде YYYY-MM-DD
+          additionalProperties:
+            type: object
+            description: Ключ — день недели, Monday…Sunday
+            additionalProperties:
+              type: array
+              items:
+                $ref: '#/components/schemas/WeeklyTask'
+        notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Note'
+        collapsedSubtasks:
+          type: object
+          description: Задачи со свёрнутым списком подзадач; ключ — id задачи
+          additionalProperties:
+            type: boolean
+        settings:
+          $ref: '#/components/schemas/Settings'
+
+    Project:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          description: Метка времени создания
+          example: '1725540000000'
+        name:
+          type: string
+          example: МАМКИН ВАЙБКОДЕР
+        slug:
+          type: string
+          description: Второй сегмент адреса борда
+          example: mamkin-vaibkoder
+
+    Column:
+      type: object
+      required: [id, title]
+      properties:
+        id:
+          type: string
+          example: in-progress
+        title:
+          type: string
+          example: IN PROGRESS
+        color:
+          type: string
+          description: Ключ палитры из src/constants.js
+          example: gray
+
+    Task:
+      type: object
+      required: [id, title]
+      properties:
+        id:
+          type: string
+        taskId:
+          type: string
+          description: Видимый номер, код проекта плюс порядковый номер
+          example: MMKNB-17
+        title:
+          type: string
+        description:
+          type: object
+          properties:
+            content:
+              type: string
+            editorState:
+              description: Состояние редактора; приложением не разбирается
+              type: [object, 'null']
+        priority:
+          type: string
+          enum: [low, medium, high]
+        labels:
+          type: array
+          items:
+            type: string
+        subtasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subtask'
+        images:
+          type: array
+          description: Сжатые картинки как data:URI
+          items:
+            type: string
+        likes:
+          type: array
+          description: Логины тех, кто отметил задачу сердцем
+          items:
+            type: string
+        sticker:
+          type: string
+          description: Эмодзи на карточке
+        parentTaskId:
+          type: string
+          description: Задача-родитель, если эта была поднята из подзадачи
+        createdAt:
+          type: string
+          example: 9/6/2026
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryEntry'
+
+    Subtask:
+      type: object
+      required: [id, title]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        completed:
+          type: boolean
+
+    HistoryEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          example: 9/6/2026, 2:15:00 PM
+        action:
+          type: string
+          example: Task created
+        changes:
+          type: object
+          additionalProperties: true
+
+    WeeklyTask:
+      type: object
+      required: [id, title]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        time:
+          type: string
+          description: Местное время без пояса; пустая строка — дело без времени
+          pattern: '^([01]?\d|2[0-3]):[0-5]\d$|^$'
+          example: '15:00'
+        completed:
+          type: boolean
+        important:
+          type: boolean
+          description: Отмечена звездой
+
+    Note:
+      type: object
+      required: [id, lines]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteLine'
+        mode:
+          type: string
+          enum: [bullet, todo]
+          description: Каким пунктом становится текст при превращении в список
+        color:
+          type: string
+          description: Ключ палитры заметок
+          example: default
+        blurred:
+          type: boolean
+          description: Заметка спрятана — содержимое размыто до открытия
+        images:
+          type: array
+          description: Поле старых заметок; новые держат картинки строками
+          items:
+            type: string
+        updatedAt:
+          type: string
+          example: 9/6/2026, 2:15:00 PM
+
+    NoteLine:
+      type: object
+      required: [id, type]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [text, todo, bullet, image]
+        text:
+          type: string
+        checked:
+          type: boolean
+          description: Только у type = todo
+        src:
+          type: string
+          description: Только у type = image — картинка как data:URI
+
+    Settings:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [light, dark, wizard, surf, millenial, handwriting]
+        darkMode:
+          type: boolean
+          description: 'Наследие: сохраняется ради старых копий данных'
+        featureFlags:
+          type: object
+          description: Разделы и возможности, которые админ раздаёт из настроек
+          additionalProperties:
+            type: boolean
+        projectLikes:
+          type: object
+          description: В каких проектах включены сердечки; ключ — id проекта
+          additionalProperties:
+            type: boolean
+        zodiac:
+          $ref: '#/components/schemas/Zodiac'
+        starterNotes:
+          type: integer
+          description: Сколько стартовых заметок уже досылалось
+
+    Zodiac:
+      type: object
+      properties:
+        sign:
+          type: string
+          example: leo
+        birthDate:
+          type: string
+          format: date
+        birthTime:
+          type: string
+          example: '04:30'
+        place:
+          type: string
+          example: Minsk, Belarus
+        latitude:
+          type: string
+        longitude:
+          type: string
+        utcOffset:
+          type: string
+          description: Смещение места на дату рождения, в часах
+
+    GeocodingResult:
+      type: object
+      properties:
+        name:
+          type: string
+        country:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        timezone:
+          type: string
+          example: Europe/Minsk
+
+    PostgrestError:
+      type: object
+      properties:
+        code:
+          type: string
+        details:
+          type: [string, 'null']
+        hint:
+          type: [string, 'null']
+        message:
+          type: string

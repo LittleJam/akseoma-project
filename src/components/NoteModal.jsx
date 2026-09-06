@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { X, Eye, EyeOff, Palette, List, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { X, ArrowLeft, Eye, EyeOff, Palette, List, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { NOTE_COLORS } from '../constants';
 import { getNoteLines, isListLine, isImageLine, emptyLine, newLineId, LINE_TEXT, LINE_IMAGE } from '../utils/noteLines';
 import { compressImage } from '../utils/imageCompression';
@@ -375,6 +375,21 @@ export default function NoteModal({
           </div>
         )}
         <div className="flex items-center gap-1 p-4 pb-2">
+          {/* Возврат к списку. На телефоне окно занимает весь экран, и стрелка
+              «назад» — то, что там ищут первым; крестика в шапке нет.
+              Закрывает тем же путём, что системный жест: заметка открыта своим
+              адресом, и onClose снимает его */}
+          {isMobile && (
+            <button
+              onClick={onClose}
+              title="Back to notes"
+              aria-label="Back to notes"
+              className={`p-2 -ml-2 mr-0.5 rounded press-icon flex-shrink-0 ${mutedText} ${iconHover}`}
+            >
+              <ArrowLeft size={18} />
+            </button>
+          )}
+
           <input
             type="text"
             value={note.title || ''}

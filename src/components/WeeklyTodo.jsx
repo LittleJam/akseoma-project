@@ -6,6 +6,7 @@ import { getQuoteForDate } from '../quotes';
 import { buildWeekIcs, downloadIcs, timedWeekTasks } from '../utils/ics';
 import { getSign, getHoroscopeForDate, getHoroscopeDetails } from '../horoscope';
 import PageShell from './PageShell';
+import ScrollMore from './ScrollMore';
 import Modal from './Modal';
 import useIsMobile from '../utils/useIsMobile';
 
@@ -418,7 +419,15 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
 
                 </div>
 
-                <div className="space-y-0.5 sm:space-y-1 mb-2 sm:mb-3 flex-1 min-h-0 overflow-y-auto">
+                {/* Список с отметкой «ниже ещё столько-то»: карточка ровной
+                    высоты, и без неё день на пять дел выглядел бы как день на
+                    два — прокрутка внутри карточки почти не видна */}
+                <ScrollMore
+                  className="space-y-0.5 sm:space-y-1 h-full overflow-y-auto"
+                  hintClassName={darkMode
+                    ? 'bg-gray-800 border-gray-600 text-gray-300'
+                    : 'bg-white border-gray-300 text-gray-500'}
+                >
                   {weekTasks[day]?.map((task, taskIndex) => {
                     const isEditingThis = editingItem?.day === day && editingItem?.taskId === task.id;
                     const isLastTask = taskIndex === weekTasks[day].length - 1;
@@ -560,9 +569,9 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                     </div>
                     );
                   })}
-                </div>
+                </ScrollMore>
 
-                <div className={`flex items-center gap-2 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div className={`mt-2 sm:mt-3 flex items-center gap-2 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   {/* Часы открывают поле времени и сами становятся отметкой, что оно открыто */}
                   <button
                     onClick={() => toggleTimeField(day)}
@@ -663,26 +672,36 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                 ))}
               </div>
 
-              <p className={`text-sm leading-relaxed ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                {details.summary}
-              </p>
+              <div>
+                <h3 className={`text-section uppercase mb-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Today for you
+                </h3>
+                <p className={`text-sm leading-relaxed ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  {details.summary}
+                </p>
+              </div>
 
-              {details.areas.map(area => (
-                <div key={area.key}>
+              {/* Разбор дня подряд: Луна по фазе, стихии, сферы жизни, время
+                  дня и вечер. Всё собрано из тех же данных, что в карте выше */}
+              {details.sections.map(section => (
+                <div key={section.key}>
                   <h3 className={`text-section uppercase mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {area.title}
+                    {section.title}
                   </h3>
                   <p className={`text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    {area.text}
+                    {section.text}
                   </p>
                 </div>
               ))}
 
               {/* Прямо говорим, что здесь расчёт, а что — текст дня */}
               <p className={`text-xs pt-2 border-t ${darkMode ? 'border-gray-700 text-gray-500' : 'border-gray-200 text-gray-400'}`}>
-                Sun, Moon and rising sign are calculated from your birth data.
+                Sun, Moon and rising sign are calculated from your birth data; the Moon phase
+                for today is the angle between the Moon and the Sun, not a calendar
+                approximation. The readings below are built from all of it — sign, rising sign,
+                phase and the sign the Moon is in today — but the wording is the app\'s own.{' '}
                 {moon && !moonExact && ' Without a birth time the Moon is taken at noon, so it can be the next sign if you were born close to a change.'}
-                {' '}The readings themselves are written by the app; other planets, houses and aspects are not calculated.
+                Other planets, houses and aspects are not calculated.
               </p>
             </div>
           </Modal>

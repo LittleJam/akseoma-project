@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, LogOut, ShieldCheck, Heart } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, LogOut, ShieldCheck, Heart, BellRing } from 'lucide-react';
 import { COLUMN_COLORS } from '../constants';
 import { THEME_OPTIONS } from '../themes';
 import { FEATURES, DEFAULT_FLAGS } from '../auth';
 import Select from './Select';
 import SettingsSection from './SettingsSection';
 import { APP_ICONS } from '../utils/appIcon';
+import {
+  LEAD_OPTIONS,
+  notificationsSupported,
+  notificationPermission,
+  requestNotificationPermission
+} from '../utils/reminders';
 import { ZODIAC, getSign, DEFAULT_SIGN, guessUtcOffset, offsetForZone } from '../horoscope';
 import PageShell from './PageShell';
 
@@ -15,6 +21,8 @@ export default function SettingsPage({
   setTheme,
   appIcon,
   setAppIcon,
+  reminders,
+  setReminders,
   user,
   allowed = () => true,
   featureFlags = DEFAULT_FLAGS,
@@ -226,7 +234,7 @@ export default function SettingsPage({
             {theme === 'wizard'
               ? 'Wizard: the Prisoner of Azkaban night — misty blues, candlelight and the house colours.'
               : theme === 'surf'
-                ? 'Surf: an Indian ocean swell behind frosted panels.'
+                ? 'Surf: a shore at noon — a swell along the bottom, warm sand at the very edge, notes taped to the wall.'
                 : theme === 'millenial'
                   ? 'Millenial: Windows XP, 2001 — Luna blue, Tahoma and beveled buttons.'
                   : theme === 'handwriting'
@@ -234,6 +242,83 @@ export default function SettingsPage({
                     : 'Wizard is Hogwarts at night, Surf is the ocean, Millenial is Windows XP, Handwriting is a notebook.'}
           </p>
         </div>
+        )}
+
+        {/* Напоминания о задачах Расписания. Раздел местный: разрешение даёт
+            конкретный браузер, и в другой копии приложения его нет */}
+        {allowed('weekly') && setReminders && (
+        <SettingsSection title={<><BellRing size={14} /> Reminders</>} darkMode={darkMode} borderClass={cardBorderClass}>
+          <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            A notification for every Schedule task that has a time set.
+          </p>
+
+          {!notificationsSupported() ? (
+            <p className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              This browser cannot show notifications.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <label className={`flex items-center gap-3 p-2 -m-2 rounded-lg cursor-pointer ${
+                darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={!!reminders.enabled}
+                  onChange={async () => {
+                    if (reminders.enabled) {
+                      setReminders({ ...reminders, enabled: false });
+                      return;
+                    }
+                    // Включение и есть тот жест пользователя, в ответ на
+                    // который браузер соглашается спросить про разрешение
+                    const permission = await requestNotificationPermission();
+                    setReminders({ ...reminders, enabled: permission === 'granted' });
+                  }}
+                  className="w-5 h-5 sm:w-4 sm:h-4 cursor-pointer flex-shrink-0 accent-green-700"
+                />
+                <span className={`text-sm font-medium ${labelClass}`}>Remind me about scheduled tasks</span>
+              </label>
+
+              {notificationPermission() === 'denied' && (
+                <p className="text-xs text-amber-500">
+                  Notifications are blocked for this site — allow them in the browser settings first.
+                </p>
+              )}
+
+              <div>
+                <p className={`text-xs mb-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>How early</p>
+                <div className="flex flex-wrap gap-2">
+                  {LEAD_OPTIONS.map(lead => {
+                    const active = reminders.lead === lead;
+                    return (
+                      <button
+                        key={lead}
+                        onClick={() => setReminders({ ...reminders, lead })}
+                        aria-pressed={active}
+                        className={`h-control px-3.5 text-xs rounded-full border press ${
+                          active
+                            ? 'border-green-600 text-green-600'
+                            : darkMode
+                              ? 'border-gray-700 text-gray-300 hover:bg-gray-700'
+                              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {lead === 0 ? 'On time' : `${lead} min before`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                Reminders are set by this device for the hours ahead and are renewed every time you
+                open the app. With the app closed for a long time they can be missed: a real push
+                needs a server, and this app runs without one. Exporting the week to the system
+                calendar (the button in Schedule) gives alerts that do not depend on the app.
+              </p>
+            </div>
+          )}
+        </SettingsSection>
         )}
 
         {/* Иконка приложения. Вариантов немного и каждый — свой манифест:

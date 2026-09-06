@@ -6,20 +6,31 @@
 // обещает ни доступности, ни того, что завтра не потребует ключ.
 // Поэтому это генератор: текст складывается из трёх частей и жёстко привязан к
 // паре «знак + дата», так что за день не меняется и у разных знаков разный.
+// element, quality и ruler — не расчёт, а свойства самих знаков: они одни и те
+// же в любом справочнике, поэтому лежат прямо в таблице
 export const ZODIAC = [
-  { key: 'aries',       label: 'Aries',       symbol: '♈', from: [3, 21],  to: [4, 19] },
-  { key: 'taurus',      label: 'Taurus',      symbol: '♉', from: [4, 20],  to: [5, 20] },
-  { key: 'gemini',      label: 'Gemini',      symbol: '♊', from: [5, 21],  to: [6, 20] },
-  { key: 'cancer',      label: 'Cancer',      symbol: '♋', from: [6, 21],  to: [7, 22] },
-  { key: 'leo',         label: 'Leo',         symbol: '♌', from: [7, 23],  to: [8, 22] },
-  { key: 'virgo',       label: 'Virgo',       symbol: '♍', from: [8, 23],  to: [9, 22] },
-  { key: 'libra',       label: 'Libra',       symbol: '♎', from: [9, 23],  to: [10, 22] },
-  { key: 'scorpio',     label: 'Scorpio',     symbol: '♏', from: [10, 23], to: [11, 21] },
-  { key: 'sagittarius', label: 'Sagittarius', symbol: '♐', from: [11, 22], to: [12, 21] },
-  { key: 'capricorn',   label: 'Capricorn',   symbol: '♑', from: [12, 22], to: [1, 19] },
-  { key: 'aquarius',    label: 'Aquarius',    symbol: '♒', from: [1, 20],  to: [2, 18] },
-  { key: 'pisces',      label: 'Pisces',      symbol: '♓', from: [2, 19],  to: [3, 20] }
+  { key: 'aries',       label: 'Aries',       symbol: '♈', from: [3, 21],  to: [4, 19],  element: 'Fire',  quality: 'Cardinal', ruler: 'Mars' },
+  { key: 'taurus',      label: 'Taurus',      symbol: '♉', from: [4, 20],  to: [5, 20],  element: 'Earth', quality: 'Fixed',    ruler: 'Venus' },
+  { key: 'gemini',      label: 'Gemini',      symbol: '♊', from: [5, 21],  to: [6, 20],  element: 'Air',   quality: 'Mutable',  ruler: 'Mercury' },
+  { key: 'cancer',      label: 'Cancer',      symbol: '♋', from: [6, 21],  to: [7, 22],  element: 'Water', quality: 'Cardinal', ruler: 'the Moon' },
+  { key: 'leo',         label: 'Leo',         symbol: '♌', from: [7, 23],  to: [8, 22],  element: 'Fire',  quality: 'Fixed',    ruler: 'the Sun' },
+  { key: 'virgo',       label: 'Virgo',       symbol: '♍', from: [8, 23],  to: [9, 22],  element: 'Earth', quality: 'Mutable',  ruler: 'Mercury' },
+  { key: 'libra',       label: 'Libra',       symbol: '♎', from: [9, 23],  to: [10, 22], element: 'Air',   quality: 'Cardinal', ruler: 'Venus' },
+  { key: 'scorpio',     label: 'Scorpio',     symbol: '♏', from: [10, 23], to: [11, 21], element: 'Water', quality: 'Fixed',    ruler: 'Pluto' },
+  { key: 'sagittarius', label: 'Sagittarius', symbol: '♐', from: [11, 22], to: [12, 21], element: 'Fire',  quality: 'Mutable',  ruler: 'Jupiter' },
+  { key: 'capricorn',   label: 'Capricorn',   symbol: '♑', from: [12, 22], to: [1, 19],  element: 'Earth', quality: 'Cardinal', ruler: 'Saturn' },
+  { key: 'aquarius',    label: 'Aquarius',    symbol: '♒', from: [1, 20],  to: [2, 18],  element: 'Air',   quality: 'Fixed',    ruler: 'Uranus' },
+  { key: 'pisces',      label: 'Pisces',      symbol: '♓', from: [2, 19],  to: [3, 20],  element: 'Water', quality: 'Mutable',  ruler: 'Neptune' }
 ];
+
+// Названия месяцев для границ знака: даты в таблице заданы числами
+export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Противоположный знак — тот, что через полкруга. Считается, а не выписан
+export const oppositeSign = (key) => {
+  const index = ZODIAC.findIndex(s => s.key === key);
+  return index < 0 ? null : ZODIAC[(index + 6) % 12];
+};
 
 export const DEFAULT_SIGN = 'taurus';
 
@@ -237,6 +248,57 @@ export const getNatalChart = (zodiac = {}) => {
   };
 };
 
+// ── Небо на сегодня ────────────────────────────────────────────────────────
+// Это расчёт, а не текст: долготы Солнца и Луны уже считаются выше, и фаза
+// берётся из них — как угол между ними, — а не из приближения «столько-то
+// суток от новолуния». Освещённость диска — половина от единицы минус косинус
+// этого угла.
+const MOON_PHASES = [
+  { name: 'New moon', symbol: '🌑' },
+  { name: 'Waxing crescent', symbol: '🌒' },
+  { name: 'First quarter', symbol: '🌓' },
+  { name: 'Waxing gibbous', symbol: '🌔' },
+  { name: 'Full moon', symbol: '🌕' },
+  { name: 'Waning gibbous', symbol: '🌖' },
+  { name: 'Last quarter', symbol: '🌗' },
+  { name: 'Waning crescent', symbol: '🌘' }
+];
+
+// Сколько дней в сезоне знака и какой это день. Границы — общепринятые даты
+// из таблицы выше, поэтому счёт целыми сутками
+const seasonProgress = (sign, date) => {
+  const year = date.getFullYear();
+  const startYear = sign.from[0] > sign.to[0] && date.getMonth() + 1 <= sign.to[0] ? year - 1 : year;
+  const start = Date.UTC(startYear, sign.from[0] - 1, sign.from[1]);
+  const endYear = sign.from[0] > sign.to[0] ? startYear + 1 : startYear;
+  const end = Date.UTC(endYear, sign.to[0] - 1, sign.to[1]);
+  const todayUtc = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = Math.floor((todayUtc - start) / 86400000) + 1;
+  const length = Math.floor((end - start) / 86400000) + 1;
+  return { day: Math.min(Math.max(day, 1), length), length };
+};
+
+// Где сегодня Солнце, в какой фазе и знаке Луна. Всё считается на полдень UTC:
+// в пределах суток фаза меняется мало, а привязка к полудню убирает разнобой
+// между часовыми поясами
+export const getSkyToday = (date = new Date()) => {
+  const d = daysFromEpoch(julianDay(date.getFullYear(), date.getMonth() + 1, date.getDate(), 12));
+  const sunLon = sunLongitude(d);
+  const moonLon = moonLongitude(d);
+  const elongation = norm(moonLon - sunLon);
+  const sun = getSign(signFromLongitude(sunLon));
+
+  return {
+    sun,
+    season: seasonProgress(sun, date),
+    moon: {
+      ...MOON_PHASES[Math.floor(norm(elongation + 22.5) / 45)],
+      illumination: (1 - cos(elongation)) / 2,
+      sign: getSign(signFromLongitude(moonLon))
+    }
+  };
+};
+
 const OPENINGS = [
   'The day starts quietly and rewards those who do not rush it.',
   'Energy runs high this morning — spend it before it spends you.',
@@ -375,13 +437,148 @@ const AREAS = [
   }
 ];
 
-// Подробный разбор: сводка плюс четыре основных пункта. Всё то же семя, поэтому
-// за день не меняется, у разных знаков и асцендентов разное
-export const getHoroscopeDetails = (signKey, date = new Date(), risingKey = null, moonKey = null) => ({
-  summary: getHoroscopeForDate(signKey, date, risingKey, moonKey),
-  areas: AREAS.map((area, i) => ({
-    key: area.key,
-    title: area.title,
-    text: area.lines[mix(horoscopeSeed(signKey, date, risingKey, moonKey) * 1024 + 17 + i) % area.lines.length]
-  }))
-});
+// ── Разбор дня ─────────────────────────────────────────────────────────────
+// Разбор собирается из тех же данных, что показаны выше: знак, асцендент, знак
+// Луны, её фаза и знак, в котором сегодня Солнце. Колода у каждого раздела
+// своя, чтобы «работа» и «деньги» не выдавали одну мысль разными словами, а
+// семя общее — за день текст не меняется.
+
+// Луна по фазам: восемь колод, по одной на фазу, в том же порядке, что
+// MOON_PHASES. Смысл фазы и есть смысл совета
+const MOON_LINES = [
+  [
+    'A new moon day: start small and quietly, nothing needs an audience yet.',
+    'Empty page energy — write the intention down, not the whole plan.',
+    'Beginnings made today are easier to correct later than to defend now.'
+  ],
+  [
+    'The first push is done; keep the pace modest and it holds.',
+    'Something started recently wants one more nudge, not a rethink.',
+    'Add one step to what already exists rather than opening a new front.'
+  ],
+  [
+    'Half-light: the day asks for a decision you have been circling.',
+    'Resistance shows up now — it means the thing is real, not wrong.',
+    'Choose the harder half of the task first; the rest follows on its own.'
+  ],
+  [
+    'Almost full: finish, do not add. New ideas keep until next week.',
+    'Tie off loose ends today — they will be twice the work later.',
+    'Push the thing that is nearly done over the line and stop there.'
+  ],
+  [
+    'Full moon day: everything reads louder than it is, including you.',
+    'Results are visible now — look at them before deciding anything.',
+    'Strong feelings today are information, not instructions.'
+  ],
+  [
+    'The tide turns: give away, hand over, or delete something.',
+    'A good day to share what you learned rather than to learn more.',
+    'What you finished is worth telling someone about.'
+  ],
+  [
+    'Last quarter: clear out what you are keeping for no reason.',
+    'Say no to one thing today and the week gets lighter.',
+    'Review honestly — half the list can simply be dropped.'
+  ],
+  [
+    'Waning to nothing: rest is the task, not the reward for it.',
+    'Low energy is on schedule today; plan around it, not against it.',
+    'Close the week quietly; the next beginning is a few days away.'
+  ]
+];
+
+// Отношение стихий: своя стихия, дружественная (огонь-воздух, земля-вода),
+// напряжённая (огонь-вода, земля-воздух) и всё остальное
+const ALLY = { Fire: 'Air', Air: 'Fire', Earth: 'Water', Water: 'Earth' };
+const TENSE = { Fire: 'Water', Water: 'Fire', Earth: 'Air', Air: 'Earth' };
+
+const elementRelation = (mine, theirs) => {
+  if (!mine || !theirs) return 'neutral';
+  if (mine === theirs) return 'same';
+  if (ALLY[mine] === theirs) return 'ally';
+  if (TENSE[mine] === theirs) return 'tense';
+  return 'neutral';
+};
+
+const RELATION_LINES = {
+  same: [
+    'The sky speaks your language today — what feels natural is also correct.',
+    'No translation needed: your first instinct is the one to follow.',
+    'Your usual pace works today; do not borrow anyone else\'s.'
+  ],
+  ally: [
+    'The day helps you along — say yes to what moves easily.',
+    'Things click with a little less effort than usual; use that on the hard task.',
+    'A good day to work next to other people rather than alone.'
+  ],
+  tense: [
+    'The day pulls the other way — slow down before you push harder.',
+    'Friction today is about tempo, not about people; adjust the tempo.',
+    'What feels like the wrong answer may just be the wrong hour.'
+  ],
+  neutral: [
+    'A plain day: nothing helps much, nothing gets in the way.',
+    'Neither wind nor wall — whatever you set up today is what you get.',
+    'The day takes the shape you give it; give it one clearly.'
+  ]
+};
+
+// Час, на который стоит поставить главное. Часть дня, а не точное время:
+// точное было бы выдумкой с точностью до минуты
+const TIMING = [
+  'The first two hours after you start are the clean ones — spend them well.',
+  'Late morning is the strongest stretch today; guard it.',
+  'The middle of the day is noisy; put thinking before it or after it.',
+  'Afternoon carries better than morning today — do not force an early start.',
+  'Early evening is unexpectedly clear; leave one real task for it.',
+  'Do the important thing before lunch and the rest will not matter.'
+];
+
+// Чем закончить день
+const EVENING = [
+  'End the day by writing down what is unfinished; it stops the loop at night.',
+  'One quiet hour without a screen closes the day better than an early bed.',
+  'Do not start anything after dark today — read the day back instead.',
+  'Say the thing you did not say today, briefly, before it grows.',
+  'Tidy one surface tonight; tomorrow starts from it.',
+  'Let the last hour be dull on purpose.'
+];
+
+// Полный разбор дня: сводка и разделы подряд, одним списком — так его и
+// показывает окно. Всё то же семя, поэтому за день не меняется, а у разных
+// знаков, асцендентов и фаз Луны разное
+export const getHoroscopeDetails = (signKey, date = new Date(), risingKey = null, moonKey = null) => {
+  const sky = getSkyToday(date);
+  const sign = getSign(signKey);
+  // Фаза и знак Луны входят в семя: без этого текст менялся бы от даты, но не
+  // от неба, и разделы про Луну разъезжались бы с тем, что в них написано
+  const phaseIndex = MOON_PHASES.findIndex(p => p.name === sky.moon.name);
+  const seed = horoscopeSeed(signKey, date, risingKey, moonKey) * 31 + phaseIndex;
+  const pick = (pool, salt) => pool[mix(seed * 1024 + salt) % pool.length];
+
+  const relation = elementRelation(sign.element, sky.moon.sign.element);
+
+  return {
+    summary: getHoroscopeForDate(signKey, date, risingKey, moonKey),
+    sections: [
+      {
+        key: 'moon',
+        title: `Moon · ${sky.moon.name.toLowerCase()}, ${Math.round(sky.moon.illumination * 100)}% lit`,
+        text: pick(MOON_LINES[phaseIndex], 41)
+      },
+      {
+        key: 'element',
+        title: `${sign.element} sign under a ${sky.moon.sign.element.toLowerCase()} moon`,
+        text: pick(RELATION_LINES[relation], 43)
+      },
+      ...AREAS.map((area, i) => ({
+        key: area.key,
+        title: area.title,
+        text: pick(area.lines, 17 + i)
+      })),
+      { key: 'timing', title: 'When', text: pick(TIMING, 61) },
+      { key: 'evening', title: 'Evening', text: pick(EVENING, 67) }
+    ]
+  };
+};

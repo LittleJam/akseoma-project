@@ -70,7 +70,7 @@ const eventUid = (weekKey, day, taskId) => `${weekKey}-${day}-${taskId}@surf-the
 const SEQUENCE_EPOCH = Date.UTC(2020, 0, 1);
 const sequenceFor = (now) => Math.floor((now.getTime() - SEQUENCE_EPOCH) / 1000);
 
-const parseTime = (time) => {
+export const parseTaskTime = (time) => {
   const match = HHMM.exec(String(time || '').trim());
   if (!match) return null;
 
@@ -88,7 +88,7 @@ export const timedWeekTasks = ({ weekTasks = {}, weekDays = [], weekDates = [] }
     if (!date) return [];
 
     return (weekTasks[day] || [])
-      .map(task => ({ task, day, date, at: parseTime(task.time) }))
+      .map(task => ({ task, day, date, at: parseTaskTime(task.time) }))
       .filter(item => item.at);
   });
 

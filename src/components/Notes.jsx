@@ -204,8 +204,10 @@ export default function Notes({
           // Карточки квадратные, поэтому на широком экране добавляем колонки,
           // а не растягиваем плитки: иначе три штуки раздуваются на пол-экрана.
           // На телефоне колонки три: обложке нужно только название, и в такой
-          // плитке список виден почти целиком, без листания
-          <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 wide:grid-cols-4 ultra:grid-cols-5 gap-2 sm:gap-3">
+          // плитке список виден почти целиком, без листания.
+          // Зазор шире самих плиток по краям: в Surf заметку держит скотч, он
+          // выступает за лист, и на тесной сетке соседи налезали друг на друга
+          <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 wide:grid-cols-4 ultra:grid-cols-5 gap-4 sm:gap-5">
             {notes.map((note, index) => {
               const isDragging = dragIndex === index;
               const isDropTarget = dragOverIndex === index && dragIndex !== null && dragIndex !== index;

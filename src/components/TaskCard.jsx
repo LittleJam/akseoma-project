@@ -174,7 +174,10 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
         )}
       </div>
       {descriptionText && descriptionText.trim() && (
-        <p className={`text-xs truncate mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+        /* Описание показываем как написано: с переносами строк и до трёх строк
+           на карточке. Раньше стояло truncate — всё сминалось в одну строку,
+           и список из описания на борде было не прочесть */
+        <p className={`text-xs whitespace-pre-line break-words line-clamp-3 mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
           {descriptionText}
         </p>
       )}
