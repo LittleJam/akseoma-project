@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Edit2, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, Clock, CalendarPlus } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Edit2, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
+  Star, Clock, CalendarPlus, CalendarArrowDown
+} from 'lucide-react';
 import { themeIcon } from '../themes';
 import { getWeekStart, addWeeks, getWeekKey, getWeekDates, isSameDay } from '../utils/weeks';
 import { getQuoteForDate } from '../quotes';
@@ -10,7 +13,7 @@ import ScrollMore from './ScrollMore';
 import Modal from './Modal';
 import useIsMobile from '../utils/useIsMobile';
 
-export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, darkMode, theme, weekDays, zodiacSign, risingSign, moonSign, moonExact, horoscopeOpen, setHoroscopeOpen }) {
+export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTask, toggleWeeklyTask, editWeeklyTask, moveWeeklyTask, toggleWeeklyTaskImportant, importCalendar, darkMode, theme, weekDays, zodiacSign, risingSign, moonSign, moonExact, horoscopeOpen, setHoroscopeOpen }) {
   const AddIcon = themeIcon(theme, 'add');
   const RefreshIcon = themeIcon(theme, 'refresh');
   const [weekOffset, setWeekOffset] = useState(0);
@@ -223,6 +226,37 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
     if (ics) downloadIcs(`schedule-${weekKey}.ics`, ics);
   };
 
+  // Ввоз из другого календаря. Подписку по ссылке браузер забрать не может —
+  // чужой сервер не отдаёт CORS, — поэтому берём файл, который календари
+  // выгружают сами. Итог показываем числами: что-то календарь мог написать
+  // правилом, которое мы не разворачиваем, и молчать об этом нельзя
+  const importInputRef = useRef(null);
+  const [importNote, setImportNote] = useState(null);
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !importCalendar) return;
+
+    try {
+      const result = importCalendar(await file.text());
+      const parts = [`${result.added} added`];
+      if (result.duplicates) parts.push(`${result.duplicates} already here`);
+      if (result.unsupported) parts.push(`${result.unsupported} with repeat rules skipped`);
+      setImportNote(parts.join(' · '));
+    } catch (error) {
+      console.error('Calendar import error:', error);
+      setImportNote('Could not read that file');
+    }
+  };
+
+  // Сообщение о ввозе — не состояние экрана, а ответ на действие: гасим само
+  useEffect(() => {
+    if (!importNote) return;
+    const timer = setTimeout(() => setImportNote(null), 6000);
+    return () => clearTimeout(timer);
+  }, [importNote]);
+
   // Листание недель — действия страницы, поэтому уезжают в шапку каркаса рядом с заголовком
   const weekNav = (
     <>
@@ -239,6 +273,26 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
       >
         <CalendarPlus size={16} />
       </button>
+
+      {importCalendar && (
+        <>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".ics,text/calendar"
+            onChange={handleImportFile}
+            className="hidden"
+          />
+          <button
+            onClick={() => importInputRef.current?.click()}
+            title="Import an .ics file from another calendar"
+            aria-label="Import an .ics file from another calendar"
+            className={`${navButtonClass} mr-1`}
+          >
+            <CalendarArrowDown size={16} />
+          </button>
+        </>
+      )}
 
       <button
         onClick={() => setWeekOffset(prev => prev - 1)}
@@ -275,6 +329,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
 
   // Фраза дня — не действие, а украшение, поэтому отдельной строкой под заголовком
   const quoteLine = (
+    <div className="min-w-0">
     <div className="flex items-center gap-2 min-w-0 group/quote">
       <p className={`text-body sm:text-base leading-relaxed ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
         <span className="italic">“{quote.text}”</span>
@@ -290,6 +345,14 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
       >
         <RefreshIcon size={14} />
       </button>
+    </div>
+
+      {/* Итог ввоза стоит под цитатой и через несколько секунд уходит сам */}
+      {importNote && (
+        <p className={`mt-1 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          Calendar import: {importNote}
+        </p>
+      )}
     </div>
   );
 
@@ -310,6 +373,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
             const moon = moonSign ? getSign(moonSign) : null;
             return (
               <div
+                data-card="day"
                 className={`rounded-lg p-2.5 sm:p-4 flex flex-col h-auto sm:h-day-card min-h-0 min-w-0 border ${
                   darkMode ? 'border-gray-800 bg-gray-800/60' : 'border-gray-200 bg-white'
                 }`}
@@ -396,6 +460,7 @@ export default function WeeklyTodo({ weeklyTasks, addWeeklyTask, deleteWeeklyTas
                 /* Ровные карточки нужны сетке: в четыре колонки разнобой высот
                    выглядел бы рваным. На телефоне колонка одна, и фиксированные
                    315px превращались бы в пустоту под парой дел */
+                data-card="day"
                 className={`rounded-lg p-2.5 sm:p-4 flex flex-col h-auto sm:h-day-card min-h-0 min-w-0 border transition duration-150 ${
                   isToday
                     ? darkMode ? 'border-green-700 bg-green-950/40' : 'border-green-200 bg-green-50'

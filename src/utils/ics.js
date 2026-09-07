@@ -5,6 +5,8 @@
 // В календарь уходят только задачи с временем: строка без времени — это пункт
 // списка на день, и в сетке календаря ей делать нечего.
 
+import { getWeekKey, getWeekStart, addWeeks } from './weeks';
+
 const PRODID = '-//Surf the Task//Schedule//EN';
 
 // Сколько длится задача. Времени конца в Расписании нет, а событие нулевой
@@ -159,4 +161,195 @@ export const downloadIcs = (filename, text) => {
   link.remove();
   // Ссылку освобождаем не сразу: Safari успевает открыть файл только после клика
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+// ── Ввоз из других календарей ──────────────────────────────────────────────
+// Приложение читает тот же формат, что и отдаёт: .ics, выгруженный из Google
+// Calendar, Apple Calendar, Outlook. Подписку по ссылке (webcal://) браузер
+// достать не может — чужой сервер не отдаёт заголовки CORS, — поэтому ввоз
+// идёт файлом, который выгружают сами календари.
+//
+// Разбираем то, что в этих выгрузках действительно встречается: одиночные
+// события и простые повторы (каждый день, каждую неделю). Всё остальное —
+// сложные правила, исключения, вложенные часовые пояса — пропускаем и честно
+// сообщаем числом: выдумать за календарь его расписание нельзя.
+
+// По стандарту длинные строки перенесены, и продолжение начинается с пробела
+// или табуляции. Сначала склеиваем их обратно
+const unfoldIcs = (text) => text.replace(/\r\n[ \t]/g, '').replace(/[\r\n][ \t]/g, '');
+
+const unescapeIcs = (value) =>
+  value.replace(/\\n/gi, '\n').replace(/\\([;,\\])/g, '$1');
+
+// Строка вида DTSTART;TZID=Europe/Minsk:20260907T150000
+const parseIcsLine = (line) => {
+  const colon = line.indexOf(':');
+  if (colon === -1) return null;
+
+  const [name, ...paramParts] = line.slice(0, colon).split(';');
+  const params = {};
+  paramParts.forEach(part => {
+    const [key, value = ''] = part.split('=');
+    params[key.toUpperCase()] = value;
+  });
+
+  return { name: name.toUpperCase(), params, value: line.slice(colon + 1) };
+};
+
+// 20260907 | 20260907T150000 | 20260907T150000Z
+//
+// Z — момент в UTC, его переводим в местное время. Без Z время местное: и для
+// «floating», и для TZID. Своей базы часовых поясов у приложения нет, а
+// переводить из чужой зоны без неё — гадание; для расписания на день
+// разница видна только у событий из другого пояса, и об этом сказано на экране
+const parseIcsDate = (value, params = {}) => {
+  const match = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(String(value).trim());
+  if (!match) return null;
+
+  const [, year, month, day, hours, minutes, seconds, utc] = match;
+  const allDay = !hours || params.VALUE === 'DATE';
+
+  const date = utc
+    ? new Date(Date.UTC(+year, +month - 1, +day, +hours, +minutes, +(seconds || 0)))
+    : new Date(+year, +month - 1, +day, +(hours || 0), +(minutes || 0), +(seconds || 0));
+
+  return { date, allDay };
+};
+
+const parseRrule = (value) => {
+  const rule = {};
+  String(value).split(';').forEach(part => {
+    const [key, val = ''] = part.split('=');
+    rule[key.toUpperCase()] = val;
+  });
+  return rule;
+};
+
+// Даты повторов внутри окна. BYDAY не разбираем: день недели берём у самого
+// события, а перечисление дней в одном правиле встречается реже, чем кажется
+const expandOccurrences = (start, rule, windowEnd) => {
+  if (!rule) return [start];
+
+  const freq = (rule.FREQ || '').toUpperCase();
+  if (freq !== 'DAILY' && freq !== 'WEEKLY') return null;   // не развернём — пропустим
+
+  const stepDays = (Number(rule.INTERVAL) || 1) * (freq === 'WEEKLY' ? 7 : 1);
+  const count = Number(rule.COUNT) || Infinity;
+  const until = rule.UNTIL ? parseIcsDate(rule.UNTIL)?.date : null;
+
+  const dates = [];
+  const cursor = new Date(start);
+
+  // Предохранитель на случай правила без конца: окно всё равно ограничено,
+  // но цикл не должен зависеть от того, что в файле
+  for (let i = 0; i < 500 && dates.length < count; i += 1) {
+    if (cursor > windowEnd) break;
+    if (until && cursor > until) break;
+    dates.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + stepDays);
+  }
+
+  return dates;
+};
+
+export const parseIcsEvents = (text) => {
+  const events = [];
+  let current = null;
+
+  unfoldIcs(String(text)).split(/\r?\n/).forEach(rawLine => {
+    const line = parseIcsLine(rawLine.trim());
+    if (!line) return;
+
+    if (line.name === 'BEGIN' && line.value === 'VEVENT') {
+      current = {};
+      return;
+    }
+    if (line.name === 'END' && line.value === 'VEVENT') {
+      if (current?.start) events.push(current);
+      current = null;
+      return;
+    }
+    if (!current) return;
+
+    if (line.name === 'DTSTART') {
+      const parsed = parseIcsDate(line.value, line.params);
+      if (parsed) {
+        current.start = parsed.date;
+        current.allDay = parsed.allDay;
+      }
+    } else if (line.name === 'SUMMARY') {
+      current.title = unescapeIcs(line.value).trim();
+    } else if (line.name === 'UID') {
+      current.uid = line.value.trim();
+    } else if (line.name === 'RRULE') {
+      current.rrule = parseRrule(line.value);
+    }
+  });
+
+  return events;
+};
+
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// Ввоз в расписание. Возвращает новую карту недель и числа: сколько дел
+// добавлено, сколько уже стояло и сколько событий разобрать не удалось.
+// Окно ограничено (по умолчанию восемь недель вперёд): календарь может
+// содержать годы истории, а расписание — план на неделю, а не архив
+export const importIcsIntoWeeks = ({
+  text,
+  weeklyTasks = {},
+  weekDays = [],
+  from = new Date(),
+  weeks = 8
+}) => {
+  const events = parseIcsEvents(text);
+  const windowStart = getWeekStart(from);
+  const windowEnd = addWeeks(windowStart, weeks);
+
+  const next = { ...weeklyTasks };
+  let added = 0;
+  let duplicates = 0;
+  let unsupported = 0;
+
+  events.forEach(event => {
+    const occurrences = expandOccurrences(event.start, event.rrule, windowEnd);
+    if (!occurrences) {
+      unsupported += 1;
+      return;
+    }
+
+    occurrences.forEach(date => {
+      if (date < windowStart || date > windowEnd) return;
+
+      const weekKey = getWeekKey(date);
+      // Понедельник у недели первый, а getDay() считает от воскресенья
+      const day = weekDays[(date.getDay() + 6) % 7];
+      if (!day) return;
+
+      const week = next[weekKey] ? { ...next[weekKey] } : {};
+      const list = week[day] ? [...week[day]] : [];
+
+      // Один и тот же ввоз дважды не должен удваивать дела: событие узнаём по
+      // его UID и дате повтора
+      const stamp = `${event.uid || event.title}@${date.toDateString()}`;
+      if (list.some(task => task.icsUid === stamp)) {
+        duplicates += 1;
+        return;
+      }
+
+      list.push({
+        id: `${Date.now().toString(36)}-${added}`,
+        title: event.title || 'Untitled event',
+        time: event.allDay ? '' : `${pad2(date.getHours())}:${pad2(date.getMinutes())}`,
+        completed: false,
+        icsUid: stamp
+      });
+
+      week[day] = list;
+      next[weekKey] = week;
+      added += 1;
+    });
+  });
+
+  return { weeklyTasks: next, added, duplicates, unsupported, events: events.length };
 };

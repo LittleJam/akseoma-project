@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Trash2, X, Image as ImageIcon, ArrowRightLeft, Tag,
+  Trash2, X, Image as ImageIcon, Tag,
   Bold, Italic, Underline, Code, Palette
 } from 'lucide-react';
 import { getLabelColor, normalizeLabel } from '../constants';
@@ -44,7 +44,6 @@ export default function TaskEditor({
   getProjectColumns,
   projectTasks = [],
   knownLabels = [],
-  onMoveToProject
 }) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(toEditorHtml(task.description));
@@ -218,11 +217,6 @@ export default function TaskEditor({
     setTargetColumnId(firstColumn || '');
   };
 
-  const handleMoveToProject = () => {
-    if (!targetProjectId || !targetColumnId) return;
-    onMoveToProject(task.id, targetProjectId, targetColumnId);
-  };
-
   const bgClass = darkMode ? 'bg-gray-900' : 'bg-gray-50';
   const cardBorderClass = darkMode ? 'border-gray-800 bg-gray-800/60' : 'border-gray-200 bg-white';
   const textClass = darkMode ? 'text-gray-100' : 'text-gray-800';
@@ -315,7 +309,9 @@ export default function TaskEditor({
       },
       false,
       // Родителя выбрали — задача уедет к нему тем же сохранением
-      parentTaskId
+      parentTaskId,
+      // Как и другой проект: отдельной кнопки переезда нет, всё применяет «Save»
+      targetProjectId ? { projectId: targetProjectId, columnId: targetColumnId } : null
     );
   };
 
@@ -659,7 +655,8 @@ export default function TaskEditor({
               </div>
             </div>
 
-            {/* Move to another project */}
+            {/* Другой проект. Своей кнопки переезда нет: выбор здесь — такая же
+                правка, как название или приоритет, и применяет её «Save» */}
             {otherProjects.length > 0 && (
               <div>
                 <label className={`block text-sm font-medium ${labelClass} mb-2`}>Move to project</label>
@@ -676,27 +673,23 @@ export default function TaskEditor({
                     wrapperClassName="flex-1 min-w-0"
                     className={`px-3 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
                   />
-                  <div className="flex gap-2">
-                    {targetProjectId && (
-                      <Select
-                        value={targetColumnId}
-                        onChange={e => setTargetColumnId(e.target.value)}
-                        options={getProjectColumns(targetProjectId).map(col => ({ value: col.id, label: col.title }))}
-                        darkMode={darkMode}
-                        ariaLabel="Target column"
-                        wrapperClassName="flex-1 min-w-0"
-                        className={`px-3 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
-                      />
-                    )}
-                    <button
-                      onClick={handleMoveToProject}
-                      disabled={!targetProjectId}
-                      className={`px-3 py-2 rounded-lg flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 ${darkMode ? 'bg-gray-700 text-gray-100 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                    >
-                      <ArrowRightLeft size={16} />
-                    </button>
-                  </div>
+                  {targetProjectId && (
+                    <Select
+                      value={targetColumnId}
+                      onChange={e => setTargetColumnId(e.target.value)}
+                      options={getProjectColumns(targetProjectId).map(col => ({ value: col.id, label: col.title }))}
+                      darkMode={darkMode}
+                      ariaLabel="Target column"
+                      wrapperClassName="flex-1 min-w-0"
+                      className={`px-3 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                    />
+                  )}
                 </div>
+                {targetProjectId && (
+                  <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    The task moves when you save.
+                  </p>
+                )}
               </div>
             )}
 

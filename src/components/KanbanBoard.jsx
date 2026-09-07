@@ -226,28 +226,34 @@ export default function KanbanBoard({
                 </button>
               )}
 
-              {showLabels && allLabels.map(label => {
-                const active = activeLabels.includes(label);
-                return (
-                  <button
-                    key={label}
-                    onClick={() => toggleLabel(label)}
-                    className={`h-control px-3 text-xs rounded-full border press ${getLabelColor(label, darkMode)} ${
-                      active ? 'ring-2 ring-green-600' : 'opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-
-              {showLabels && activeLabels.length > 0 && (
-                <button
-                  onClick={() => setActiveLabels([])}
-                  className={`h-control flex items-center gap-1 px-2.5 text-xs rounded-full press ${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
-                >
-                  <X size={12} /> Clear
-                </button>
+              {/* Лейблы — своя строка (basis-full переносит её целиком): в общей
+                  они отбирали ширину у поля ввода, и оно прыгало от каждого
+                  нажатия на значок */}
+              {showLabels && allLabels.length > 0 && (
+                <div className="basis-full flex flex-wrap items-center gap-2">
+                  {allLabels.map(label => {
+                    const active = activeLabels.includes(label);
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => toggleLabel(label)}
+                        className={`h-control px-3 text-xs rounded-full border press ${getLabelColor(label, darkMode)} ${
+                          active ? 'ring-2 ring-green-600' : 'opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                  {activeLabels.length > 0 && (
+                    <button
+                      onClick={() => setActiveLabels([])}
+                      className={`h-control flex items-center gap-1 px-2.5 text-xs rounded-full press ${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                      <X size={12} /> Clear
+                    </button>
+                  )}
+                </div>
               )}
             </div>
       )}

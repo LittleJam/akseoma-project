@@ -5,6 +5,7 @@ import { getNoteLines, isImageLine, newLineId, LINE_IMAGE } from '../utils/noteL
 import { compressImage } from '../utils/imageCompression';
 import { themeIcon } from '../themes';
 import useIsMobile from '../utils/useIsMobile';
+import FitText from './FitText';
 import NoteModal from './NoteModal';
 import PageShell from './PageShell';
 
@@ -307,8 +308,8 @@ export default function Notes({
                     /* Обложка: пустая плитка с названием в правом нижнем
                        углу. Превью строк на плитке в пол-экрана всё равно
                        обрывалось на второй, а название — то, по чему заметку
-                       узнают. Служебное разнесено по верхним углам: пометки
-                       слева, удаление справа */
+                       узнают. Служебное по углам: пометки сверху слева,
+                       название снизу слева, удаление снизу справа */
                     <div className="relative flex-1 min-h-0">
                       {/* Дату с обложки убрали: заметку ищут по названию, а
                           не по времени правки, и на плитке она только шумела */}
@@ -316,22 +317,26 @@ export default function Notes({
                         {flags}
                       </div>
 
-                      {/* Удаление ушло наверх: низ теперь занят названием */}
-                      <div className="absolute top-0 right-0 flex items-center">
-                        {controls}
-                      </div>
-
-                      {/* Название прижато к правому нижнему углу и набрано
-                          по правому краю: длинное занимает две строки и
-                          дорастает влево, короткое так и остаётся в углу */}
-                      <div className="absolute bottom-0 right-0 left-2 flex justify-end pointer-events-none">
-                        <span className={`note-cover-title text-xs text-right leading-snug line-clamp-2 ${
+                      {/* Название в левом нижнем углу, удаление — в правом:
+                          два дальних друг от друга угла, поэтому промахнуться
+                          по крестику, читая название, не выйдет. Длинное
+                          название занимает две строки и растёт вправо */}
+                      <div className="absolute bottom-0 left-0 right-6 pointer-events-none">
+                        {/* Длинное название уменьшается, чтобы остаться одной
+                            строкой: перенос ломает угол сильнее, чем мелкий
+                            кегль. Совсем длинное всё же переносится — предел
+                            уменьшения внутри FitText */}
+                        <FitText className={`note-cover-title text-xs text-left leading-snug ${
                           note.title
                             ? darkMode ? 'text-gray-100' : 'text-gray-800'
                             : darkMode ? 'text-gray-600' : 'text-gray-300'
                         }`}>
                           {note.title || 'Untitled'}
-                        </span>
+                        </FitText>
+                      </div>
+
+                      <div className="absolute bottom-0 right-0 flex items-center">
+                        {controls}
                       </div>
                     </div>
                   ) : (

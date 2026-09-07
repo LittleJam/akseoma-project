@@ -8,6 +8,7 @@ import { DARK_THEMES, THEME_COLORS } from './themes';
 import { parseLocation, navigate, onRouteChange } from './utils/router';
 import { applyAppIcon, DEFAULT_APP_ICON } from './utils/appIcon';
 import { DEFAULT_REMINDERS, scheduleDayReminders } from './utils/reminders';
+import { importIcsIntoWeeks } from './utils/ics';
 import { AUTH_KEY, FLAGS_KEY, DEFAULT_FLAGS, PAGE_FEATURES, canUse } from './auth';
 import { getWeekKey } from './utils/weeks';
 import { DEFAULT_SIGN, getNatalChart } from './horoscope';
@@ -925,7 +926,7 @@ export default function PersonalJira() {
 
   // Сохранить и закрыть редактор. Третьим аргументом редактор передаёт выбранного
   // родителя: тогда та же кнопка Save и правки применит, и задачу сделает подзадачей
-  const handleTaskSave = (updatedTask, skipClose, parentTaskId) => {
+  const handleTaskSave = (updatedTask, skipClose, parentTaskId, moveTo) => {
     const newTasks = { ...tasks };
     const found = findTaskLocation(newTasks, updatedTask.id);
     if (!found) return;
@@ -933,7 +934,11 @@ export default function PersonalJira() {
     newTasks[currentProject][found.columnId] = newTasks[currentProject][found.columnId]
       .map(t => (t.id === updatedTask.id ? updatedTask : t));
 
-    const converted = applyConvertToSubtask(newTasks, updatedTask.id, parentTaskId);
+    // Родителя и другой проект выбирают в том же окне, и применяются они тем же
+    // сохранением. Вместе бессмысленны: подзадачей задача становится внутри
+    // своего проекта, поэтому переезд главнее
+    const moved = applyMoveToProject(newTasks, updatedTask.id, moveTo?.projectId, moveTo?.columnId);
+    const converted = !moved && applyConvertToSubtask(newTasks, updatedTask.id, parentTaskId);
 
     saveTasks(newTasks);
 
@@ -943,8 +948,9 @@ export default function PersonalJira() {
       saveCollapsedSubtasks(newCollapsed);
     }
 
-    // После переезда редактировать больше нечего — задача стала подзадачей
-    if (!skipClose || converted) {
+    // После переезда редактировать больше нечего: задача уехала в другой проект
+    // или стала подзадачей
+    if (!skipClose || converted || moved) {
       setEditingTask(null);
       setHasUnsavedChanges(false);
     }
@@ -969,10 +975,12 @@ export default function PersonalJira() {
   };
 
   // Переместить задачу в другой проект
-  const moveTaskToProject = (taskId, targetProjectId, targetColumnId) => {
-    if (!targetProjectId || targetProjectId === currentProject) return;
+  // Переезд задачи в другой проект. Работает над переданным объектом задач, а не
+  // над состоянием: правки и переезд приходят одним сохранением, и записывать
+  // их надо тоже одним — иначе первая запись перетирает вторую
+  const applyMoveToProject = (newTasks, taskId, targetProjectId, targetColumnId) => {
+    if (!targetProjectId || targetProjectId === currentProject) return false;
 
-    const newTasks = { ...tasks };
     let movedTask = null;
 
     for (const column of getProjectColumns(currentProject)) {
@@ -984,18 +992,19 @@ export default function PersonalJira() {
         break;
       }
     }
-    if (!movedTask) return;
+    if (!movedTask) return false;
 
     const targetProject = projects.find(p => p.id === targetProjectId);
     movedTask.taskId = `${getProjectCode(targetProject?.name)}-${getNextTaskNumber(newTasks, targetProjectId)}`;
 
-    if (!newTasks[targetProjectId]) newTasks[targetProjectId] = {};
-    if (!newTasks[targetProjectId][targetColumnId]) newTasks[targetProjectId][targetColumnId] = [];
-    newTasks[targetProjectId][targetColumnId].push(movedTask);
+    const column = targetColumnId || getProjectColumns(targetProjectId)[0]?.id;
+    if (!column) return false;
 
-    saveTasks(newTasks);
-    setEditingTask(null);
-    setHasUnsavedChanges(false);
+    if (!newTasks[targetProjectId]) newTasks[targetProjectId] = {};
+    if (!newTasks[targetProjectId][column]) newTasks[targetProjectId][column] = [];
+    newTasks[targetProjectId][column].push(movedTask);
+
+    return true;
   };
 
   // Найти задачу по id в текущем проекте: колонка, позиция и сам объект
@@ -1176,6 +1185,14 @@ export default function PersonalJira() {
       ...week,
       [day]: (week[day] || []).filter(t => t.id !== taskId)
     }));
+  };
+
+  // Ввоз из другого календаря: файл .ics разбирается целиком и ложится в недели
+  // одной записью — по задаче за раз состояние затирало бы само себя
+  const importCalendar = (text) => {
+    const result = importIcsIntoWeeks({ text, weeklyTasks, weekDays });
+    if (result.added > 0) saveWeeklyTasks(result.weeklyTasks);
+    return result;
   };
 
   // Переключить статус недельной задачи
@@ -1423,7 +1440,6 @@ export default function PersonalJira() {
           projects={projects}
           currentProjectId={currentProject}
           getProjectColumns={getProjectColumns}
-          onMoveToProject={moveTaskToProject}
           // Кандидаты в родители — остальные задачи текущего проекта
           projectTasks={getProjectColumns(currentProject)
             .flatMap(column => (tasks[currentProject]?.[column.id] || []))
@@ -1473,6 +1489,7 @@ export default function PersonalJira() {
           editWeeklyTask={editWeeklyTask}
           moveWeeklyTask={moveWeeklyTask}
           toggleWeeklyTaskImportant={toggleWeeklyTaskImportant}
+          importCalendar={importCalendar}
           theme={theme}
           darkMode={darkMode}
           weekDays={weekDays}

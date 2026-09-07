@@ -371,50 +371,36 @@ html.theme-surf body {
     'Segoe UI', system-ui, sans-serif;
 }
 
-/* Заметка — листок, приклеенный скотчем: два кусочка ленты по верхним углам и
-   загнутый нижний уголок. Так заметки и живут в сёрф-шэке — на стене, внахлёст.
-   Лента выступает за лист, поэтому обрезку карточке снимаем */
+/* Заметка — лист мятой бумаги под зажимом: бумага прихвачена биндером за
+   верхний край справа, как записка на стене сёрф-шэка.
+   Складки — светотень: шум в SVG-фильтре, подмешанный к цвету заметки
+   умножением (background-blend-mode), поэтому цвет остаётся её собственным,
+   а сверху ложится только тень сгибов. Плитка 200px сшита (stitchTiles) и
+   частота шума кратна её размеру — иначе на стыках видны швы.
+   Зажим выступает над листом, поэтому обрезку карточке снимаем */
 html.theme-surf [data-card='note'] {
   position: relative;
   overflow: visible;
   border-color: transparent;
-  /* Загнутый уголок: тень сгиба и светлая изнанка листа */
-  background-image:
-    linear-gradient(
-      45deg,
-      rgba(11, 59, 69, 0.13) 0 11px,
-      rgba(255, 255, 255, 0.9) 11px 12.5px,
-      transparent 12.5px
-    );
-  background-repeat: no-repeat;
-  background-position: left bottom;
-  background-size: 26px 26px;
-}
-
-html.theme-surf [data-card='note']::before,
-html.theme-surf [data-card='note']::after {
-  content: '';
-  position: absolute;
-  /* За лист лента выходит немного: чем больше вылет, тем шире нужен зазор
-     в сетке, чтобы соседние заметки не налезали друг на друга */
-  top: -6px;
-  width: 30px;
-  height: 12px;
-  /* Скотч: полупрозрачный, с еле заметным краем — как настоящий на бумаге */
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(11, 59, 69, 0.1);
-  box-shadow: 0 1px 2px rgba(11, 59, 69, 0.07);
-  pointer-events: none;
+  /* Лист, а не карточка: скругление почти в ноль */
+  border-radius: 2px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.02' numOctaves='4' seed='7' stitchTiles='stitch' result='n'/%3E%3CfeDiffuseLighting in='n' lighting-color='%23ffffff' surfaceScale='1.8'%3E%3CfeDistantLight azimuth='225' elevation='60'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23c)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  background-blend-mode: multiply;
+  box-shadow:
+    0 1px 2px rgba(11, 59, 69, 0.12),
+    0 14px 24px -16px rgba(11, 59, 69, 0.5);
 }
 
 html.theme-surf [data-card='note']::before {
-  left: -6px;
-  transform: rotate(-24deg);
-}
-
-html.theme-surf [data-card='note']::after {
-  right: -6px;
-  transform: rotate(21deg);
+  content: '';
+  position: absolute;
+  top: -11px;
+  right: 10px;
+  width: 24px;
+  height: 28px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 46'%3E %3C%21-- %D0%BF%D1%80%D0%BE%D0%B2%D0%BE%D0%BB%D0%BE%D1%87%D0%BD%D1%8B%D0%B5 %D1%80%D1%83%D1%87%D0%BA%D0%B8: %D0%B4%D0%B2%D0%B5 %D0%B4%D1%83%D0%B3%D0%B8 %D0%BD%D0%B0%D0%B4 %D0%BA%D0%BE%D1%80%D0%BF%D1%83%D1%81%D0%BE%D0%BC --%3E %3Cg fill='none' stroke='%237d93b2' stroke-width='1.6' stroke-linecap='round'%3E %3Cpath d='M16.8 27.4c-.6-5.6-1.8-11.4-1-15.6.5-2.8 2.2-4.6 4.4-4.6 2.3 0 3.8 1.9 4 4.7.3 4.4-1.4 10.2-2.2 15.5'/%3E %3Cpath d='M19.2 27.4c-.4-5.4-1-11-.4-14.8.4-2.4 1.6-3.9 3-3.9'/%3E %3Cpath d='M17 22.2c-1.9-.5-3.7.4-4 2.2-.3 1.6.7 3 2.4 3.6'/%3E %3Cpath d='M23 22.2c1.9-.5 3.7.4 4 2.2.3 1.6-.7 3-2.4 3.6'/%3E %3C/g%3E %3C%21-- %D0%BA%D0%BE%D1%80%D0%BF%D1%83%D1%81: %D0%BF%D0%BB%D0%BE%D1%82%D0%BD%D1%8B%D0%B9, %D1%82%D0%BE%D0%BD %D0%BC%D0%BE%D1%80%D1%81%D0%BA%D0%BE%D0%B9 %D1%81%D1%82%D0%B0%D0%BB%D0%B8 --%3E %3Cpath d='M8.6 27.2c7.6-.8 15.6-.8 23.2 0 .5 5.2.5 10.8-.2 16-7.6.8-15.4.8-23 0-.5-5.2-.5-10.8 0-16z' fill='%233f5c86'/%3E %3Cpath d='M8.6 27.2c7.6-.8 15.6-.8 23.2 0 .1 1.4.2 2.8.2 4.2-7.8-.8-15.8-.8-23.6 0 0-1.4.1-2.8.2-4.2z' fill='%234f6f9c'/%3E %3C/svg%3E") no-repeat center / contain;
+  pointer-events: none;
 }
 
 /* Скругления крупнее обычных: у доски нет острых углов, и у темы их тоже нет */
@@ -907,27 +893,25 @@ html.theme-handwriting .press-icon:hover {
   filter: none;
 }
 
-/* Задача — листок, вырванный из блокнота: сверху рваный край и поле красной
-   ручкой слева. Сам лист чистый: линейка на нём спорила с текстом задачи.
-   Рваный край режем маской: полукруги вырезаются из верхней кромки с шагом в
-   12px. Тень поэтому не box-shadow — маска срезала бы её вместе с кромкой, —
-   а drop-shadow, он считается уже по вырезанной форме */
-html.theme-handwriting [data-card='task'] {
+/* Задача и день — ровные листки из блокнота: прямые края, тонкая линия
+   чернилами по контуру и поле красной ручкой слева. Рваный верх убран: у
+   карточек, которые стоят сеткой, ровная форма читается спокойнее, а
+   разлиновки на них нет — она спорила с текстом */
+html.theme-handwriting [data-card='task'],
+html.theme-handwriting [data-card='day'] {
   position: relative;
-  border-color: transparent;
-  border-radius: 3px;
-  -webkit-mask-image: radial-gradient(circle 5px at 6px 0, transparent 5px, #000 5.5px);
-  mask-image: radial-gradient(circle 5px at 6px 0, transparent 5px, #000 5.5px);
-  -webkit-mask-size: 12px 100%;
-  mask-size: 12px 100%;
-  -webkit-mask-repeat: repeat-x;
-  mask-repeat: repeat-x;
-  filter: drop-shadow(0 1px 1px rgba(43, 58, 85, 0.18));
+  border-radius: 2px;
+  border-color: var(--hw-line);
+  -webkit-mask-image: none;
+  mask-image: none;
+  filter: none;
+  box-shadow: 0 1px 0 rgba(43, 58, 85, 0.05);
 }
 
 /* Поле слева — красной ручкой, как в тетради. Линия идёт по всей высоте
    листа и не мешает содержимому: оно и так начинается правее */
-html.theme-handwriting [data-card='task']::before {
+html.theme-handwriting [data-card='task']::before,
+html.theme-handwriting [data-card='day']::before {
   content: '';
   position: absolute;
   top: 0;
@@ -937,36 +921,39 @@ html.theme-handwriting [data-card='task']::before {
   pointer-events: none;
 }
 
-
-/* Заметка — лист, прихваченный зажимом: рамка нарисована от руки, сверху по
-   центру биндер. Ни линейки, ни рваного края тут нет — лист чистый, и всё, что
-   на нём есть, это название в углу.
-   Рамка — картинка, растянутая на карточку: чтобы линия не толстела вместе с
-   ней, штрих помечен non-scaling-stroke. Скругления и рамку самой карточки
-   снимаем — их роль теперь у рисунка */
+/* Заметка — страница блокнота на пружине: витки идут по верхнему краю и
+   свисают над листом, как в настоящем блокноте с верхним креплением.
+   Витки нарисованы псевдоэлементом, а не фоном: фон не выходит за рамку
+   карточки, а им надо торчать выше края. Тень от крепления — фоновая полоса
+   сверху, содержимое отодвинуто от неё паддингом */
 html.theme-handwriting [data-card='note'] {
   position: relative;
-  border-color: transparent;
-  border-radius: 0;
   overflow: visible;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E %3Cpath d='M2.6 3.2c16-.9 33-.4 49.6-.7 15.4-.3 31.4.4 45.6-.1.9 15.6.2 31.4.5 47 .2 15.6-.6 33.4.1 48.2-15.8.9-32.6.1-48.8.4-15.2.3-30.6-.5-45.6.1-.9-15.8-.1-32.4-.4-48.4C3.3 34 2 18.6 2.6 3.2z' fill='none' stroke='%232b3a55' stroke-width='1.3' vector-effect='non-scaling-stroke' stroke-linejoin='round' stroke-linecap='round'/%3E %3C/svg%3E");
-  background-size: 100% 100%;
+  border-color: transparent;
+  border-radius: 2px;
+  padding-top: 16px;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(43, 58, 85, 0.13) 0 2px,
+      rgba(43, 58, 85, 0.05) 2px 6px,
+      transparent 6px
+    );
   background-repeat: no-repeat;
   -webkit-mask-image: none;
   mask-image: none;
-  filter: none;
+  filter: drop-shadow(0 1px 1px rgba(43, 58, 85, 0.16));
 }
 
-/* Зажим держит лист за верхний край и потому немного выступает над ним */
 html.theme-handwriting [data-card='note']::before {
   content: '';
   position: absolute;
-  top: -6px;
-  left: 50%;
-  width: 26px;
-  height: 30px;
-  transform: translateX(-50%);
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 46' fill='none' stroke='%232b3a55' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E %3C%21-- %D0%B4%D0%BB%D0%B8%D0%BD%D0%BD%D0%B0%D1%8F %D0%BF%D0%B5%D1%82%D0%BB%D1%8F %D1%80%D1%83%D1%87%D0%BA%D0%B8: %D1%83%D0%B7%D0%BA%D0%B0%D1%8F, %D1%81 %D0%B7%D0%B0%D0%BA%D1%80%D1%83%D0%B3%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5%D0%BC %D0%BD%D0%B0%D0%B2%D0%B5%D1%80%D1%85%D1%83 --%3E %3Cpath d='M16.8 27.4c-.6-5.6-1.8-11.4-1-15.6.5-2.8 2.2-4.6 4.4-4.6 2.3 0 3.8 1.9 4 4.7.3 4.4-1.4 10.2-2.2 15.5'/%3E %3Cpath d='M18.6 27.4c-.4-5.4-1.2-11-.6-14.8.4-2.4 1.7-3.9 3.2-3.9'/%3E %3C%21-- %D0%BF%D1%80%D0%BE%D0%B2%D0%BE%D0%BB%D0%BE%D0%BA%D0%B0 %D1%83%D1%85%D0%BE%D0%B4%D0%B8%D1%82 %D0%B2 %D0%B1%D0%BE%D0%BA%D0%BE%D0%B2%D1%8B%D0%B5 %D1%83%D1%88%D0%BA%D0%B8 %D0%BA%D0%BE%D1%80%D0%BF%D1%83%D1%81%D0%B0 --%3E %3Cpath d='M17 22.2c-1.9-.5-3.7.4-4 2.2-.3 1.6.7 3 2.4 3.6'/%3E %3Cpath d='M23 22.2c1.9-.5 3.7.4 4 2.2.3 1.6-.7 3-2.4 3.6'/%3E %3C%21-- %D0%BA%D0%BE%D1%80%D0%BF%D1%83%D1%81: %D1%82%D1%80%D0%B0%D0%BF%D0%B5%D1%86%D0%B8%D1%8F, %D1%87%D1%83%D1%82%D1%8C %D1%88%D0%B8%D1%80%D0%B5 %D1%81%D0%B2%D0%B5%D1%80%D1%85%D1%83 --%3E %3Cpath d='M8.4 27.2c7.6-.8 15.6-.8 23.2 0 .5 5.2.5 10.8-.2 16-7.6.8-15.4.8-23 0-.5-5.2-.5-10.8 0-16z'/%3E %3Cpath d='M11.4 42.4c5.8.5 11.6.5 17.4 0'/%3E %3C/svg%3E") no-repeat center / contain;
+  top: -7px;
+  left: 4px;
+  right: 4px;
+  height: 22px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 22'%3E %3Crect x='7' y='1' width='3.4' height='16' rx='1.7' fill='%23a9a294'/%3E %3Crect x='7' y='1' width='1.4' height='16' rx='0.7' fill='%23d6d0c2'/%3E %3Crect x='5.2' y='13.4' width='7.2' height='5.4' rx='1.4' fill='%238d8779'/%3E %3Crect x='6' y='14.2' width='2' height='3.8' rx='1' fill='%23c2bcae'/%3E %3C/svg%3E") repeat-x left top;
+  background-size: 18px 22px;
   pointer-events: none;
 }
 
@@ -998,21 +985,25 @@ html.theme-handwriting .column-title::first-letter {
   background-color: var(--hw-paper, #faf6ec);
 }
 
-/* Лист не идеально ровный: страницу когда-то смяли и разгладили. Складки —
-   это светотень, а не рисунок, поэтому считаем их шумом в SVG-фильтре
-   (feTurbulence под наклонным светом) и подмешиваем умножением: цвет бумаги
-   остаётся прежним, добавляются только тени сгибов. Плитка 500px сшита
-   (stitchTiles) и частота шума кратна её размеру — иначе на стыках видны швы */
+/* Лист не идеально ровный: страницу когда-то смяли и разгладили. Складки
+   нарисованы, а не насчитаны шумом: шум под наклонным светом давал ровную
+   «штукатурку» без длинных сгибов, а у мятой бумаги вся суть в них — тонкое
+   ребро с тенью по одну сторону и бликом по другую, а между ребрами мягкие
+   плоскости. Рисунок один на весь экран (растягивается, а не мостится
+   плиткой), поэтому швов нет вовсе; поверх — мелкое зерно бумаги плиткой,
+   на такой частоте стыки не видны.
+   Наложение обычное, не multiply: у сгибов есть и блики, а умножение оставило
+   бы от них только тени */
 .fx-paper::after {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='crumple' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.01' numOctaves='4' seed='11' stitchTiles='stitch' result='noise'/%3E%3CfeDiffuseLighting in='noise' lighting-color='%23ffffff' surfaceScale='2.4'%3E%3CfeDistantLight azimuth='235' elevation='62'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='500' height='500' filter='url(%23crumple)'/%3E%3C/svg%3E");
-  background-size: 500px 500px;
-  mix-blend-mode: multiply;
-  /* «Чуть помятая»: выше 0.55 складки начинают читаться как грязь на листе.
-     Без линеек лист пустее, и складки можно дать чуть заметнее */
-  opacity: 0.45;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 900' preserveAspectRatio='none'%3E%3Cfilter id='s' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeGaussianBlur stdDeviation='24'/%3E%3C/filter%3E%3Cg filter='url(%23s)' stroke='none'%3E%3Cpolygon points='1306,881 1118,1054 1131,804' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='1317,23 1199,173 1102,234 957,20 1048,-177 1230,-153' fill='%238a7c63' fill-opacity='0.04'/%3E%3Cpolygon points='888,237 844,331 793,339 736,251 781,186 834,187' fill='%23ffffff' fill-opacity='0.78'/%3E%3Cpolygon points='399,548 321,600 249,608 216,513 321,484' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='156,294 30,462 -2,185' fill='%23ffffff' fill-opacity='0.78'/%3E%3Cpolygon points='819,909 682,1055 548,1074 556,867 669,871' fill='%23ffffff' fill-opacity='0.68'/%3E%3Cpolygon points='976,505 823,580 832,404' fill='%23ffffff' fill-opacity='0.69'/%3E%3Cpolygon points='625,659 509,848 382,647 467,559' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='1003,366 885,478 891,279' fill='%23ffffff' fill-opacity='0.55'/%3E%3Cpolygon points='566,-94 489,62 329,45 218,-78 315,-213 470,-198' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='135,841 114,973 -50,965 -88,822 12,737 79,650' fill='%23ffffff' fill-opacity='0.71'/%3E%3Cpolygon points='1232,469 1159,624 1088,621 982,529 1027,342 1182,327' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='937,-68 824,143 683,79 681,-122 883,-165' fill='%23ffffff' fill-opacity='0.66'/%3E%3Cpolygon points='134,6 -113,129 -54,-70' fill='%23ffffff' fill-opacity='0.47'/%3E%3Cpolygon points='28,713 -61,766 -56,672' fill='%23ffffff' fill-opacity='0.64'/%3E%3Cpolygon points='1222,405 1106,514 956,336 1065,293' fill='%23ffffff' fill-opacity='0.74'/%3E%3Cpolygon points='102,312 11,454 -203,348 -18,207' fill='%238a7c63' fill-opacity='0.04'/%3E%3Cpolygon points='943,398 858,478 763,448 764,303 864,322' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='513,322 394,378 436,238' fill='%23ffffff' fill-opacity='0.50'/%3E%3Cpolygon points='1364,719 1367,816 1213,877 1095,738 1202,563 1318,618' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='422,206 349,336 174,272 151,176 295,67' fill='%23ffffff' fill-opacity='0.56'/%3E%3Cpolygon points='337,958 179,1080 184,865' fill='%23ffffff' fill-opacity='0.60'/%3E%3Cpolygon points='899,-60 673,44 709,-272' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='810,345 795,389 707,395 647,329 688,257 750,272' fill='%23ffffff' fill-opacity='0.66'/%3E%3Cpolygon points='1156,114 939,312 991,13' fill='%23ffffff' fill-opacity='0.73'/%3E%3Cpolygon points='731,513 619,648 461,463 656,402' fill='%23ffffff' fill-opacity='0.58'/%3E%3Cpolygon points='321,469 107,581 82,318' fill='%23ffffff' fill-opacity='0.57'/%3E%3Cpolygon points='740,960 683,1033 618,939 657,859' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='680,773 506,797 508,667' fill='%23ffffff' fill-opacity='0.46'/%3E%3Cpolygon points='772,629 659,646 659,528' fill='%23ffffff' fill-opacity='0.79'/%3E%3Cpolygon points='1323,584 1234,758 1006,578 1217,412' fill='%23ffffff' fill-opacity='0.69'/%3E%3Cpolygon points='342,245 133,349 28,168 176,114' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='83,124 5,187 -53,102 28,55' fill='%23ffffff' fill-opacity='0.52'/%3E%3Cpolygon points='315,102 190,213 116,111 203,-41' fill='%23ffffff' fill-opacity='0.76'/%3E%3Cpolygon points='771,687 728,789 676,705 731,639' fill='%23ffffff' fill-opacity='0.71'/%3E%3Cpolygon points='689,740 622,799 436,817 378,671 501,569 589,629' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='1242,822 1143,946 1028,840 1142,727' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='46,177 1,325 -98,292 -146,211 -163,75 -15,144' fill='%23ffffff' fill-opacity='0.53'/%3E%3Cpolygon points='375,588 250,668 135,558 263,535' fill='%238a7c63' fill-opacity='0.03'/%3E%3Cpolygon points='126,536 -7,681 -80,585 -72,471 -27,446' fill='%23ffffff' fill-opacity='0.78'/%3E%3Cpolygon points='1187,656 1082,727 1002,758 969,625 1130,527' fill='%238a7c63' fill-opacity='0.04'/%3E%3Cpolygon points='391,535 328,618 289,527 369,466' fill='%238a7c63' fill-opacity='0.05'/%3E%3Cpolygon points='358,134 141,294 105,-4' fill='%23ffffff' fill-opacity='0.76'/%3E%3Cpolygon points='292,128 92,215 95,-1' fill='%23ffffff' fill-opacity='0.53'/%3E%3Cpolygon points='521,893 406,1032 354,1038 242,900 275,822 488,810' fill='%23ffffff' fill-opacity='0.51'/%3E%3Cpolygon points='974,-66 957,12 845,7 812,-58 840,-130 977,-133' fill='%238a7c63' fill-opacity='0.04'/%3E%3C/g%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M91 414 L-79 268 L-165 83 L-215 -146' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M90 413 L-80 266 L-166 82 L-216 -147' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M397 787 L585 759 L783 662 L881 628' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M395 786 L584 758 L782 661 L880 627' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1157 47 L1279 27' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1155 45 L1277 26' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M236 475 L213 654 L258 792' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M235 474 L212 653 L257 791' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M298 417 L291 311 L209 100' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M296 416 L290 310 L207 99' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M711 649 L556 593 L452 539' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M710 648 L554 592 L451 538' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M484 707 L415 589 L336 463' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M483 706 L414 588 L335 462' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M712 724 L667 646' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M711 723 L666 645' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M222 785 L379 909 L544 1063' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M221 784 L377 908 L543 1062' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M974 311 L909 437 L818 556 L703 758' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M973 309 L907 436 L817 554 L702 757' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M160 635 L101 766 L-6 930 L-97 975' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M159 634 L100 765 L-7 929 L-98 973' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1195 676 L1266 447 L1303 352 L1356 253' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1194 675 L1264 446 L1302 351 L1355 252' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M364 104 L232 106 L117 57' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M363 103 L231 105 L116 56' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M589 664 L697 546 L737 453 L735 260' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M588 663 L696 545 L736 452 L733 259' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M90 496 L288 496 L477 532 L688 575' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M88 495 L287 495 L476 531 L687 574' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1116 649 L1157 786 L1110 949 L1147 1168' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1115 648 L1156 785 L1109 948 L1146 1167' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M267 624 L314 508' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M266 623 L313 507' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M528 642 L443 678' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M527 640 L442 677' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1007 717 L957 536 L894 383 L868 231' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1006 716 L955 534 L893 381 L866 230' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M527 64 L553 250' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M525 63 L552 249' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M147 459 L188 577' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M146 458 L187 576' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M350 236 L250 201' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M349 235 L249 200' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M316 442 L140 285 L51 91' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M315 441 L139 284 L50 90' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M48 177 L122 38 L202 -5' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M47 175 L120 36 L201 -6' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M522 42 L680 64 L879 5 L975 -90' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M521 41 L678 63 L878 4 L974 -91' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M20 269 L114 377 L307 429' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M19 267 L113 376 L306 428' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M706 807 L771 734' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M705 806 L770 732' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1167 214 L1083 -6 L981 -199 L882 -367' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1166 213 L1082 -8 L980 -200 L881 -368' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M68 845 L111 978' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M66 844 L110 977' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M396 767 L326 831 L146 962' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M395 766 L325 830 L145 960' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M864 518 L821 638 L773 841' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M863 516 L820 637 L772 839' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1050 219 L875 153 L736 133' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1049 218 L873 152 L735 132' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M496 211 L682 315 L811 496' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M494 209 L681 313 L810 495' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M593 153 L712 -5 L812 -55 L905 -50' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M591 152 L711 -7 L811 -56 L904 -51' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M983 797 L1104 683 L1241 618' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M982 796 L1103 682 L1240 617' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M586 294 L578 394 L596 616' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M585 293 L576 393 L595 615' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M451 888 L480 664' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M449 887 L479 662' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M544 659 L422 856 L300 978 L220 1164' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M543 658 L421 855 L298 976 L219 1163' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M941 436 L1070 560 L1200 684' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M940 434 L1069 558 L1199 683' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1178 386 L1121 225' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1176 385 L1120 224' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1174 452 L1278 451 L1426 396 L1570 330' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1173 451 L1277 450 L1425 395 L1568 329' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M637 588 L641 473' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M636 587 L640 472' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1080 100 L1162 141 L1244 220 L1293 431' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1079 98 L1161 140 L1243 218 L1292 430' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M692 51 L741 230 L775 427' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M691 50 L739 229 L773 426' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1034 105 L1037 219 L1019 448 L1097 623' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1033 103 L1036 218 L1017 446 L1096 621' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M12 669 L-173 645 L-284 585' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M10 668 L-174 644 L-285 583' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1024 307 L1033 120 L999 -81' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1022 306 L1032 118 L998 -82' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M398 232 L372 351 L353 491 L394 605' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M397 231 L371 350 L352 490 L393 603' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M540 533 L590 703 L591 810 L636 998' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M538 532 L589 702 L590 809 L635 997' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M1033 79 L990 220' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M1032 78 L988 219' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M656 739 L708 815 L828 961' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M655 738 L707 814 L826 960' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M817 155 L830 256' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M816 154 L828 254' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M190 662 L66 744' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M189 661 L65 743' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M343 557 L347 452' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M342 556 L346 451' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M921 529 L1024 399 L1127 186 L1159 61' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M920 527 L1023 397 L1126 185 L1158 60' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M792 218 L897 387 L1049 461 L1187 572' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M791 216 L895 386 L1048 460 L1186 571' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M720 550 L874 443' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M718 549 L873 441' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3Cpath d='M141 630 L122 540' stroke='%238a7c63' stroke-opacity='0.07' stroke-width='1.6'/%3E%3Cpath d='M140 629 L121 539' stroke='%23ffffff' stroke-opacity='0.7' stroke-width='1.2'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23g)' opacity='0.05'/%3E%3C/svg%3E");
+  background-size: 100% 100%, 120px 120px;
+  background-repeat: no-repeat, repeat;
+  pointer-events: none;
 }
 
 /* ═══ MILLENIAL ═══ Windows XP, 2001: Luna-синий, бежевые панели, Tahoma,
