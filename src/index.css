@@ -1412,6 +1412,33 @@ html.theme-millenial :focus-visible {
   100% { transform: scale(4.5); opacity: 0; }
 }
 
+/* ═══ ОКНА ═══ Поверхности тем нарочно полупрозрачны, а полотно страницы у
+   половины тем и вовсе прозрачное: сквозь карточку видно фон, и это задумано.
+   Для окна не годится ни то, ни другое — оно поверхность для чтения, и сквозь
+   него просвечивал бы список под ним. Поэтому окну своя плотная подложка в тех
+   темах, где обычная прозрачна.
+   Селектор с темой и [data-dialog] бьёт по весу правила выше */
+html.theme-handwriting [data-dialog].bg-white,
+html.theme-handwriting [data-dialog] .bg-white,
+html.theme-handwriting [data-dialog].bg-gray-50,
+html.theme-handwriting [data-dialog] .bg-gray-50 {
+  background-color: #fffdf7;
+}
+
+html.theme-wizard [data-dialog].bg-white,
+html.theme-wizard [data-dialog] .bg-white,
+html.theme-wizard [data-dialog].bg-gray-50,
+html.theme-wizard [data-dialog] .bg-gray-50 {
+  /* Тот же тон, что у полупрозрачной поверхности, только сплошной */
+  background-color: #111f21;
+  backdrop-filter: none;
+}
+
+html.theme-surf [data-dialog].bg-gray-50,
+html.theme-surf [data-dialog] .bg-gray-50 {
+  background-color: var(--sf-surface-2);
+}
+
 /* ═══ КОЛОНКИ ДОСКИ ═══ Заголовок колонки прибит к верху и всегда должен
    читаться. Поверхность самой колонки у большинства тем полупрозрачная — сквозь
    неё видно фон страницы, и это задумано, — поэтому заголовку нужен свой

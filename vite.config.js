@@ -1,12 +1,20 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { copyFileSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
 
 // GitHub Pages отдаёт сайт репозитория из подпапки, а не с корня домена,
 // поэтому все ссылки на файлы должны быть относительно неё.
 const BASE = '/akseoma-project/'
+
+// Внутри нативной оболочки (iOS) страница живёт в корне своего скрытого
+// сервера, а подпапки Pages там нет. Отсюда второй режим сборки:
+//   npm run build        — сайт для Pages
+//   npm run build:native — то же приложение для Capacitor
+// Отличий три: корневые пути, отсутствие 404.html (внутри оболочки некому его
+// отдавать) и отсутствие сервис-воркера — файлы и так лежат в самом приложении,
+// а кеш поверх них означал бы только шанс показать вчерашнюю сборку.
 
 // Pages не умеет отдавать index.html на неизвестный путь, а чистым адресам
 // вроде /notes это нужно. Обходим копией: на любой неизвестный путь Pages
@@ -44,7 +52,22 @@ const precacheAssets = () => ({
   }
 })
 
-export default defineConfig({
-  base: BASE,
-  plugins: [react(), spaFallback(), precacheAssets()],
+// Сервис-воркер лежит в public и попадает в сборку сам. Нативной сборке он не
+// нужен, а лишний файл в приложении — лишний повод для путаницы
+const dropServiceWorker = () => ({
+  name: 'drop-service-worker',
+  closeBundle() {
+    rmSync(resolve(process.cwd(), 'dist', 'sw.js'), { force: true })
+  }
+})
+
+export default defineConfig(({ mode }) => {
+  const native = mode === 'native'
+
+  return {
+    base: native ? '/' : BASE,
+    plugins: native
+      ? [react(), dropServiceWorker()]
+      : [react(), spaFallback(), precacheAssets()]
+  }
 })

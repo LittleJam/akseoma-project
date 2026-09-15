@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from './utils/supabaseClient';
 import { loadRemoteState, saveRemoteState } from './utils/supabaseStorage';
 import { DEFAULT_COLUMNS, WEEK_DAYS, STORAGE_KEYS } from './constants';
 import { DARK_THEMES, THEME_COLORS } from './themes';
+import { applyNativeStatusBar } from './utils/native';
 import { parseLocation, navigate, onRouteChange } from './utils/router';
 import { applyAppIcon, DEFAULT_APP_ICON } from './utils/appIcon';
 import { DEFAULT_REMINDERS, scheduleDayReminders } from './utils/reminders';
@@ -536,6 +537,9 @@ export default function PersonalJira() {
     document.documentElement.classList.toggle('theme-dark', theme === 'dark');
     // В установленном PWA этим красится строка состояния телефона
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[theme] || THEME_COLORS.light);
+    // В нативной оболочке meta не действует: там строку состояния красит
+    // система, и просить её надо отдельно. Тёмной теме — светлые часы
+    applyNativeStatusBar(darkMode);
   }, [theme, darkMode]);
 
   // Сохранение текущего проекта

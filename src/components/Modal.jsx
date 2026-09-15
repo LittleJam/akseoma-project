@@ -65,7 +65,14 @@ export default function Modal({
       {/* Клик внутри окна не должен его закрывать */}
       <div
         onClick={e => e.stopPropagation()}
-        className={`relative w-full ${sheet ? 'min-h-full sm:min-h-0' : ''} ${SIZES[size]} my-auto flex flex-col animate-dialog-in ${panelClassName}`}
+        /* Хук для тем: окно — поверхность для чтения, а не карточка на
+           странице. Темы делают карточки полупрозрачными нарочно, но сквозь
+           окно не должно просвечивать то, что под ним */
+        data-dialog
+        /* isolate — свой слой у окна. Без него цветная подложка заметки,
+           лежащая под содержимым, пропадала бы, как только доиграет анимация
+           появления: она и создавала слой, а вместе с ней исчезал бы и он */
+        className={`relative isolate w-full ${sheet ? 'min-h-full sm:min-h-0' : ''} ${SIZES[size]} my-auto flex flex-col animate-dialog-in ${panelClassName}`}
       >
         {children}
       </div>

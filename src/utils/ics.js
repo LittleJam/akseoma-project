@@ -5,6 +5,8 @@
 // В календарь уходят только задачи с временем: строка без времени — это пункт
 // списка на день, и в сетке календаря ей делать нечего.
 
+import { Capacitor } from '@capacitor/core';
+
 import { getWeekKey, getWeekStart, addWeeks } from './weeks';
 
 const PRODID = '-//Surf the Task//Schedule//EN';
@@ -147,9 +149,36 @@ export const buildWeekIcs = ({
   return `${lines.map(foldLine).join('\r\n')}\r\n`;
 };
 
-// Отдать файл броузеру. Календарь на Mac и на телефоне открывает .ics сам,
-// поэтому «скачать» здесь и означает «добавить в календарь»
+// Отдать файл наружу. Календарь на Mac и на телефоне открывает .ics сам,
+// поэтому «скачать» здесь и означает «добавить в календарь».
+//
+// В нативной оболочке скачивания нет вовсе: WKWebView не умеет ни <a download>,
+// ни blob-ссылку, и кнопка молча ничего бы не делала. Там файл кладётся во
+// временную папку приложения и отдаётся системному «Поделиться» — из него iOS
+// сама предлагает «Добавить в Календарь»
+const shareIcsFile = async (filename, text) => {
+  const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+  const { Share } = await import('@capacitor/share');
+
+  await Filesystem.writeFile({
+    path: filename,
+    data: text,
+    directory: Directory.Cache,
+    encoding: Encoding.UTF8
+  });
+
+  const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
+  await Share.share({ title: 'Schedule', url: uri });
+};
+
 export const downloadIcs = (filename, text) => {
+  if (Capacitor.isNativePlatform()) {
+    return shareIcsFile(filename, text).catch(error => {
+      // Отмена «Поделиться» тоже приходит ошибкой — это не сбой
+      if (!/cancel/i.test(error?.message || '')) console.error('Calendar share error:', error);
+    });
+  }
+
   const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -161,6 +190,7 @@ export const downloadIcs = (filename, text) => {
   link.remove();
   // Ссылку освобождаем не сразу: Safari успевает открыть файл только после клика
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return Promise.resolve();
 };
 
 // ── Ввоз из других календарей ──────────────────────────────────────────────

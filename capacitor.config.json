@@ -1,0 +1,15 @@
+{
+  "appId": "com.akseoma.surfthetask",
+  "appName": "Surf the Task",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#f9fafb",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "iconColor": "#166534"
+    }
+  }
+}

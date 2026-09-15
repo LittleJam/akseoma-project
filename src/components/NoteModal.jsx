@@ -366,8 +366,19 @@ export default function NoteModal({
          размера. Без него окно росло под содержимое — короткая заметка была
          одной высоты, длинная другой, и прокручивалось всё окно вместе с
          шапкой. Теперь прокручивается только текст внутри */
-      panelClassName={`h-[100dvh] sm:h-auto overflow-hidden rounded-none sm:rounded-xl border-0 sm:border shadow-xl ${darkMode ? palette.dark : palette.light} ${isDragOver ? 'ring-2 ring-green-600' : ''}`}
+      /* Основа окна плотная, а цвет заметки ложится на неё отдельным слоем
+         ниже: сами цвета полупрозрачны — они задуманы для карточек на сетке, —
+         и окном сквозь них просвечивал бы список под ним */
+      panelClassName={`h-[100dvh] sm:h-auto overflow-hidden rounded-none sm:rounded-xl border-0 sm:border shadow-xl ${
+        darkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
+      } ${isDragOver ? 'ring-2 ring-green-600' : ''}`}
     >
+        {/* Цвет заметки. Слой лежит под содержимым (-z-10) и поверх плотной
+            основы, поэтому цвет виден, а просвечивать нечему */}
+        <div
+          aria-hidden="true"
+          className={`absolute inset-0 -z-10 pointer-events-none ${darkMode ? palette.dark : palette.light}`}
+        />
         {/* Подсказка появляется только когда над окном тащат файл */}
         {isDragOver && (
           <div className="absolute inset-0 z-30 rounded-xl bg-black/40 flex items-center justify-center pointer-events-none animate-fade-in">
