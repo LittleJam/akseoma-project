@@ -52,8 +52,11 @@ export default function ProjectPicker({ darkMode, projects, currentProject, onSe
       >
         {/* Длинное название переносится, а не обрезается: это заголовок
             страницы, и по нему понимают, где находятся. Шапка каркаса задана
-            минимальной высотой и на вторую строку вырастет сама */}
-        <span className="min-w-0 text-left break-words leading-tight">{current?.name || 'Projects'}</span>
+            минимальной высотой и на вторую строку вырастет сама.
+            Межстрочный свой не задаём: заголовок проекта обязан выглядеть
+            ровно так же, как «Schedule» и «Notes», — тот же кегль, та же
+            высота строки, та же высота над границей шапки */}
+        <span className="min-w-0 text-left break-words">{current?.name || 'Projects'}</span>
         <ChevronDown
           size={18}
           className={`flex-shrink-0 mt-1 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}

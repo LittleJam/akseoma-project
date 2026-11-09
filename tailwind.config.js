@@ -75,6 +75,17 @@ export default {
           '0%': { boxShadow: '0 0 0 0 rgba(22,101,52,.5)' },
           '70%': { boxShadow: '0 0 0 14px rgba(22,101,52,0)' },
           '100%': { boxShadow: '0 0 0 0 rgba(22,101,52,0)' }
+        },
+        // Переход между уровнями внутри страницы — как системный «вперёд» и
+        // «назад» на iOS: новый экран приезжает справа, а при возврате
+        // предыдущий выезжает из-под него слева
+        'page-in-right': {
+          from: { opacity: '0', transform: 'translateX(100%)' },
+          to: { opacity: '1', transform: 'translateX(0)' }
+        },
+        'page-in-left': {
+          from: { opacity: '0', transform: 'translateX(-30%)' },
+          to: { opacity: '1', transform: 'translateX(0)' }
         }
       },
       animation: {
@@ -83,7 +94,9 @@ export default {
         'toast-in': 'toast-in .22s cubic-bezier(.16,1,.3,1)',
         'dialog-in': 'dialog-in .18s cubic-bezier(.16,1,.3,1)',
         'check-pop': 'check-pop .28s ease-out',
-        'pulse-ring': 'pulse-ring 2s ease-out infinite'
+        'pulse-ring': 'pulse-ring 2s ease-out infinite',
+        'page-in-right': 'page-in-right .24s cubic-bezier(.16,1,.3,1)',
+        'page-in-left': 'page-in-left .24s cubic-bezier(.16,1,.3,1)'
       }
     },
   },

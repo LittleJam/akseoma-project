@@ -2,21 +2,24 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getProjectCode, uniqueSlug, withSlugs } from './utils/projectCode';
 import { idbGet, idbSet, writeStateToFile } from './utils/fileStorage';
 import { isSupabaseConfigured } from './utils/supabaseClient';
-import { loadRemoteState, saveRemoteState } from './utils/supabaseStorage';
-import { DEFAULT_COLUMNS, WEEK_DAYS, STORAGE_KEYS } from './constants';
+import { loadRemoteState, loadRemoteStamp, saveRemoteState } from './utils/supabaseStorage';
+import { DEFAULT_COLUMNS, WEEK_DAYS, STORAGE_KEYS, DEFAULT_SCHEDULE_LAYOUT } from './constants';
 import { DARK_THEMES, THEME_COLORS } from './themes';
-import { applyNativeStatusBar } from './utils/native';
+import { applyNativeStatusBar, hideKeyboardAccessoryBar, isNative } from './utils/native';
+import { persistItem, dropPending, setPersistErrorHandler } from './utils/persist';
 import { parseLocation, navigate, onRouteChange } from './utils/router';
 import { applyAppIcon, DEFAULT_APP_ICON } from './utils/appIcon';
 import { DEFAULT_REMINDERS, scheduleDayReminders } from './utils/reminders';
 import { importIcsIntoWeeks } from './utils/ics';
-import { AUTH_KEY, FLAGS_KEY, DEFAULT_FLAGS, PAGE_FEATURES, canUse } from './auth';
+import { AUTH_KEY, FLAGS_KEY, DEFAULT_FLAGS, PAGE_FEATURES, USERS, canUse } from './auth';
 import { getWeekKey } from './utils/weeks';
 import { DEFAULT_SIGN, getNatalChart } from './horoscope';
 import StorageErrorBanner from './components/StorageErrorBanner';
 import TaskAddedNotification from './components/TaskAddedNotification';
 import ConfirmDialog from './components/ConfirmDialog';
-import { emptyLine, newLineId } from './utils/noteLines';
+import { emptyLine, newLineId, getNoteLines } from './utils/noteLines';
+import { migrateNoteAttachments } from './utils/fileAttachment';
+import { uploadPendingAttachments, collectAttachmentGarbage } from './utils/attachmentStore';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import KanbanBoard from './components/KanbanBoard';
@@ -27,6 +30,7 @@ import ChillTimer from './components/ChillTimer';
 import SettingsPage from './components/SettingsPage';
 import ThemeFx from './components/ThemeFx';
 import LoginScreen from './components/LoginScreen';
+import SplashScreen from './components/SplashScreen';
 
 export default function PersonalJira() {
   const [projects, setProjects] = useState([]);
@@ -35,6 +39,10 @@ export default function PersonalJira() {
   const [projectColumns, setProjectColumns] = useState({});
   const [weeklyTasks, setWeeklyTasks] = useState({});
   const [notes, setNotes] = useState([]);
+  // Папки заметок: сами заметки лежат плоским списком, папка — просто поле
+  // folderId на заметке, а не вложенность. Так удаление папки не тянет за
+  // собой удаление заметок — они просто возвращаются в «без папки»
+  const [noteFolders, setNoteFolders] = useState([]);
   const [collapsedSubtasks, setCollapsedSubtasks] = useState({});
   const [editingTask, setEditingTask] = useState(null);
   // Открытая заметка — часть адреса, а не внутреннее состояние списка:
@@ -49,6 +57,9 @@ export default function PersonalJira() {
   const [featureFlags, setFeatureFlags] = useState(DEFAULT_FLAGS);
   // Лайки включаются по каждому проекту отдельно: { [projectId]: true }
   const [projectLikes, setProjectLikes] = useState({});
+  // Доступ к проекту для остальных пользователей: { [projectId]: { [username]: false } }.
+  // Отсутствие записи или true — значит виден, как и было до появления этой настройки
+  const [projectAccess, setProjectAccess] = useState({});
   // Гороскоп в расписании: знак выбирают руками или он считается по дате рождения
   const [zodiac, setZodiac] = useState({ sign: DEFAULT_SIGN, birthDate: '' });
   // Какая порция стартовых заметок уже досылалась этому пользователю. Хранится
@@ -57,6 +68,15 @@ export default function PersonalJira() {
   const [starterNotes, setStarterNotes] = useState(0);
   const [newProjectName, setNewProjectName] = useState('');
   const [loading, setLoading] = useState(true);
+  // Данные из localStorage читаются мгновенно, и без минимального времени
+  // показа сплэш с волной успевал бы только мигнуть. Сплэш — только у
+  // нативного приложения: на сайте и в PWA страница открывается сразу
+  const [splashMinDone, setSplashMinDone] = useState(!isNative());
+  useEffect(() => {
+    if (splashMinDone) return;
+    const timer = setTimeout(() => setSplashMinDone(true), 900);
+    return () => clearTimeout(timer);
+  }, [splashMinDone]);
   // Тема сайта: light | dark | wizard | surf. Компоненты по-прежнему знают только
   // про darkMode — тёмная она или светлая, — а характер темы накручивается сверху в CSS
   const [theme, setTheme] = useState('light');
@@ -73,6 +93,17 @@ export default function PersonalJira() {
       return DEFAULT_REMINDERS;
     }
   });
+  // Раскладка Расписания — выбор этого устройства, а не общий: на телефоне
+  // и на большом экране удобными оказываются разные, и синхронизировать их
+  // значит навязывать одну обоим
+  const [scheduleLayout, setScheduleLayout] = useState(() => {
+    try {
+      return localStorage.getItem('jira-schedule-layout') || DEFAULT_SCHEDULE_LAYOUT;
+    } catch {
+      return DEFAULT_SCHEDULE_LAYOUT;
+    }
+  });
+
   const [appIcon, setAppIcon] = useState(() => {
     try {
       return localStorage.getItem('jira-app-icon') || DEFAULT_APP_ICON;
@@ -301,18 +332,22 @@ export default function PersonalJira() {
         const savedWeeklyTasks = localStorage.getItem('jira-weekly-tasks');
         const savedWishlist = localStorage.getItem('jira-wishlist');
         const savedNotes = localStorage.getItem('jira-notes');
+        const savedNoteFolders = localStorage.getItem('jira-note-folders');
         const savedCollapsedSubtasks = localStorage.getItem('jira-collapsed-subtasks');
         const savedDarkMode = localStorage.getItem('jira-darkMode');
         const savedTheme = localStorage.getItem('jira-theme');
         const savedAuth = localStorage.getItem(AUTH_KEY);
         const savedFlags = localStorage.getItem(FLAGS_KEY);
         const savedProjectLikes = localStorage.getItem('jira-project-likes');
+        const savedProjectAccess = localStorage.getItem('jira-project-access');
         const savedZodiac = localStorage.getItem('jira-zodiac');
         const savedStarter = localStorage.getItem('jira-starter-notes');
 
         if (savedAuth) setUser(JSON.parse(savedAuth));
         if (savedFlags) setFeatureFlags({ ...DEFAULT_FLAGS, ...JSON.parse(savedFlags) });
         if (savedProjectLikes) setProjectLikes(JSON.parse(savedProjectLikes));
+        if (savedProjectAccess) setProjectAccess(JSON.parse(savedProjectAccess));
+        if (savedNoteFolders) setNoteFolders(JSON.parse(savedNoteFolders));
         if (savedZodiac) setZodiac({ sign: DEFAULT_SIGN, birthDate: '', ...JSON.parse(savedZodiac) });
         if (savedStarter) setStarterNotes(Number(JSON.parse(savedStarter)) || 0);
         const savedCurrentProject = localStorage.getItem('jira-currentProject');
@@ -350,9 +385,14 @@ export default function PersonalJira() {
         if (route.page === 'notes' && route.detail) setExpandedNoteId(route.detail);
         if (route.page === 'weekly' && route.detail === 'horoscope') setHoroscopeOpen(true);
 
+        // Установленное приложение каждый холодный запуск начинает с проектов:
+        // его открывают, чтобы посмотреть дела, а не чтобы вернуться туда, где
+        // закрыли, — и «где я был» через день-два всё равно уже не то место.
+        // В браузере поведение прежнее: вкладку не «открывают заново», и там
+        // последний раздел — это продолжение той же работы
         if (route.page) {
           setCurrentPage(route.page);
-        } else if (savedCurrentPage) {
+        } else if (savedCurrentPage && !isNative()) {
           setCurrentPage(savedCurrentPage === 'wishlist' ? 'notes' : savedCurrentPage);
         }
 
@@ -413,48 +453,62 @@ export default function PersonalJira() {
     loadData();
   }, []);
 
-  // Безопасное сохранение в localStorage с обработкой ошибок переполнения
-  const safeSetItem = (key, value) => {
-    try {
-      localStorage.setItem(key, value);
-      setStorageError(false);
-      return true;
-    } catch (error) {
-      console.error('Storage error:', error);
+  // Сохранение в localStorage. Пишет не сразу: значения копятся по ключу и
+  // уходят одной пачкой (см. utils/persist.js) — иначе каждое нажатие клавиши
+  // в заметке пересохраняло бы весь список заметок, синхронно и в основном
+  // потоке. Значение передаём объектом, не строкой: JSON.stringify тоже
+  // должен случиться один раз за пачку, а не на каждую правку
+  const safeSetItem = (key, value) => persistItem(key, value);
+
+  // Переполнение хранилища всплывает уже при записи, то есть после правки, —
+  // поэтому баннером заведует обработчик, а не возврат из safeSetItem
+  // Панель над клавиатурой убираем один раз за запуск: она не зависит ни от
+  // темы, ни от экрана
+  useEffect(() => {
+    hideKeyboardAccessoryBar();
+  }, []);
+
+  useEffect(() => {
+    setPersistErrorHandler(() => {
       setStorageError(true);
       setTimeout(() => setStorageError(false), 4000);
-      return false;
-    }
-  };
+    });
+    return () => setPersistErrorHandler(null);
+  }, []);
 
   const saveProjects = (newProjects) => {
     setProjects(newProjects);
-    safeSetItem('jira-projects', JSON.stringify(newProjects));
+    safeSetItem('jira-projects', newProjects);
   };
 
   const saveTasks = (newTasks) => {
     setTasks(newTasks);
-    safeSetItem('jira-tasks', JSON.stringify(newTasks));
+    safeSetItem('jira-tasks', newTasks);
   };
 
   const saveWeeklyTasks = (newWeeklyTasks) => {
     setWeeklyTasks(newWeeklyTasks);
-    safeSetItem('jira-weekly-tasks', JSON.stringify(newWeeklyTasks));
+    safeSetItem('jira-weekly-tasks', newWeeklyTasks);
   };
 
   const saveNotes = (newNotes) => {
     setNotes(newNotes);
-    safeSetItem('jira-notes', JSON.stringify(newNotes));
+    safeSetItem('jira-notes', newNotes);
+  };
+
+  const saveNoteFolders = (newFolders) => {
+    setNoteFolders(newFolders);
+    safeSetItem('jira-note-folders', newFolders);
   };
 
   const saveCollapsedSubtasks = (newCollapsed) => {
     setCollapsedSubtasks(newCollapsed);
-    safeSetItem('jira-collapsed-subtasks', JSON.stringify(newCollapsed));
+    safeSetItem('jira-collapsed-subtasks', newCollapsed);
   };
 
   const saveProjectColumns = (newProjectColumns) => {
     setProjectColumns(newProjectColumns);
-    safeSetItem('jira-columns', JSON.stringify(newProjectColumns));
+    safeSetItem('jira-columns', newProjectColumns);
   };
 
   // Обновить набор колонок конкретного проекта
@@ -465,23 +519,29 @@ export default function PersonalJira() {
   // Сохранение доступов: список общий для всех устройств, поэтому уезжает и в облако
   useEffect(() => {
     if (loading) return;
-    safeSetItem(FLAGS_KEY, JSON.stringify(featureFlags));
+    safeSetItem(FLAGS_KEY, featureFlags);
   }, [featureFlags, loading]);
 
   // Где включены лайки — настройка проекта, а не устройства, поэтому тоже в облако
   useEffect(() => {
     if (loading) return;
-    safeSetItem('jira-project-likes', JSON.stringify(projectLikes));
+    safeSetItem('jira-project-likes', projectLikes);
   }, [projectLikes, loading]);
+
+  // Кому какой проект виден — тоже общая настройка, а не локальная
+  useEffect(() => {
+    if (loading) return;
+    safeSetItem('jira-project-access', projectAccess);
+  }, [projectAccess, loading]);
 
   useEffect(() => {
     if (loading) return;
-    safeSetItem('jira-zodiac', JSON.stringify(zodiac));
+    safeSetItem('jira-zodiac', zodiac);
   }, [zodiac, loading]);
 
   useEffect(() => {
     if (loading) return;
-    safeSetItem('jira-starter-notes', JSON.stringify(starterNotes));
+    safeSetItem('jira-starter-notes', starterNotes);
   }, [starterNotes, loading]);
 
   // Напоминания: список пересобирается при каждой правке расписания и при
@@ -493,14 +553,25 @@ export default function PersonalJira() {
       // Приватный режим — настройка просто не переживёт перезапуск
     }
 
-    if (!reminders.enabled || loading) return;
+    // Сводка с утра и напоминания о каждой задаче включаются порознь:
+    // достаточно одного из двух, чтобы список было ради чего собирать
+    if ((!reminders.enabled && !reminders.digest) || loading) return;
 
-    let cancel = scheduleDayReminders({ weeklyTasks, weekDays, lead: reminders.lead });
+    const schedule = () => scheduleDayReminders({
+      weeklyTasks,
+      weekDays,
+      lead: reminders.lead,
+      taskReminders: reminders.enabled,
+      digest: reminders.digest,
+      digestAt: reminders.digestAt
+    });
+
+    let cancel = schedule();
 
     const resync = () => {
       if (document.visibilityState !== 'visible') return;
       cancel();
-      cancel = scheduleDayReminders({ weeklyTasks, weekDays, lead: reminders.lead });
+      cancel = schedule();
     };
 
     document.addEventListener('visibilitychange', resync);
@@ -509,6 +580,14 @@ export default function PersonalJira() {
       cancel();
     };
   }, [reminders, weeklyTasks, weekDays, loading]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('jira-schedule-layout', scheduleLayout);
+    } catch {
+      // Приватный режим — выбор просто не переживёт перезапуск
+    }
+  }, [scheduleLayout]);
 
   // Выбранная иконка: переставляем ссылки в <head> и запоминаем выбор.
   // applyAppIcon возвращает применённый вариант — сохранённый мог остаться от
@@ -614,10 +693,53 @@ export default function PersonalJira() {
     if (loading || !fileHandle || !fileConnected) return;
     clearTimeout(fileSaveTimeout.current);
     fileSaveTimeout.current = setTimeout(() => {
-      writeStateToFile(fileHandle, { projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks });
+      writeStateToFile(fileHandle, { projects, tasks, projectColumns, weeklyTasks, notes, noteFolders, collapsedSubtasks });
     }, 300);
     return () => clearTimeout(fileSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, fileHandle, fileConnected, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, notes, noteFolders, collapsedSubtasks, fileHandle, fileConnected, loading]);
+
+  // Отметка времени состояния, которое у нас сейчас на руках: своё ли мы
+  // записали или чужое скачали. По ней видно, появилось ли в облаке что-то
+  // новее нашего
+  const remoteStamp = useRef(null);
+  // Состояние только что пришло из облака — значит отправлять его обратно
+  // не надо: это была бы лишняя запись и лишний сдвиг отметки времени
+  const applyingRemote = useRef(false);
+
+  // Ссылка на свежую версию применения: подписка на возвращение в приложение
+  // ставится один раз, а внутри ей нужно текущее состояние, а не то, каким оно
+  // было на момент подписки
+  const applyRemoteRef = useRef(null);
+
+  const applyRemoteState = (remote) => {
+    if (!remote) return;
+    applyingRemote.current = true;
+    if (remote.projects) saveProjects(withSlugs(remote.projects));
+    if (remote.tasks) {
+      saveTasks(renumberTasksByCreationOrder(remote.tasks, remote.projects || projects));
+    }
+    if (remote.columns) saveProjectColumns(remote.columns);
+    if (remote.weeklyTasks) saveWeeklyTasks(migrateWeeklyTasks(remote.weeklyTasks));
+    if (remote.notes || remote.wishlist) {
+      saveNotes(foldWishlistIntoNotes(remote.wishlist, remote.notes || notes));
+    }
+    if (remote.noteFolders) saveNoteFolders(remote.noteFolders);
+    if (remote.collapsedSubtasks) saveCollapsedSubtasks(remote.collapsedSubtasks);
+    if (remote.settings?.featureFlags) setFeatureFlags({ ...DEFAULT_FLAGS, ...remote.settings.featureFlags });
+    if (remote.settings?.projectLikes) setProjectLikes(remote.settings.projectLikes);
+    if (remote.settings?.projectAccess) setProjectAccess(remote.settings.projectAccess);
+    // Слияние по полям, а не замена целиком: в облаке может лежать запись,
+    // сделанная до появления времени и места рождения, и подмена целиком
+    // стёрла бы их сразу после ввода
+    if (remote.settings?.zodiac) setZodiac(prev => ({ ...prev, ...remote.settings.zodiac }));
+    if (remote.settings?.starterNotes) setStarterNotes(remote.settings.starterNotes);
+    if (remote.settings?.theme) setTheme(remote.settings.theme);
+    else if (remote.settings?.darkMode !== undefined) setTheme(remote.settings.darkMode ? 'dark' : 'light');
+  };
+
+  useEffect(() => {
+    applyRemoteRef.current = applyRemoteState;
+  });
 
   // Первичная загрузка данных из Supabase (перекрывает localStorage, если на сервере уже что-то есть)
   useEffect(() => {
@@ -626,28 +748,9 @@ export default function PersonalJira() {
     (async () => {
       setSupabaseStatus('loading');
       try {
-        const remote = await loadRemoteState();
-        if (remote) {
-          if (remote.projects) saveProjects(withSlugs(remote.projects));
-          if (remote.tasks) {
-            saveTasks(renumberTasksByCreationOrder(remote.tasks, remote.projects || projects));
-          }
-          if (remote.columns) saveProjectColumns(remote.columns);
-          if (remote.weeklyTasks) saveWeeklyTasks(migrateWeeklyTasks(remote.weeklyTasks));
-          if (remote.notes || remote.wishlist) {
-            saveNotes(foldWishlistIntoNotes(remote.wishlist, remote.notes || notes));
-          }
-          if (remote.collapsedSubtasks) saveCollapsedSubtasks(remote.collapsedSubtasks);
-          if (remote.settings?.featureFlags) setFeatureFlags({ ...DEFAULT_FLAGS, ...remote.settings.featureFlags });
-          if (remote.settings?.projectLikes) setProjectLikes(remote.settings.projectLikes);
-          // Слияние по полям, а не замена целиком: в облаке может лежать запись,
-          // сделанная до появления времени и места рождения, и подмена целиком
-          // стёрла бы их сразу после ввода
-          if (remote.settings?.zodiac) setZodiac(prev => ({ ...prev, ...remote.settings.zodiac }));
-          if (remote.settings?.starterNotes) setStarterNotes(remote.settings.starterNotes);
-          if (remote.settings?.theme) setTheme(remote.settings.theme);
-          else if (remote.settings?.darkMode !== undefined) setTheme(remote.settings.darkMode ? 'dark' : 'light');
-        }
+        const { data: remote, updatedAt } = await loadRemoteState();
+        applyRemoteState(remote);
+        remoteStamp.current = updatedAt;
         setSupabaseStatus('synced');
         setSupabaseError(null);
         // Отправку в облако разрешаем только после успешного скачивания.
@@ -662,23 +765,61 @@ export default function PersonalJira() {
     })();
   }, [loading]);
 
+  // Перечитывание облака при возвращении в приложение.
+  //
+  // Без него обмен был односторонним: состояние скачивалось ровно один раз, при
+  // запуске, и дальше устройство только отправляло. Приложение на телефоне живёт
+  // в памяти сутками, и любая правка в нём уходила в облако поверх всего, что за
+  // это время сделали в вебе, — не сливаясь, а замещая целиком.
+  //
+  // Сначала спрашиваем только отметку времени: это дешёвый запрос, и в
+  // большинстве случаев окажется, что скачивать нечего
+  useEffect(() => {
+    if (loading || !isSupabaseConfigured) return undefined;
+
+    const resync = async () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!remoteFetchDone.current) return;
+      try {
+        const stamp = await loadRemoteStamp();
+        if (!stamp || stamp === remoteStamp.current) return;
+        const { data: remote, updatedAt } = await loadRemoteState();
+        applyRemoteRef.current?.(remote);
+        remoteStamp.current = updatedAt;
+        setSupabaseStatus('synced');
+        setSupabaseError(null);
+      } catch (err) {
+        console.error('Supabase resync error:', err);
+      }
+    };
+
+    document.addEventListener('visibilitychange', resync);
+    return () => document.removeEventListener('visibilitychange', resync);
+  }, [loading]);
+
   // Автоматическая отправка изменений в Supabase (после первичной загрузки)
   useEffect(() => {
     if (loading || !isSupabaseConfigured || !remoteFetchDone.current) return;
+    // Состояние только что пришло из облака — отправлять его обратно нечего
+    if (applyingRemote.current) {
+      applyingRemote.current = false;
+      return;
+    }
     clearTimeout(supabaseSaveTimeout.current);
     supabaseSaveTimeout.current = setTimeout(async () => {
       try {
-        await saveRemoteState({
+        remoteStamp.current = await saveRemoteState({
           version: 1,
           projects,
           tasks,
           columns: projectColumns,
           weeklyTasks,
           notes,
+          noteFolders,
           collapsedSubtasks,
           // currentProject/currentPage сюда не кладём: раздел и проект — дело
           // конкретного устройства, синхронизировать их значит дёргать чужой экран
-          settings: { darkMode, theme, featureFlags, projectLikes, zodiac, starterNotes }
+          settings: { darkMode, theme, featureFlags, projectLikes, projectAccess, zodiac, starterNotes }
         });
         setSupabaseStatus('synced');
         setSupabaseError(null);
@@ -689,7 +830,38 @@ export default function PersonalJira() {
       }
     }, 500);
     return () => clearTimeout(supabaseSaveTimeout.current);
-  }, [projects, tasks, projectColumns, weeklyTasks, notes, collapsedSubtasks, theme, darkMode, featureFlags, projectLikes, zodiac, starterNotes, loading]);
+  }, [projects, tasks, projectColumns, weeklyTasks, notes, noteFolders, collapsedSubtasks, theme, darkMode, featureFlags, projectLikes, projectAccess, zodiac, starterNotes, loading]);
+
+  // Вложения: перенос из самих заметок в отдельное хранилище, досылка
+  // недоотправленного и уборка осиротевших байтов.
+  //
+  // Ждём облако ровно по той же причине, что и стартовые заметки ниже: пока
+  // удалённое состояние не приехало, локальный список заметок неполон — а по
+  // нему решается, на какие вложения больше никто не ссылается. Убирать
+  // мусор по неполному списку значит стереть чужие вложения
+  const attachmentsDone = useRef(false);
+  useEffect(() => {
+    if (loading || attachmentsDone.current) return;
+    if (isSupabaseConfigured && !remoteFetchDone.current && supabaseStatus !== 'error') return;
+
+    attachmentsDone.current = true;
+    (async () => {
+      try {
+        const { notes: migrated, changed } = await migrateNoteAttachments(notes);
+        if (changed) saveNotes(migrated);
+
+        await uploadPendingAttachments();
+
+        const used = new Set();
+        (changed ? migrated : notes).forEach(note => {
+          getNoteLines(note).forEach(line => { if (line.ref) used.add(line.ref); });
+        });
+        await collectAttachmentGarbage(used);
+      } catch (error) {
+        console.error('Attachment maintenance error:', error);
+      }
+    })();
+  }, [loading, supabaseStatus, notes]);
 
   // Досылка стартовых заметок. Ждём облако: если отправить их раньше, загрузка
   // через миг перезапишет список и заметки исчезнут. Когда облака нет или оно
@@ -731,6 +903,7 @@ export default function PersonalJira() {
               if (parsed.notes || parsed.wishlist) {
                 saveNotes(foldWishlistIntoNotes(parsed.wishlist, parsed.notes || notes));
               }
+              if (parsed.noteFolders) saveNoteFolders(parsed.noteFolders);
               if (parsed.collapsedSubtasks) saveCollapsedSubtasks(parsed.collapsedSubtasks);
             }
           }
@@ -1257,7 +1430,8 @@ export default function PersonalJira() {
     }));
   };
 
-  // Создать новую заметку
+  // Создать новую заметку. Своя — значит видна только автору, пока он её
+  // с кем-то не поделился явно (см. setNoteSharedWith)
   const addNote = () => {
     saveNotes([
       ...notes,
@@ -1270,6 +1444,8 @@ export default function PersonalJira() {
         mode: 'bullet',
         color: 'default',
         images: [],
+        ownerUsername: user?.username,
+        sharedWith: [],
         updatedAt: new Date().toLocaleString('en-US')
       }
     ]);
@@ -1307,6 +1483,19 @@ export default function PersonalJira() {
     saveNotes(notes.map(n => (n.id === noteId ? { ...n, blurred: !n.blurred } : n)));
   };
 
+  // Капсула времени: momentIso — будущий момент, до которого заметка
+  // запечатана; null снимает печать. Оформление, а не содержимое —
+  // updatedAt не трогаем, как и у цвета
+  const setNoteRevealAt = (noteId, momentIso) => {
+    saveNotes(notes.map(n => (n.id === noteId ? { ...n, revealAt: momentIso } : n)));
+  };
+
+  // С кем ещё видна заметка, кроме автора. usernames — новый список целиком,
+  // как и у projectAccess: страница отдаёт итоговый набор, а не одно имя
+  const setNoteSharedWith = (noteId, usernames) => {
+    saveNotes(notes.map(n => (n.id === noteId ? { ...n, sharedWith: usernames } : n)));
+  };
+
   // Переставить заметки местами (drag & drop)
   const reorderNotes = (fromIndex, toIndex) => {
     if (
@@ -1321,8 +1510,58 @@ export default function PersonalJira() {
     saveNotes(newNotes);
   };
 
+  // Папка — просто ярлык с id; вложенности нет, у заметки одна папка или ни одной
+  const addNoteFolder = (name) => {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return;
+    saveNoteFolders([...noteFolders, { id: Date.now().toString(), name: trimmed }]);
+  };
+
+  const renameNoteFolder = (folderId, name) => {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return;
+    saveNoteFolders(noteFolders.map(f => (f.id === folderId ? { ...f, name: trimmed } : f)));
+  };
+
+  // Удаление папки не трогает сами заметки — они лишь возвращаются в «без папки»
+  const deleteNoteFolder = (folderId) => {
+    saveNoteFolders(noteFolders.filter(f => f.id !== folderId));
+    saveNotes(notes.map(n => (n.folderId === folderId ? { ...n, folderId: null } : n)));
+  };
+
+  const setNoteFolder = (noteId, folderId) => {
+    saveNotes(notes.map(n => (n.id === noteId ? { ...n, folderId } : n)));
+  };
+
+  // Одну заметку задержали над другой — как на iOS, где долгое зависание
+  // одной иконки над другой складывает обе в папку. Если у заметки-цели уже
+  // есть папка, перетащенная просто входит туда же; если обе были без папки —
+  // заводим новую и кладём в неё обе. created — завели ли только что новую,
+  // а не положили в существующую: по этому флагу вызывающая сторона решает,
+  // открывать ли папку сразу с полем переименования, как делает сама iOS
+  const mergeNotesIntoFolder = (sourceNoteId, targetNoteId) => {
+    if (sourceNoteId === targetNoteId) return null;
+    const targetNote = notes.find(n => n.id === targetNoteId);
+    if (!targetNote) return null;
+
+    if (targetNote.folderId) {
+      saveNotes(notes.map(n => (n.id === sourceNoteId ? { ...n, folderId: targetNote.folderId } : n)));
+      return { folderId: targetNote.folderId, created: false };
+    }
+
+    const newFolder = { id: Date.now().toString(), name: 'New Folder' };
+    saveNoteFolders([...noteFolders, newFolder]);
+    saveNotes(notes.map(n => (
+      n.id === sourceNoteId || n.id === targetNoteId ? { ...n, folderId: newFolder.id } : n
+    )));
+    return { folderId: newFolder.id, created: true };
+  };
+
   // Сбросить все данные и настройки сайта к исходному состоянию
   const resetAllData = () => {
+    // Сначала снимаем всё, что ещё не дописано: иначе отложенная пачка легла
+    // бы поверх очистки и вернула часть данных обратно
+    dropPending();
     STORAGE_KEYS.forEach(key => {
       try {
         localStorage.removeItem(key);
@@ -1356,6 +1595,31 @@ export default function PersonalJira() {
 
   const allowed = (feature) => canUse(feature, user, featureFlags);
 
+  // Админу видно всё; остальным — то, что явно не закрыли для их логина.
+  // Запись false закрывает проект, отсутствие записи или true — оставляет
+  // его видимым, как было до появления этой настройки
+  const canSeeProject = (project) =>
+    user?.role === 'admin' || projectAccess[project.id]?.[user?.username] !== false;
+  const visibleProjects = projects.filter(canSeeProject);
+
+  // Проект, который у пользователя только что закрыли, не должен оставаться
+  // открытым на экране — уводим на первый оставшийся видимым
+  useEffect(() => {
+    if (!user || loading || !currentProject) return;
+    if (canSeeProject({ id: currentProject })) return;
+    setCurrentProject(visibleProjects[0]?.id || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading, currentProject, projects, projectAccess]);
+
+  // Заметки — личные по умолчанию, а не общие, как проекты: видит их только
+  // автор, и админ не исключение (в отличие от canSeeProject, где ему видно
+  // всё). У заметок, заведённых до появления этой настройки, автора нет —
+  // считаем их авторства того, кто раньше был единственным, кто ими пользовался
+  const LEGACY_NOTES_OWNER = USERS.find(u => u.role === 'admin')?.username;
+  const canSeeNote = (note) =>
+    (note.ownerUsername || LEGACY_NOTES_OWNER) === user?.username || (note.sharedWith || []).includes(user?.username);
+  const visibleNotes = notes.filter(canSeeNote);
+
   const handleSignIn = (signedIn) => {
     setUser(signedIn);
     localStorage.setItem(AUTH_KEY, JSON.stringify(signedIn));
@@ -1375,21 +1639,27 @@ export default function PersonalJira() {
     setCurrentPage(fallback || 'settings');
   }, [user, featureFlags, currentPage, loading]);
 
-  if (loading) {
-    return <div className={`flex items-center justify-center h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-800'}`}>Loading...</div>;
+  // Пока читаются данные, на сайте не рисуем ничего — заставки там нет
+  if (loading || !splashMinDone) {
+    return isNative() ? <SplashScreen /> : null;
   }
 
   if (!user) {
     return (
-      <div data-app className="flex h-full bg-gray-50">
+      <div data-app className={`flex h-full ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
         <ThemeFx theme={theme} />
         <LoginScreen onSignIn={handleSignIn} darkMode={darkMode} />
       </div>
     );
   }
 
+  // Фон корня зависит от темы: страницы и сайдбар закрывают его собой, но
+  // стоит где-то открыться щели — у края экрана, под уехавшей клавиатурой,
+  // на месте спрятанной навигации — и из неё светил бы светло-серый блок
+  // посреди тёмной темы. Оформленные темы подменяют .bg-gray-50 своим
+  // цветом, а обычная тёмная — нет
   return (
-    <div data-app className="flex flex-col sm:flex-row h-full bg-gray-50">
+    <div data-app className={`flex flex-col sm:flex-row h-full ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <ThemeFx theme={theme} />
       {storageError && <StorageErrorBanner />}
 
@@ -1413,7 +1683,7 @@ export default function PersonalJira() {
         supabaseError={supabaseError}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
-        projects={projects}
+        projects={visibleProjects}
         currentProject={currentProject}
         editingProjectId={editingProjectId}
         editingProjectName={editingProjectName}
@@ -1441,7 +1711,7 @@ export default function PersonalJira() {
           onDelete={deleteTask}
           darkMode={darkMode}
           onUnsavedChange={(changed) => setHasUnsavedChanges(changed)}
-          projects={projects}
+          projects={visibleProjects}
           currentProjectId={currentProject}
           getProjectColumns={getProjectColumns}
           // Кандидаты в родители — остальные задачи текущего проекта
@@ -1462,7 +1732,7 @@ export default function PersonalJira() {
           {taskAddedNotification && <TaskAddedNotification />}
           <KanbanBoard
             currentProject={currentProject}
-            projects={projects}
+            projects={visibleProjects}
             selectProject={handleProjectClick}
             createProject={createProject}
             tasks={tasks}
@@ -1493,7 +1763,6 @@ export default function PersonalJira() {
           editWeeklyTask={editWeeklyTask}
           moveWeeklyTask={moveWeeklyTask}
           toggleWeeklyTaskImportant={toggleWeeklyTaskImportant}
-          importCalendar={importCalendar}
           theme={theme}
           darkMode={darkMode}
           weekDays={weekDays}
@@ -1503,21 +1772,32 @@ export default function PersonalJira() {
           moonExact={natal.moonExact}
           horoscopeOpen={horoscopeOpen}
           setHoroscopeOpen={setHoroscopeOpen}
+          scheduleLayout={scheduleLayout}
         />
       ) : currentPage === 'notes' ? (
         <Notes
-          notes={notes}
+          notes={visibleNotes}
           addNote={addNote}
           expandedNoteId={expandedNoteId}
           setExpandedNoteId={setExpandedNoteId}
           updateNoteLines={updateNoteLines}
           updateNoteTitle={updateNoteTitle}
           setNoteColor={setNoteColor}
+          setNoteRevealAt={setNoteRevealAt}
+          setNoteSharedWith={setNoteSharedWith}
           deleteNote={deleteNote}
           toggleNoteBlur={toggleNoteBlur}
           reorderNotes={reorderNotes}
+          folders={noteFolders}
+          addNoteFolder={addNoteFolder}
+          renameNoteFolder={renameNoteFolder}
+          deleteNoteFolder={deleteNoteFolder}
+          setNoteFolder={setNoteFolder}
+          mergeNotesIntoFolder={mergeNotesIntoFolder}
           darkMode={darkMode}
           theme={theme}
+          currentUsername={user?.username}
+          users={USERS}
         />
       ) : currentPage === 'chill' ? (
         <ChillTimer darkMode={darkMode} theme={theme} />
@@ -1528,21 +1808,28 @@ export default function PersonalJira() {
           setTheme={setTheme}
           appIcon={appIcon}
           setAppIcon={setAppIcon}
+          scheduleLayout={scheduleLayout}
+          setScheduleLayout={setScheduleLayout}
           reminders={reminders}
           setReminders={setReminders}
+          weeklyTasks={weeklyTasks}
+          importCalendar={importCalendar}
           user={user}
           allowed={allowed}
           featureFlags={featureFlags}
           setFeatureFlags={setFeatureFlags}
           projectLikes={projectLikes}
           setProjectLikes={setProjectLikes}
+          projectAccess={projectAccess}
+          setProjectAccess={setProjectAccess}
+          users={USERS}
           zodiac={zodiac}
           setZodiac={setZodiac}
           zodiacSign={zodiacSign}
           risingSign={risingSign}
           moonSign={natal.moon}
           onSignOut={handleSignOut}
-          projects={projects}
+          projects={visibleProjects}
           currentProject={currentProject}
           getProjectColumns={getProjectColumns}
           updateProjectColumns={updateProjectColumns}

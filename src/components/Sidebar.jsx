@@ -211,7 +211,6 @@ export default function Sidebar({
                     if (e.key === 'Escape') { setNewProjectName(''); setAddingProject(false); }
                   }}
                   onBlur={() => { if (!newProjectName.trim()) setAddingProject(false); }}
-                  autoFocus
                   placeholder="New project..."
                   aria-label="New project name"
                   className={`flex-1 min-w-0 px-2 py-2 text-sm border rounded focus:outline-none focus:border-green-500 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'}`}
@@ -242,7 +241,6 @@ export default function Sidebar({
                     onChange={e => setEditingProjectName(e.target.value)}
                     onBlur={() => updateProjectName(project.id)}
                     onKeyPress={e => e.key === 'Enter' && updateProjectName(project.id)}
-                    autoFocus
                     className={`flex-1 px-2 py-1 rounded text-sm ${darkMode ? 'bg-gray-600 text-white' : 'bg-white text-gray-900'}`}
                   />
                 ) : (

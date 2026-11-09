@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, ChevronDown, ChevronLeft, ChevronRight, Heart } from 'lucide-react';
+import { Trash2, X, ChevronDown, ChevronLeft, ChevronRight, Heart } from 'lucide-react';
 import { getLabelColor } from '../constants';
 
 export default function TaskCard({ task, index, column, setEditingTask, reorderTasksInColumn, darkMode, taskNumber, deleteTask, hasSubtasks, subtasksCollapsed, onToggleSubtasks, showLabels, onLabelClick, likesEnabled, currentUsername, onToggleLike, prevColumn, nextColumn, onMoveToColumn }) {
@@ -134,8 +134,15 @@ export default function TaskCard({ task, index, column, setEditingTask, reorderT
              под курсором, здесь должно быть видно сразу, иначе недоступно */
           className={`p-2 sm:p-1 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 press ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
           title="Delete task"
+          aria-label="Delete task"
         >
-          <Trash2 size={14} className={darkMode ? 'text-red-400' : 'text-red-500'} />
+          {/* На телефоне — такой же крестик, как на обложке заметки. Кнопка
+              там видна всегда, и красная корзина на каждой карточке
+              перетягивала внимание на себя раньше, чем сама задача. На
+              десктопе значок проявляется под курсором и столько не шумит,
+              поэтому корзина остаётся: она точнее называет действие */}
+          <X size={15} className={`sm:hidden ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+          <Trash2 size={14} className={`hidden sm:block ${darkMode ? 'text-red-400' : 'text-red-500'}`} />
         </button>
       </div>
       <div className="mb-2 pr-6">

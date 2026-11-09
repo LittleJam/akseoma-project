@@ -22,6 +22,9 @@ export default function PageShell({
   width = 'grid',
   variant = 'default',
   actions,
+  // Действия, которым место именно в строке заголовка, а не под подзаголовком:
+  // одна главная кнопка страницы в правом верхнем углу. Остальное — в actions
+  titleActions,
   subheader,
   flushTop = false,
   children
@@ -62,12 +65,17 @@ export default function PageShell({
       {/* Высота шапки задана токеном только с sm: рубеж должен совпасть с линией
           под блоком пользователя в сайдбаре, а на телефоне сайдбара нет — там
           эти 129px были бы пустой полосой поперёк и без того короткого экрана */}
-      <div className={`flex-shrink-0 sm:min-h-[var(--shell-header-h)] flex flex-col border-b ${borderClass} px-6 sm:px-8 ${subheader ? 'pt-4 sm:pt-6 pb-4 sm:pb-5' : 'py-3 sm:py-0'}`}>
+      {/* Верхний отступ на телефоне одинаковый при любом наполнении шапки:
+          заголовок обязан стоять на одной высоте на всех страницах, а есть
+          под ним подзаголовок или нет — дело страницы, а не заголовка.
+          С sm расхождение возвращается: там высота шапки подогнана под линию
+          в сайдбаре, и подзаголовку нужен свой запас сверху */}
+      <div className={`flex-shrink-0 sm:min-h-[var(--shell-header-h)] flex flex-col border-b ${borderClass} px-6 sm:px-8 ${subheader ? 'pt-3 sm:pt-6 pb-4 sm:pb-5' : 'py-3 sm:py-0'}`}>
         {/* Отступ сверху у самой строки, а не у шапки: без подзаголовка строка
             прижата к низу, и отступ шапки её бы не сдвинул */}
         <div
           className={`flex items-center justify-between gap-4 pt-2 sm:pt-3 ${
-            subheader ? '' : 'mt-auto flex-shrink-0 sm:h-[var(--user-h)]'
+            subheader ? '' : 'flex-shrink-0 sm:mt-auto sm:h-[var(--user-h)]'
           }`}
         >
           {/* Заголовком может быть не только строка, но и элемент — например,
@@ -76,15 +84,18 @@ export default function PageShell({
           <h2 className={`text-title sm:text-title-lg min-w-0 ${typeof title === 'string' ? 'truncate' : ''} ${titleClass}`}>
             {title}
           </h2>
+          {titleActions && <div className="flex items-center gap-2 flex-shrink-0">{titleActions}</div>}
           {actions && !subheader && actionsRow}
         </div>
         {subheader && (
-          <div className="mt-auto pt-4 sm:pt-5 flex items-center justify-between gap-4">
-            {/* flex-1 обязателен вместе с min-w-0: без него полоса под заголовком
-                занимает ширину своего содержимого и на телефоне вылезает за экран,
+          <div className="mt-auto pt-4 sm:pt-5 flex flex-col gap-3">
+            {/* min-w-0 обязателен: без него полоса под заголовком занимает
+                ширину своего содержимого и на телефоне вылезает за экран,
                 утаскивая за собой всю страницу */}
-            <div className="flex-1 min-w-0">{subheader}</div>
-            {actions && actionsRow}
+            <div className="min-w-0">{subheader}</div>
+            {/* Кнопки страницы своей строкой под подзаголовком, а не рядом с
+                ним: их не должно сдвигать вбок содержимым переменной длины */}
+            {actions && <div className="flex items-center justify-end flex-wrap gap-2">{actions}</div>}
           </div>
         )}
       </div>

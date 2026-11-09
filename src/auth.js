@@ -16,6 +16,12 @@ export const USERS = [
     name: 'LittleJam',
     role: 'user',
     hash: 'b752cd72c7e793e21f5b3c49ebe635b4628f0935c749a5023adafc97a607076d'
+  },
+  {
+    username: 'mikitka',
+    name: 'Mikitka',
+    role: 'user',
+    hash: '39bacf41f93619e6706493291dc3bfc6cb4c1ec828b523fb49524187ba0d7294'
   }
 ];
 

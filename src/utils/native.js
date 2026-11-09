@@ -18,3 +18,19 @@ export const applyNativeStatusBar = (darkMode) => {
     .then(({ StatusBar, Style }) => StatusBar.setStyle({ style: darkMode ? Style.Dark : Style.Light }))
     .catch(error => console.error('Status bar style error:', error));
 };
+
+// Панель «вверх / вниз / Done», которую WKWebView рисует над клавиатурой для
+// любого поля на странице. Полей в формах здесь по одному, перебирать стрелками
+// нечего, а «Done» повторяет ту же клавишу на самой клавиатуре — остаётся
+// полоса чужого интерфейса поверх своего.
+//
+// Раньше это делалось подменой inputAccessoryView у приватного WKContentView
+// прямо в MainViewController. Плагин делает ровно то же самое, но сам: без
+// приватных имён классов в нашем коде
+export const hideKeyboardAccessoryBar = () => {
+  if (!isNative()) return;
+
+  import('@capacitor/keyboard')
+    .then(({ Keyboard }) => Keyboard.setAccessoryBarVisible({ isVisible: false }))
+    .catch(error => console.error('Keyboard accessory bar error:', error));
+};

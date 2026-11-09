@@ -152,9 +152,16 @@ export default function KanbanBoard({
               />
               <button
                 onClick={submitDraft}
+                disabled={!draft.trim()}
                 title={`Add a task to ${columns[0]?.title || ''}`}
                 aria-label={`Add a task to ${columns[0]?.title || ''}`}
-                className="h-control flex-shrink-0 flex items-center gap-1.5 px-3 sm:pl-3 sm:pr-4 text-body font-medium rounded-lg bg-green-800 text-white hover:bg-green-900 press"
+                /* grayscale — не только тусклее, но и без цвета темы: в Surf
+                   акцент светлый (#0f8fa3), и одной прозрачности недостаточно,
+                   чтобы кнопка читалась выключенной на светлом фоне.
+                   pointer-events-none — WKWebView отыгрывал active:scale-95
+                   из .press даже на disabled-кнопке, и та «нажималась» на вид,
+                   хотя клик не срабатывал; так до неё вообще не доходит тап */
+                className="h-control flex-shrink-0 flex items-center gap-1.5 px-3 sm:pl-3 sm:pr-4 text-body font-medium rounded-lg bg-green-800 text-white hover:bg-green-900 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed disabled:pointer-events-none press"
               >
                 {/* На телефоне остаётся один плюс: слово рядом с ним съедало
                     ширину у поля, ради которого строка и существует */}
@@ -270,70 +277,100 @@ export default function KanbanBoard({
                   перейти в соседнюю нужно там же, где стоишь, а не в начале.
                   Статусов пять, а нужен за раз один, поэтому в шапке одна
                   кнопка с текущим статусом, а остальные открываются списком.
-                  Рядом кнопок больше нет: они занимали две строки шапки */}
-              <div className="column-header sticky top-0 z-20 -mx-6 px-6 py-2 flex">
-                <div ref={statusRef} className="relative min-w-0">
-                  <button
-                    onClick={() => setStatusOpen(prev => !prev)}
-                    aria-expanded={statusOpen}
-                    aria-haspopup="listbox"
-                    aria-label="Status"
-                    title="Status"
-                    className={`h-control max-w-full flex items-center gap-1.5 px-3 text-xs rounded-full border press ${
-                      darkMode
-                        ? 'border-gray-700 bg-gray-800 text-gray-200'
-                        : 'border-gray-300 bg-white text-gray-700'
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      (COLUMN_COLORS[activeColumn.color] || COLUMN_COLORS.gray).dot
-                    }`} />
-                    <span className="column-title truncate">{activeColumn.title}</span>
-                    <span className="opacity-60 flex-shrink-0">
-                      {visibleTasks(tasks[currentProject]?.[activeColumn.id]).length}
-                    </span>
-                    <ChevronDown
-                      size={14}
-                      className={`flex-shrink-0 transition-transform duration-200 ${statusOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-
-                  {statusOpen && (
-                    <div
-                      role="listbox"
-                      className={`absolute z-dropdown top-full mt-2 left-0 w-56 max-w-[80vw] p-1 rounded-lg border shadow-lg origin-top-left animate-pop-in ${
-                        darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                  Рядом кнопок больше нет: они занимали две строки шапки.
+                  Без class column-header — тот же класс красит шапки колонок
+                  на десктопе фоном с рамкой, а тут это была лишняя полоса */}
+              <div className={`sticky top-0 z-20 -mx-6 px-6 py-2 flex ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                {columns.length === 3 ? (
+                  /* Три статуса умещаются табами в ряд — открывать список
+                     не из чего выбирать, все и так на виду */
+                  <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                    {columns.map(column => {
+                      const count = visibleTasks(tasks[currentProject]?.[column.id]).length;
+                      const active = column.id === activeColumn.id;
+                      const palette = COLUMN_COLORS[column.color] || COLUMN_COLORS.gray;
+                      return (
+                        <button
+                          key={column.id}
+                          onClick={() => setActiveColumnId(column.id)}
+                          aria-pressed={active}
+                          className={`flex-1 min-w-0 h-control flex items-center justify-center gap-1.5 px-2 text-xs rounded-full border press ${
+                            active
+                              ? darkMode ? 'border-green-700 bg-green-900/40 text-green-300' : 'border-green-600 bg-green-50 text-green-700'
+                              : darkMode ? 'border-gray-700 bg-gray-800 text-gray-300' : 'border-gray-300 bg-white text-gray-600'
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
+                          <span className="column-title truncate">{column.title}</span>
+                          <span className="opacity-60 flex-shrink-0">{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div ref={statusRef} className="relative min-w-0">
+                    <button
+                      onClick={() => setStatusOpen(prev => !prev)}
+                      aria-expanded={statusOpen}
+                      aria-haspopup="listbox"
+                      aria-label="Status"
+                      title="Status"
+                      className={`h-control max-w-full flex items-center gap-1.5 px-3 text-xs rounded-full border press ${
+                        darkMode
+                          ? 'border-gray-700 bg-gray-800 text-gray-200'
+                          : 'border-gray-300 bg-white text-gray-700'
                       }`}
                     >
-                      {columns.map(column => {
-                        const count = visibleTasks(tasks[currentProject]?.[column.id]).length;
-                        const active = column.id === activeColumn.id;
-                        const palette = COLUMN_COLORS[column.color] || COLUMN_COLORS.gray;
-                        return (
-                          <button
-                            key={column.id}
-                            role="option"
-                            aria-selected={active}
-                            onClick={() => {
-                              setActiveColumnId(column.id);
-                              setStatusOpen(false);
-                            }}
-                            className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm press ${
-                              darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                          >
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
-                            <span className="column-title flex-1 min-w-0 text-left truncate">{column.title}</span>
-                            <span className={`text-xs flex-shrink-0 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                              {count}
-                            </span>
-                            {active && <Check size={14} className="flex-shrink-0 text-green-600" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        (COLUMN_COLORS[activeColumn.color] || COLUMN_COLORS.gray).dot
+                      }`} />
+                      <span className="column-title truncate">{activeColumn.title}</span>
+                      <span className="opacity-60 flex-shrink-0">
+                        {visibleTasks(tasks[currentProject]?.[activeColumn.id]).length}
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        className={`flex-shrink-0 transition-transform duration-200 ${statusOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    {statusOpen && (
+                      <div
+                        role="listbox"
+                        className={`absolute z-dropdown top-full mt-2 left-0 w-56 max-w-[80vw] p-1 rounded-lg border shadow-lg origin-top-left animate-pop-in ${
+                          darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                        }`}
+                      >
+                        {columns.map(column => {
+                          const count = visibleTasks(tasks[currentProject]?.[column.id]).length;
+                          const active = column.id === activeColumn.id;
+                          const palette = COLUMN_COLORS[column.color] || COLUMN_COLORS.gray;
+                          return (
+                            <button
+                              key={column.id}
+                              role="option"
+                              aria-selected={active}
+                              onClick={() => {
+                                setActiveColumnId(column.id);
+                                setStatusOpen(false);
+                              }}
+                              className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm press ${
+                                darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+                              }`}
+                            >
+                              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${palette.dot}`} />
+                              <span className="column-title flex-1 min-w-0 text-left truncate">{column.title}</span>
+                              <span className={`text-xs flex-shrink-0 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                {count}
+                              </span>
+                              {active && <Check size={14} className="flex-shrink-0 text-green-600" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex-1 flex pt-3 pb-4">

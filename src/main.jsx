@@ -2,11 +2,16 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { Capacitor } from '@capacitor/core'
 import App from './App.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './index.css'
+import './utils/nativeSwipe'
+import './utils/focusScroll'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 )
 

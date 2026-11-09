@@ -5,12 +5,16 @@ import LungsIcon from './LungsIcon';
 
 const DURATION = 15 * 60;
 
-// Плейлист чилла. Один сеанс — один трек; следующий сеанс звучит уже по-другому,
-// чтобы 15 минут подряд не превращались в один и тот же день сурка
+// Плейлист чилла — настоящие треки в public/audio, зациклены на всю сессию.
+// Раньше здесь пробовали скрытый YouTube-плеер и сгенерированный эмбиент —
+// оба были обходом отсутствия своих файлов. Обычный <audio> надёжнее того
+// и другого: тот же элемент, что и .play() из клика, без чужих iframe
+// и без нюансов автовоспроизведения WKWebView
+// Путь строим от BASE_URL: на Pages сайт живёт в подпапке репозитория, и
+// корневой '/audio/…' там (и на локальном dev-сервере) отдавал 404
 const TRACKS = [
-  { id: '9kzE8isXlQY', label: 'Lo-fi 1' },
-  { id: 'JdqL89ZZwFw', label: 'Lo-fi 2' },
-  { id: 'HRCfnvxpYP8', label: 'Lo-fi 3' }
+  { label: 'Lonely Simon', src: `${import.meta.env.BASE_URL}audio/lonely-simon.mp3` },
+  { label: 'The Flow Night', src: `${import.meta.env.BASE_URL}audio/the-flow-night.mp3` }
 ];
 
 // Фазы дыхания по кругу, по четыре секунды на каждую: вдох слева, задержка
@@ -30,12 +34,13 @@ const COUNTS = [2, 3, 4];
 
 const MUSIC_KEY = 'jira-chill-music';
 const today = () => new Date().toDateString();
+const VOLUME = 0.7;
+const FADE_MS = 500;
 
 export default function ChillTimer({ darkMode, theme }) {
   const [secondsLeft, setSecondsLeft] = useState(DURATION);
   const [running, setRunning] = useState(false);
   const [musicOn, setMusicOn] = useState(true);
-  const [musicReady, setMusicReady] = useState(false);
 
   // Какой трек играть, решаем ещё до первого рендера: если прошлый сеанс дослушали
   // до конца или с тех пор наступил новый день — сдвигаемся на следующий
@@ -55,10 +60,8 @@ export default function ChillTimer({ darkMode, theme }) {
   const [dayStamp, setDayStamp] = useState(today);
 
   const intervalRef = useRef(null);
-  const playerRef = useRef(null);
-  const playerMountRef = useRef(null);
-  // Первый трек плеер получает при создании — повторно грузить его не нужно
-  const loadedTrackRef = useRef(trackIndex);
+  const audioRef = useRef(null);
+  const fadeRef = useRef(null);
 
   useEffect(() => {
     try {
@@ -89,116 +92,82 @@ export default function ChillTimer({ darkMode, theme }) {
     return () => clearInterval(intervalRef.current);
   }, [running]);
 
-  // Плеер создаётся заранее и стоит на паузе, чтобы playVideo() успевал попасть в жест пользователя
-  useEffect(() => {
-    let cancelled = false;
-
-    const createPlayer = () => {
-      if (cancelled || playerRef.current || !playerMountRef.current) return;
-      const startId = TRACKS[loadedTrackRef.current].id;
-      playerRef.current = new window.YT.Player(playerMountRef.current, {
-        videoId: startId,
-        playerVars: {
-          autoplay: 0,
-          controls: 0,
-          disablekb: 1,
-          playsinline: 1,
-          loop: 1,
-          playlist: startId
-        },
-        events: {
-          onReady: () => {
-            if (cancelled) return;
-            setMusicReady(true);
-          },
-          // Ролики в плейлисте разной длины, поэтому зацикливаем вручную:
-          // штатный loop работает только для одного и того же видео
-          onStateChange: (event) => {
-            if (event.data === window.YT?.PlayerState?.ENDED) {
-              try {
-                playerRef.current?.seekTo(0);
-                playerRef.current?.playVideo();
-              } catch (error) {
-                console.error('YouTube loop error:', error);
-              }
-            }
-          }
-        }
-      });
-    };
-
-    if (window.YT && window.YT.Player) {
-      createPlayer();
-    } else {
-      // Не перетираем чужой колбэк, а дописываемся к нему
-      const previousCallback = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => {
-        if (typeof previousCallback === 'function') previousCallback();
-        createPlayer();
-      };
-
-      if (!document.getElementById('youtube-iframe-api')) {
-        const script = document.createElement('script');
-        script.id = 'youtube-iframe-api';
-        script.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(script);
+  // Плавно тянем громкость к цели и, если она в итоге нулевая, ставим на паузу —
+  // без щелчка на старте/стопе и без немого зависания в фоне на все 15 минут
+  const fadeTo = (target, onDone) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    clearInterval(fadeRef.current);
+    const steps = 12;
+    const stepMs = FADE_MS / steps;
+    const start = audio.volume;
+    const delta = (target - start) / steps;
+    let i = 0;
+    fadeRef.current = setInterval(() => {
+      i += 1;
+      audio.volume = Math.max(0, Math.min(1, start + delta * i));
+      if (i >= steps) {
+        clearInterval(fadeRef.current);
+        audio.volume = target;
+        onDone?.();
       }
-    }
+    }, stepMs);
+  };
 
-    return () => {
-      cancelled = true;
-      try {
-        playerRef.current?.destroy?.();
-      } catch (error) {
-        console.error('YouTube player destroy error:', error);
+  const play = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.volume = 0;
+    // play() — прямой вызов внутри обработчика клика, а не эффекта: это тот
+    // самый жест пользователя, который WKWebView и требует для автовоспроизведения
+    audio.play().catch(error => console.error('Chill audio play error:', error));
+    fadeTo(VOLUME);
+  };
+
+  const pause = () => {
+    fadeTo(0, () => audioRef.current?.pause());
+  };
+
+  useEffect(() => () => clearInterval(fadeRef.current), []);
+
+  const nextTrack = () => {
+    setTrackIndex(prev => {
+      const next = (prev + 1) % TRACKS.length;
+      const audio = audioRef.current;
+      if (audio) {
+        const wasPlaying = running && musicOn;
+        audio.src = TRACKS[next].src;
+        audio.load();
+        if (wasPlaying) play();
       }
-      playerRef.current = null;
-    };
-  }, []);
-
-  // Смена трека: на ходу подменяем видео, на паузе — только заряжаем его в плеер
-  useEffect(() => {
-    if (!musicReady || !playerRef.current || loadedTrackRef.current === trackIndex) return;
-    loadedTrackRef.current = trackIndex;
-    try {
-      if (running && musicOn) {
-        playerRef.current.loadVideoById(TRACKS[trackIndex].id);
-      } else {
-        playerRef.current.cueVideoById(TRACKS[trackIndex].id);
-      }
-    } catch (error) {
-      console.error('YouTube track change error:', error);
-    }
-  }, [trackIndex, musicReady, running, musicOn]);
-
-  // Музыка идёт только пока идёт таймер и музыка не выключена
-  useEffect(() => {
-    if (!musicReady || !playerRef.current) return;
-    try {
-      if (running && musicOn) {
-        playerRef.current.playVideo();
-      } else {
-        playerRef.current.pauseVideo();
-      }
-    } catch (error) {
-      console.error('YouTube playback error:', error);
-    }
-  }, [running, musicOn, musicReady]);
-
-  const nextTrack = () => setTrackIndex(prev => (prev + 1) % TRACKS.length);
+      return next;
+    });
+  };
 
   const toggleTimer = () => {
     if (!running) {
-      // Новый сеанс после дослушанного или в новый день начинается с новой мелодии
+      // Сначала трек, потом play(): nextTrack меняет audio.src синхронно
+      // (обновление стейта откладывается, а сам вызов — нет), и запускать
+      // воспроизведение нужно уже после того, как источник встал на место
       const now = today();
       if (sessionCompleted || dayStamp !== now) {
         nextTrack();
         setSessionCompleted(false);
         setDayStamp(now);
       }
+      if (musicOn) play();
       if (secondsLeft === 0) setSecondsLeft(DURATION);
+    } else {
+      pause();
     }
     setRunning(prev => !prev);
+  };
+
+  const toggleMusic = () => {
+    const next = !musicOn;
+    setMusicOn(next);
+    if (!running) return;
+    if (next) play(); else pause();
   };
 
   const minutes = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
@@ -240,7 +209,7 @@ export default function ChillTimer({ darkMode, theme }) {
                         слово ни стояло */}
                     {index > 0 && (
                       <span className="chill-lead">
-                        {part.key === 'word' || parts[index - 1].key === 'word' ? '\u00a0' : '…\u00a0'}
+                        {part.key === 'word' || parts[index - 1].key === 'word' ? ' ' : '… '}
                       </span>
                     )}
                     {part}
@@ -273,7 +242,7 @@ export default function ChillTimer({ darkMode, theme }) {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setMusicOn(prev => !prev)}
+              onClick={toggleMusic}
               title={musicOn ? 'Turn music off' : 'Turn music on'}
               aria-label={musicOn ? 'Turn music off' : 'Turn music on'}
               className={`p-2.5 rounded-full border press ${
@@ -301,10 +270,10 @@ export default function ChillTimer({ darkMode, theme }) {
         </div>
       </div>
 
-      {/* Скрытый YouTube-плеер: звук без видео */}
-      <div className="absolute w-px h-px overflow-hidden opacity-0 pointer-events-none -z-10" aria-hidden="true">
-        <div ref={playerMountRef} />
-      </div>
+      {/* Сам плеер — вне экрана целиком: звук без интерфейса, не просто без
+          видео. preload="none" — файл начинает грузиться только тогда, когда
+          его действительно запускают, а не при заходе на вкладку */}
+      <audio ref={audioRef} src={TRACKS[trackIndex].src} loop preload="none" className="hidden" />
     </PageShell>
   );
 }

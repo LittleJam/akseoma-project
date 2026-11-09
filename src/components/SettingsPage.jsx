@@ -1,17 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, LogOut, ShieldCheck, Heart, BellRing } from 'lucide-react';
-import { COLUMN_COLORS } from '../constants';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, LogOut, ShieldCheck, Heart, BellRing, CalendarPlus, CalendarArrowDown, X, Check } from 'lucide-react';
+import { COLUMN_COLORS, WEEK_DAYS } from '../constants';
 import { THEME_OPTIONS } from '../themes';
 import { FEATURES, DEFAULT_FLAGS } from '../auth';
 import Select from './Select';
 import SettingsSection from './SettingsSection';
 import { APP_ICONS } from '../utils/appIcon';
+import { SCHEDULE_LAYOUTS } from '../constants';
 import {
+  DEFAULT_REMINDERS,
   LEAD_OPTIONS,
   notificationsSupported,
   notificationPermission,
   requestNotificationPermission
 } from '../utils/reminders';
+import { getWeekStart, getWeekKey, getWeekDates } from '../utils/weeks';
+import { buildWeekIcs, downloadIcs, timedWeekTasks } from '../utils/ics';
 import { ZODIAC, getSign, DEFAULT_SIGN, guessUtcOffset, offsetForZone } from '../horoscope';
 import PageShell from './PageShell';
 
@@ -20,9 +24,16 @@ export default function SettingsPage({
   theme,
   setTheme,
   appIcon,
+  scheduleLayout,
+  setScheduleLayout,
   setAppIcon,
   reminders,
   setReminders,
+  weeklyTasks = {},
+  importCalendar,
+  projectAccess = {},
+  setProjectAccess,
+  users = [],
   user,
   allowed = () => true,
   featureFlags = DEFAULT_FLAGS,
@@ -81,6 +92,50 @@ export default function SettingsPage({
   const [selectedProjectId, setSelectedProjectId] = useState(currentProject);
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [confirmingReset, setConfirmingReset] = useState(false);
+
+  // Выгрузка текущей недели Расписания в родной календарь. Уходят только
+  // задачи с временем — остальные строки дня для сетки календаря не события
+  const thisWeekStart = getWeekStart(new Date());
+  const thisWeekKey = getWeekKey(thisWeekStart);
+  const thisWeekDates = getWeekDates(thisWeekStart);
+  const thisWeekTasks = weeklyTasks[thisWeekKey] || {};
+  const timedTasks = timedWeekTasks({ weekTasks: thisWeekTasks, weekDays: WEEK_DAYS, weekDates: thisWeekDates });
+
+  const exportWeekToCalendar = () => {
+    const ics = buildWeekIcs({ weekKey: thisWeekKey, weekTasks: thisWeekTasks, weekDays: WEEK_DAYS, weekDates: thisWeekDates });
+    if (ics) downloadIcs(`schedule-${thisWeekKey}.ics`, ics);
+  };
+
+  // Ввоз из другого календаря. Подписку по ссылке браузер забрать не может —
+  // чужой сервер не отдаёт CORS, — поэтому берём файл, который календари
+  // выгружают сами. Итог показываем числами: что-то календарь мог написать
+  // правилом, которое мы не разворачиваем, и молчать об этом нельзя
+  const importInputRef = useRef(null);
+  const [importNote, setImportNote] = useState(null);
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !importCalendar) return;
+
+    try {
+      const result = importCalendar(await file.text());
+      const parts = [`${result.added} added`];
+      if (result.duplicates) parts.push(`${result.duplicates} already here`);
+      if (result.unsupported) parts.push(`${result.unsupported} with repeat rules skipped`);
+      setImportNote(parts.join(' · '));
+    } catch (error) {
+      console.error('Calendar import error:', error);
+      setImportNote('Could not read that file');
+    }
+  };
+
+  // Сообщение о ввозе — не состояние экрана, а ответ на действие: гасим само
+  useEffect(() => {
+    if (!importNote) return;
+    const timer = setTimeout(() => setImportNote(null), 6000);
+    return () => clearTimeout(timer);
+  }, [importNote]);
 
   useEffect(() => {
     if (currentProject) setSelectedProjectId(currentProject);
@@ -202,6 +257,52 @@ export default function SettingsPage({
         </SettingsSection>
         )}
 
+        {/* Доступ к проектам: тот же список пользователей, что и выше, но по
+            каждому проекту отдельно — Features открывает разделы сайта целиком,
+            а здесь прячут конкретный проект от конкретного логина. Отсутствие
+            записи — значит виден, как было до появления этой настройки */}
+        {user?.role === 'admin' && setProjectAccess && users.length > 1 && (
+        <SettingsSection title={<><ShieldCheck size={14} /> Project access</>} darkMode={darkMode} borderClass={cardBorderClass}>
+          <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            Hide individual projects from a login — everyone sees a project until it's unchecked here.
+          </p>
+
+          {projects.length === 0 ? (
+            <p className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>No projects yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {projects.map(project => (
+                <div key={project.id} className={`pb-3 border-b last:border-b-0 last:pb-0 ${borderClass}`}>
+                  <div className={`text-sm font-medium mb-1.5 ${labelClass}`}>{project.name}</div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {users.filter(u => u.username !== user.username).map(u => {
+                      const visible = projectAccess[project.id]?.[u.username] !== false;
+                      return (
+                        <label
+                          key={u.username}
+                          className={`flex items-center gap-2 cursor-pointer ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={visible}
+                            onChange={() => setProjectAccess({
+                              ...projectAccess,
+                              [project.id]: { ...projectAccess[project.id], [u.username]: !visible }
+                            })}
+                            className="w-4 h-4 cursor-pointer flex-shrink-0 accent-green-700"
+                          />
+                          <span className="text-sm">{u.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SettingsSection>
+        )}
+
         {/* Theme */}
         {allowed('themes') && (
         <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
@@ -249,7 +350,8 @@ export default function SettingsPage({
         {allowed('weekly') && setReminders && (
         <SettingsSection title={<><BellRing size={14} /> Reminders</>} darkMode={darkMode} borderClass={cardBorderClass}>
           <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            A notification for every Schedule task that has a time set.
+            One summary in the morning, and a notification for every Schedule task that has a
+            time set. The two work on their own — either can be on without the other.
           </p>
 
           {!notificationsSupported() ? (
@@ -258,6 +360,45 @@ export default function SettingsPage({
             </p>
           ) : (
             <div className="space-y-4">
+              <label className={`flex items-center gap-3 p-2 -m-2 rounded-lg cursor-pointer ${
+                darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={!!reminders.digest}
+                  onChange={async () => {
+                    if (reminders.digest) {
+                      setReminders({ ...reminders, digest: false });
+                      return;
+                    }
+                    const permission = await requestNotificationPermission();
+                    setReminders({ ...reminders, digest: permission === 'granted' });
+                  }}
+                  className="w-5 h-5 sm:w-4 sm:h-4 cursor-pointer flex-shrink-0 accent-green-700"
+                />
+                <span className={`text-sm font-medium ${labelClass}`}>Morning summary of the day</span>
+              </label>
+
+              {reminders.digest && (
+                <div>
+                  <p className={`text-xs mb-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>When to send it</p>
+                  <input
+                    type="time"
+                    value={reminders.digestAt || DEFAULT_REMINDERS.digestAt}
+                    /* Пустое поле оставило бы сводку без времени и молча её
+                       выключило — тогда возвращаем прежнее */
+                    onChange={e => setReminders({
+                      ...reminders,
+                      digestAt: e.target.value || reminders.digestAt || DEFAULT_REMINDERS.digestAt
+                    })}
+                    className={`px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                  />
+                  <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Days with nothing planned stay quiet.
+                  </p>
+                </div>
+              )}
+
               <label className={`flex items-center gap-3 p-2 -m-2 rounded-lg cursor-pointer ${
                 darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
               }`}>
@@ -285,6 +426,7 @@ export default function SettingsPage({
                 </p>
               )}
 
+              {reminders.enabled && (
               <div>
                 <p className={`text-xs mb-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>How early</p>
                 <div className="flex flex-wrap gap-2">
@@ -309,16 +451,132 @@ export default function SettingsPage({
                   })}
                 </div>
               </div>
+              )}
 
               <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                 Reminders are set by this device for the hours ahead and are renewed every time you
                 open the app. With the app closed for a long time they can be missed: a real push
                 needs a server, and this app runs without one. Exporting the week to the system
-                calendar (the button in Schedule) gives alerts that do not depend on the app.
+                calendar (below) gives alerts that do not depend on the app.
               </p>
             </div>
           )}
         </SettingsSection>
+        )}
+
+        {/* Календарь: выгрузка текущей недели наружу и ввоз чужого .ics.
+            Раньше кнопки стояли в Schedule рядом с листанием недель — там им
+            было не место среди действий страницы, здесь они вместе с
+            остальными настройками синхронизации */}
+        {allowed('weekly') && (
+        <SettingsSection title={<><CalendarPlus size={14} /> Calendar sync</>} darkMode={darkMode} borderClass={cardBorderClass}>
+          <div className="space-y-4">
+            <div>
+              <div className={`text-sm font-medium ${labelClass}`}>Export this week</div>
+              <p className={`text-xs mt-0.5 mb-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                {timedTasks.length
+                  ? `${timedTasks.length} timed task${timedTasks.length > 1 ? 's' : ''} ready as a .ics file`
+                  : 'No tasks with time on this week'}
+              </p>
+              <button
+                onClick={exportWeekToCalendar}
+                disabled={timedTasks.length === 0}
+                className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border press disabled:opacity-40 disabled:cursor-not-allowed ${
+                  darkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <CalendarPlus size={14} />
+                Add week to calendar
+              </button>
+            </div>
+
+            {importCalendar && (
+              <div className={`pt-4 border-t ${borderClass}`}>
+                <div className={`text-sm font-medium ${labelClass}`}>Import from another calendar</div>
+                <p className={`text-xs mt-0.5 mb-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  An .ics file exported from Google Calendar, Apple Calendar or Outlook
+                </p>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".ics,text/calendar"
+                  onChange={handleImportFile}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => importInputRef.current?.click()}
+                  className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border press ${
+                    darkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <CalendarArrowDown size={14} />
+                  Import .ics file
+                </button>
+                {importNote && (
+                  <p className={`mt-2 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {importNote}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </SettingsSection>
+        )}
+
+        {/* Раскладка Расписания. Раздел местный, как и иконка: что удобно на
+            этом экране, на другом устройстве может быть неудобно */}
+        {allowed('weekly') && setScheduleLayout && (
+        <div className={`rounded-lg border p-4 sm:p-6 ${cardBorderClass}`}>
+          <h3 className={`text-section uppercase mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            Schedule layout
+          </h3>
+          <div className="flex flex-col gap-2">
+            {SCHEDULE_LAYOUTS.map(({ id, label, hint }) => {
+              const active = scheduleLayout === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setScheduleLayout(id)}
+                  aria-pressed={active}
+                  /* Выбранный вариант отличается не только цветом подписи:
+                     одной её в списке из двух почти не видно. Рамка в два
+                     пикселя, подложка и галочка справа — так понятно с одного
+                     взгляда, что включено сейчас */
+                  className={`flex items-start gap-3 text-left px-4 py-3 rounded-lg border-2 press ${
+                    active
+                      ? darkMode
+                        ? 'border-green-500 bg-green-500/10'
+                        : 'border-green-600 bg-green-50'
+                      : darkMode
+                        ? 'border-gray-700 hover:bg-gray-700'
+                        : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="flex-1 min-w-0">
+                    <span className={`block text-sm font-medium ${
+                      active
+                        ? darkMode ? 'text-green-400' : 'text-green-700'
+                        : darkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      {label}
+                    </span>
+                    <span className={`block text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {hint}
+                    </span>
+                  </span>
+                  {/* Место под галочку занято всегда, иначе текст прыгал бы
+                      вбок при переключении */}
+                  <span className={`flex-shrink-0 mt-0.5 ${active ? '' : 'invisible'}`}>
+                    <Check size={18} className={darkMode ? 'text-green-400' : 'text-green-700'} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className={`text-xs mt-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            Applies to this device only — a phone and a wide display rarely want the same one.
+          </p>
+        </div>
         )}
 
         {/* Иконка приложения. Вариантов немного и каждый — свой манифест:
@@ -500,13 +758,29 @@ export default function SettingsPage({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={`block text-sm font-medium ${labelClass} mb-2`}>Birth time</label>
-                <input
-                  type="time"
-                  value={zodiac.birthTime || ''}
-                  onChange={e => setZodiac({ ...zodiac, birthTime: e.target.value })}
-                  aria-label="Birth time"
-                  className={`w-full px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
-                />
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="time"
+                    value={zodiac.birthTime || ''}
+                    onChange={e => setZodiac({ ...zodiac, birthTime: e.target.value })}
+                    aria-label="Birth time"
+                    className={`flex-1 min-w-0 px-4 py-2 border ${borderClass} rounded-lg ${inputBgClass}`}
+                  />
+                  {/* Родное поле времени очистить нечем — на телефоне у него
+                      нет ни крестика, ни клавиши */}
+                  {zodiac.birthTime && (
+                    <button
+                      type="button"
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => setZodiac({ ...zodiac, birthTime: '' })}
+                      title="Clear time"
+                      aria-label="Clear time"
+                      className={`p-2 rounded press-icon flex-shrink-0 ${darkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div>

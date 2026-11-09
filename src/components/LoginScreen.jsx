@@ -52,7 +52,6 @@ export default function LoginScreen({ onSignIn, darkMode }) {
             value={username}
             onChange={e => setUsername(e.target.value)}
             autoComplete="username"
-            autoFocus
             className={`${inputClass} mt-1 font-normal`}
           />
         </label>

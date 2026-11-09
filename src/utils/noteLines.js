@@ -11,11 +11,16 @@ export const LINE_BULLET = 'bullet';
 // лежали отдельным полем images и показывались сеткой внизу: вставить снимок
 // между двумя абзацами было некуда, он всё равно уезжал в конец
 export const LINE_IMAGE = 'image';
+// Любой другой файл — та же идея, но без сжатия и превью: только имя, размер
+// и ссылка на байты (ref в attachmentStore; у вложений, добавленных до его
+// появления, байты до сих пор лежат data URL'ом в src)
+export const LINE_FILE = 'file';
 
 export const isListLine = line => line.type === LINE_TODO || line.type === LINE_BULLET;
 export const isImageLine = line => line.type === LINE_IMAGE;
+export const isFileLine = line => line.type === LINE_FILE;
 // Строки, в которых стоит курсор и которые можно печатать
-export const isTextual = line => !isImageLine(line);
+export const isTextual = line => !isImageLine(line) && !isFileLine(line);
 
 // Счётчик добавлен к времени: строки нередко появляются пачкой в один
 // миллисекундный тик (перенос списка, разбиение абзаца), и Date.now() сам по

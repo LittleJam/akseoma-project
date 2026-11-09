@@ -28,12 +28,14 @@ export const STORAGE_KEYS = [
   'jira-weekly-tasks',
   'jira-wishlist', // раздел удалён, ключ оставлен, чтобы сброс подчистил старые данные
   'jira-notes',
+  'jira-note-folders',
   'jira-collapsed-subtasks',
   'jira-darkMode',
   'jira-theme',
   'jira-chill-music',
   'jira-feature-flags',
   'jira-project-likes',
+  'jira-project-access',
   'jira-zodiac',
   'jira-starter-notes',
   'jira-currentProject',
@@ -144,3 +146,24 @@ export const getLabelColor = (label, darkMode) => {
 
 // Приводим лейбл к единому виду, чтобы «Bug» и «bug » не расходились
 export const normalizeLabel = (label) => label.trim().replace(/\s+/g, ' ').slice(0, 24);
+
+// Раскладка карточек дней в Расписании. Выбор пользователя, а не только
+// ширины экрана: на одном и том же ноутбуке кому-то важнее видеть всю неделю
+// разом, кому-то — читать день не щурясь
+export const SCHEDULE_LAYOUTS = [
+  {
+    id: 'list',
+    label: 'One day at a time',
+    hint: 'Cards grow with the screen: one column on a phone, two on a laptop, the full week only on a wide display',
+    // Ровно то, как страница вела себя до появления выбора
+    grid: 'grid-cols-1 cards:grid-cols-2 wide:grid-cols-4 wide:grid-rows-2'
+  },
+  {
+    id: 'week',
+    label: 'Whole week at once',
+    hint: 'Always four across and two down — the whole week with no scrolling, but smaller cards',
+    grid: 'grid-cols-4 grid-rows-2'
+  }
+];
+
+export const DEFAULT_SCHEDULE_LAYOUT = 'list';

@@ -1,5 +1,6 @@
 import React from 'react';
 import { themeIcon } from '../themes';
+import useKeyboardOpen from '../utils/useKeyboardOpen';
 
 // Нижняя навигация телефона — замена сайдбару, который на 390px закрывал бы
 // две трети экрана. Разделы те же и в том же порядке, что в сайдбаре, иначе
@@ -19,6 +20,14 @@ const ITEMS = [
 
 export default function MobileNav({ darkMode, theme, currentPage, setCurrentPage, allowed = () => true }) {
   const visible = ITEMS.filter(item => !item.feature || allowed(item.feature));
+  // Пока печатают, панели нет совсем. Она лежит в потоке, внизу раскладочной
+  // области, и когда клавиатура сдвигает страницу вверх, всплывает над
+  // клавиатурой — поперёк того, что пишут, и выглядит как часть клавиатуры.
+  // Уходить под клавиатуру ей некуда, поэтому просто убираем: переключать
+  // разделы посреди набора всё равно незачем, а строка под текстом
+  // освобождается
+  const keyboardOpen = useKeyboardOpen();
+  if (keyboardOpen) return null;
 
   return (
     <nav

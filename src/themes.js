@@ -2,7 +2,8 @@ import {
   Sun, Moon, Wand, Wand2, Waves, Castle, ScrollText, BookOpenText, Sparkles, Feather,
   Compass, CalendarDays, Map, Palmtree, Anchor, Plus, Home, Calendar, StickyNote,
   Coffee, Settings, RefreshCw, Monitor, FolderOpen, FileText, Music2, Wrench,
-  PenLine, Notebook, NotebookPen, Pencil, Highlighter, Paperclip, SlidersHorizontal
+  PenLine, Notebook, NotebookPen, Pencil, Highlighter, Paperclip, SlidersHorizontal,
+  Folder, FolderKey, FolderEdit, FolderClosed
 } from 'lucide-react';
 import SurferIcon from './components/SurferIcon';
 
@@ -29,7 +30,9 @@ const DEFAULT_ICONS = {
   settings: Settings,
   add: Plus,
   refresh: RefreshCw,
-  mascot: Sparkles
+  mascot: Sparkles,
+  // Папка в заметках. У остальных тем ниже — свой вариант
+  noteFolder: Folder
 };
 
 const THEME_ICONS = {
@@ -43,7 +46,9 @@ const THEME_ICONS = {
     refresh: Sparkles,
     // По квадрату дыхания ходит палочка, а не сова: движение по периметру
     // читается как взмах, и это ближе к теме, чем птица
-    mascot: Wand
+    mascot: Wand,
+    // Папка на замке — как ящик стола, запертый заклинанием
+    noteFolder: FolderKey
   },
   handwriting: {
     projects: Notebook,
@@ -53,7 +58,9 @@ const THEME_ICONS = {
     settings: Pencil,
     add: Pencil,
     refresh: Highlighter,
-    mascot: Paperclip
+    mascot: Paperclip,
+    // Папка с карандашом — та же рука, что и у остальных иконок темы
+    noteFolder: FolderEdit
   },
   millenial: {
     projects: FolderOpen,
@@ -63,7 +70,9 @@ const THEME_ICONS = {
     settings: Wrench,
     add: Plus,
     refresh: RefreshCw,
-    mascot: Monitor
+    mascot: Monitor,
+    // Закрытая папка — та самая жёлтая из проводника XP
+    noteFolder: FolderClosed
   },
   surf: {
     projects: Compass,
@@ -78,7 +87,9 @@ const THEME_ICONS = {
     add: Plus,
     refresh: Waves,
     // Сёрфер на доске вместо рыбы: он идёт по сторонам квадрата как по волне
-    mascot: SurferIcon
+    mascot: SurferIcon,
+    // Открытая папка — нараспашку, как всё в этой теме
+    noteFolder: FolderOpen
   }
 };
 

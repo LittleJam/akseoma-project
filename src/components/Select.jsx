@@ -118,6 +118,12 @@ export default function Select({
 
       {open && (
         <div
+          /* Раскрытый список — поверхность для чтения, а не карточка на
+             странице: в темах с полупрозрачными .bg-white/.bg-gray-800
+             (Handwriting, Wizard, Surf) сквозь список иначе просвечивал бы
+             текст под ним. data-dialog даёт ему ту же непрозрачную подложку,
+             что и окнам */
+          data-dialog
           className={`absolute z-30 top-full left-0 right-0 mt-1 rounded-lg border shadow-lg origin-top animate-pop-in ${surface}`}
         >
           {searchable && (

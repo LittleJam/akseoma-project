@@ -83,19 +83,30 @@ export default function TaskEditor({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [colorPickerOpen]);
 
+  // Всё, что применит «Save», включая переезд в другой проект и в подзадачи
+  const hasUnsavedChanges = () =>
+    title !== task.title ||
+    description !== toEditorHtml(task.description) ||
+    priority !== task.priority ||
+    JSON.stringify(images) !== JSON.stringify(task.images || []) ||
+    JSON.stringify(subtasks) !== JSON.stringify(task.subtasks || []) ||
+    JSON.stringify(labels) !== JSON.stringify(task.labels || []) ||
+    Boolean(parentTaskId) ||
+    Boolean(targetProjectId);
+
   // Track unsaved changes
   useEffect(() => {
-    const hasChanges =
-      title !== task.title ||
-      description !== toEditorHtml(task.description) ||
-      priority !== task.priority ||
-      JSON.stringify(images) !== JSON.stringify(task.images || []) ||
-      JSON.stringify(subtasks) !== JSON.stringify(task.subtasks || []) ||
-      JSON.stringify(labels) !== JSON.stringify(task.labels || []) ||
-      Boolean(parentTaskId);
+    onUnsavedChange(hasUnsavedChanges());
+  }, [title, description, priority, images, subtasks, labels, parentTaskId, targetProjectId, task, onUnsavedChange]);
 
-    onUnsavedChange(hasChanges);
-  }, [title, description, priority, images, subtasks, labels, parentTaskId, task, onUnsavedChange]);
+  // Крестик, Escape и системный «назад» не закрывают редактор молча, если
+  // в нём есть несохранённые правки — сначала спрашивают. «Cancel» остаётся
+  // явным «выйти без сохранения»
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const requestClose = () => {
+    if (hasUnsavedChanges()) setConfirmCloseOpen(true);
+    else onClose();
+  };
 
   // Содержимое редактора кладём в него один раз: дальше им управляет сам браузер,
   // иначе курсор прыгал бы в начало на каждом нажатии
@@ -321,10 +332,11 @@ export default function TaskEditor({
     <Modal
       size="lg"
       sheet
-      onClose={onClose}
+      onClose={requestClose}
       closeOnBackdrop={false}
-      // Пока открыта картинка, Escape закрывает её, а не редактор под ней
-      closeOnEsc={viewerIndex === null}
+      // Пока открыта картинка или вопрос о несохранённом, Escape закрывает их,
+      // а не редактор под ними
+      closeOnEsc={viewerIndex === null && !confirmCloseOpen}
       /* На телефоне редактор занимает экран целиком: рамка, скругления и поля
          вокруг съедали бы ширину, которой в форме и так впритык */
       panelClassName={`max-h-[100dvh] sm:max-h-[calc(100vh-3rem)] overflow-hidden rounded-none sm:rounded-lg border-0 sm:border shadow-xl ${bgClass} ${cardBorderClass}`}
@@ -336,7 +348,8 @@ export default function TaskEditor({
               <h2 className={`text-lg font-semibold ${textClass}`}>Edit task</h2>
             </div>
             <button
-              onClick={onClose}
+              onClick={requestClose}
+              aria-label="Close"
               className={`p-2 rounded-full ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
             >
               <X size={20} className={textClass} />
@@ -613,7 +626,6 @@ export default function TaskEditor({
                             onChange={e => setEditingSubtaskText(e.target.value)}
                             onBlur={saveSubtaskEdit}
                             onKeyPress={e => e.key === 'Enter' && saveSubtaskEdit()}
-                            autoFocus
                             className={`flex-1 px-1 py-0.5 text-sm rounded ${darkMode ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-900'}`}
                           />
                         ) : (
@@ -838,6 +850,46 @@ export default function TaskEditor({
               {isUploading ? 'Please wait...' : 'Save'}
             </button>
           </div>
+
+      {/* Закрытие с несохранёнными правками. Escape, клик мимо и «назад»
+          возвращают в редактор — отбросить правки можно только кнопкой */}
+      {confirmCloseOpen && (
+        <Modal
+          size="sm"
+          onClose={() => setConfirmCloseOpen(false)}
+          panelClassName={`rounded-lg p-6 sm:p-8 shadow-xl ${darkMode ? 'bg-gray-800' : 'bg-white'}`}
+        >
+          <h3 className={`text-lg font-bold mb-4 ${textClass}`}>Unsaved changes</h3>
+          <p className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            You have unsaved changes in this task. Save them before closing?
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleSave}
+              disabled={isUploading}
+              className="h-control px-4 bg-green-800 text-white rounded-lg hover:bg-green-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed press"
+            >
+              {isUploading ? 'Please wait...' : 'Save'}
+            </button>
+            <button
+              onClick={onClose}
+              className={`h-control px-4 border rounded-lg font-medium press ${
+                darkMode ? 'border-gray-600 text-red-400 hover:bg-gray-700' : 'border-gray-300 text-red-600 hover:bg-gray-50'
+              }`}
+            >
+              Discard changes
+            </button>
+            <button
+              onClick={() => setConfirmCloseOpen(false)}
+              className={`h-control px-4 rounded-lg font-medium press ${
+                darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Keep editing
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* Картинка на весь экран: клик в любом месте — закрыть */}
       {viewerIndex !== null && images[viewerIndex] && (
